@@ -5,6 +5,7 @@ import { AuthScreen } from './ui/AuthScreen';
 import { GameUI } from './ui/GameUI';
 import { GameCanvas } from './world/GameCanvas';
 import { useGameLoop } from './game/loop';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 
 export default function App() {
   const token = useGameStore((s) => s.token);
@@ -28,9 +29,11 @@ export default function App() {
   if (!token || !me) return <AuthScreen />;
 
   return (
-    <div className="game-root">
-      <GameCanvas />
-      <GameUI />
-    </div>
+    <ErrorBoundary>
+      <div className="game-root">
+        <GameCanvas />
+        <GameUI />
+      </div>
+    </ErrorBoundary>
   );
 }

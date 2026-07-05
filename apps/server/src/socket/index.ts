@@ -1,5 +1,6 @@
 import type { Server as SocketServer } from 'socket.io';
 import type { FastifyInstance } from 'fastify';
+import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 
@@ -59,7 +60,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
           stableLevel: p.stableLevel,
           shirt: '#e8a33d',
         })),
-      nodes: nodes.map((n) => ({
+      nodes: nodes.map((n: WorldNode) => ({
         id: n.id,
         x: n.x,
         y: n.y,

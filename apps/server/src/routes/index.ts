@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { Item as PrismaItem, MarketListing } from '@prisma/client';
 import { hashPassword, verifyPassword } from '../auth.js';
 import { prisma } from '../db.js';
 import { createStarterUser, getMeResponse } from '../services/player.js';
@@ -178,7 +179,7 @@ export async function gameRoutes(app: FastifyInstance) {
     }));
     const all = [...field, ...npcs].slice(0, 6) as Array<Bull & { isNpc?: boolean; owner?: string }>;
     const items = await prisma.item.findMany({ where: { ownerId: userId } });
-    const mappedItems = items.map((it) => ({
+    const mappedItems = items.map((it: PrismaItem) => ({
       id: it.id,
       slot: it.slot as GameItem['slot'],
       rarity: it.rarity as GameItem['rarity'],
@@ -213,7 +214,7 @@ export async function gameRoutes(app: FastifyInstance) {
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-    return listings.map((l) => ({
+    return listings.map((l: MarketListing & { seller: { displayName: string } }) => ({
       id: l.id,
       sellerId: l.sellerId,
       sellerName: l.seller.displayName,

@@ -55,35 +55,32 @@ Create a Railway project with **3 services**:
 
 Add the PostgreSQL plugin. Railway sets `DATABASE_URL` automatically.
 
-### 2. Server (`apps/server`)
+### 2. Server (use `Dockerfile` at repo root)
 
 | Setting | Value |
 |---------|-------|
-| Root directory | `apps/server` |
-| Build | `cd ../.. && pnpm install && pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/server build` |
-| Start | `pnpm db:deploy && node dist/index.js` |
+| Dockerfile | `Dockerfile` |
+| Start | auto via Dockerfile CMD |
 
 **Environment variables:**
-- `DATABASE_URL` — from Postgres plugin
+- `DATABASE_URL` — from Postgres plugin (reference in Railway)
 - `JWT_SECRET` — random secret string
 - `CORS_ORIGIN` — your client Railway URL (e.g. `https://bullrun-client.up.railway.app`)
 - `RACE_INTERVAL_SEC` — `120`
-- `PORT` — Railway sets this automatically
 
-### 3. Client (`apps/client`)
+### 3. Client (use `Dockerfile.client` at repo root)
 
 | Setting | Value |
 |---------|-------|
-| Root directory | `apps/client` |
-| Build | `cd ../.. && pnpm install && pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/client build` |
-| Start | `pnpm preview` |
+| Dockerfile | `Dockerfile.client` |
+| Start | auto via Dockerfile CMD |
 
-**Environment variables:**
-- `VITE_API_URL` — server public URL
-- `VITE_WS_URL` — server public URL (same as API)
-- `PORT` — Railway sets this
+**Environment variables (required before build):**
+- `VITE_API_URL` — server public URL (e.g. `https://bullrun-server.up.railway.app`)
+- `VITE_WS_URL` — same as `VITE_API_URL`
+- `PORT` — Railway sets this automatically
 
-> **Note:** Set `VITE_*` vars before build — Vite bakes them in at build time.
+> **Important:** `VITE_*` variables are baked in at **build time**. Set them in Railway before deploying the client, then redeploy.
 
 ## Game features
 

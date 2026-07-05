@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { TILE_COLORS, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY, nodeId, shade } from '@bullrun/shared';
 import { useGameStore, worldData } from '../store/gameStore';
@@ -129,22 +130,21 @@ function BullAvatar({ x, y, coat, label }: { x: number; y: number; coat: string;
 }
 
 function RaceTrack() {
-  const pts: number[] = [];
-  for (let i = 0; i <= 90; i++) {
-    const a = (i / 90) * Math.PI * 2;
-    const bx = WORLD_CX + Math.cos(a) * WORLD_RX * 0.88;
-    const by = WORLD_CY + Math.sin(a) * WORLD_RY * 0.88;
-    const [x, y, z] = gridPos(bx, by, 0.05);
-    pts.push(x, y, z);
-  }
-  return (
-    <line>
-      <bufferGeometry attach="geometry">
-        <bufferAttribute attach="attributes-position" args={[new Float32Array(pts), 3]} />
-      </bufferGeometry>
-      <lineBasicMaterial color="#f5f0e4" linewidth={2} />
-    </line>
-  );
+  const line = useMemo(() => {
+    const pts: number[] = [];
+    for (let i = 0; i <= 90; i++) {
+      const a = (i / 90) * Math.PI * 2;
+      const bx = WORLD_CX + Math.cos(a) * WORLD_RX * 0.88;
+      const by = WORLD_CY + Math.sin(a) * WORLD_RY * 0.88;
+      const [x, y, z] = gridPos(bx, by, 0.05);
+      pts.push(x, y, z);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
+    return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: '#f5f0e4' }));
+  }, []);
+
+  return <primitive object={line} />;
 }
 
 function GroundClick() {

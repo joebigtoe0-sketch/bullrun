@@ -8,6 +8,7 @@ import {
   type Materials,
   type UserProfile,
 } from '@bullrun/shared';
+import type { Bull as PrismaBull, RaceEntry, MarketListing } from '@prisma/client';
 import { prisma } from '../db.js';
 
 const STARTER_BULL = {
@@ -116,8 +117,8 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   const breeding =
     p.breedingAId && p.breedingBId && p.breedingDone
       ? {
-          a: mapBull(user.bulls.find((b) => b.id === p.breedingAId)!),
-          b: mapBull(user.bulls.find((b) => b.id === p.breedingBId)!),
+          a: mapBull(user.bulls.find((b: PrismaBull) => b.id === p.breedingAId)!),
+          b: mapBull(user.bulls.find((b: PrismaBull) => b.id === p.breedingBId)!),
           done: p.breedingDone.getTime(),
         }
       : null;
@@ -160,7 +161,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
     take: 50,
   });
 
-  const myEntries = currentRace?.entries.filter((e) => e.userId === userId).map((e) => e.bullId).filter(Boolean) as number[] ?? [];
+  const myEntries = currentRace?.entries.filter((e: RaceEntry) => e.userId === userId).map((e: RaceEntry) => e.bullId).filter(Boolean) as number[] ?? [];
   const myBet = currentRace?.bets[0];
 
   return {
@@ -175,10 +176,10 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
           status: currentRace.status,
           startAt: currentRace.startAt.toISOString(),
           field: currentRace.field as unknown as import('@bullrun/shared').NpcBull[],
-          entered: currentRace.entries.filter((e) => !e.isNpc).map((e) => String(e.bullId)),
+          entered: currentRace.entries.filter((e: RaceEntry) => !e.isNpc).map((e: RaceEntry) => String(e.bullId)),
         }
       : null,
-    marketListings: listings.map((l) => ({
+    marketListings: listings.map((l: MarketListing & { seller: { displayName: string } }) => ({
       id: l.id,
       sellerId: l.sellerId,
       sellerName: l.seller.displayName,

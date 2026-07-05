@@ -21,6 +21,7 @@ import {
   type MatType,
   type StatType,
 } from '@bullrun/shared';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
 
@@ -287,7 +288,7 @@ export async function listMaterial(userId: string, mat: MatType, pricePerUnit: n
   const field = mat;
   if ((p[field] as number) < MARKET_LIST_QTY) throw new Error(`Need ${MARKET_LIST_QTY} ${mat}`);
 
-  const listing = await prisma.$transaction(async (tx) => {
+  const listing = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.playerProfile.update({
       where: { userId },
       data: { [field]: (p[field] as number) - MARKET_LIST_QTY },
@@ -330,7 +331,7 @@ export async function buyListing(userId: string, listingId: string) {
   const buyer = await getProfile(userId);
   if (buyer.gold < listing.price) throw new Error('Not enough gold');
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.playerProfile.update({
       where: { userId },
       data: { gold: buyer.gold - listing.price },

@@ -8,6 +8,7 @@ import {
   type RaceBull,
 } from '@bullrun/shared';
 import type { Server as SocketServer } from 'socket.io';
+import type { RaceEntry, Item as PrismaItem } from '@prisma/client';
 import { prisma } from '../db.js';
 import { completeBreed } from '../services/game.js';
 
@@ -58,8 +59,8 @@ async function buildRaceField(raceId: string): Promise<RaceBull[]> {
   const npcField = (race?.field as typeof NPC_POOL) || NPC_POOL;
   const npcs = npcField.map((n, i) => ({ ...n, id: `npc${i}`, isNpc: true as const }));
 
-  const allItems = entries.flatMap((e) => e.user?.items ?? []);
-  const { bulls } = simulateRace(playerBulls, npcs, allItems.map((it) => ({
+  const allItems = entries.flatMap((e: RaceEntry & { user?: { items: PrismaItem[] } | null }) => e.user?.items ?? []);
+  const { bulls } = simulateRace(playerBulls, npcs, allItems.map((it: PrismaItem) => ({
     id: it.id,
     slot: it.slot as 'coat',
     rarity: it.rarity as 'Common',
@@ -107,12 +108,12 @@ async function finishRace(raceId: string) {
   activeRaces.delete(raceId);
 
   const entries = await prisma.raceEntry.findMany({ where: { raceId } });
-  const myBullIds = entries.filter((e) => e.bullId).map((e) => e.bullId!);
+  const myBullIds = entries.filter((e: RaceEntry) => e.bullId).map((e: RaceEntry) => e.bullId!);
   const results = buildRaceResults(active.bulls, myBullIds);
 
   for (const rb of active.bulls) {
     const prize = PURSE[(rb.pos ?? 1) - 1] || 0;
-    const entry = entries.find((e) => e.bullId === rb.id);
+    const entry = entries.find((e: RaceEntry) => e.bullId === rb.id);
     if (entry?.userId && prize > 0) {
       const profile = await prisma.playerProfile.findUnique({ where: { userId: entry.userId } });
       if (profile) {

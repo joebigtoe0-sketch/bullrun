@@ -55,14 +55,19 @@ No trailing slash. Must be your **server** URL, not the client URL.
 
 ### Test after deploy
 
-Open: `https://bullrunclient-production.up.railway.app/config.json`
+1. Open: `https://bullrunclient-production.up.railway.app/config.json`  
+   Should show JSON with your server URL (not HTML).
 
-You should see:
-```json
-{"apiUrl":"https://bullrunserver-production.up.railway.app","wsUrl":"https://bullrunserver-production.up.railway.app"}
+2. View page source on the client URL — you should see:
+   `window.__BULLRUN_CONFIG__={"apiUrl":"https://bullrunserver-production.up.railway.app",...}`
+
+If register still calls `localhost:3001`, the client **start command** is wrong. In Railway client service → Settings → set **Start Command** to:
+
+```bash
+sh scripts/start.sh
 ```
 
-If it says `localhost`, redeploy the client after setting `API_URL`.
+(Root directory for the client service should be `apps/client`.)
 
 ---
 

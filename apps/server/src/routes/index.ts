@@ -39,7 +39,13 @@ export async function authRoutes(app: FastifyInstance) {
 }
 
 export async function gameRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', app.authenticate);
+  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login']);
+
+  app.addHook('preHandler', async (request, reply) => {
+    const path = request.url.split('?')[0];
+    if (PUBLIC.has(path)) return;
+    await app.authenticate(request, reply);
+  });
 
   app.get('/me', async (req) => {
     const userId = (req.user as { sub: string }).sub;

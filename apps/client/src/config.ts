@@ -3,25 +3,44 @@ export interface RuntimeConfig {
   wsUrl: string;
 }
 
+declare global {
+  interface Window {
+    __BULLRUN_CONFIG__?: Partial<RuntimeConfig>;
+  }
+}
+
 let config: RuntimeConfig | null = null;
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
+function fromPartial(data: Partial<RuntimeConfig> | undefined): RuntimeConfig | null {
+  if (!data?.apiUrl) return null;
+  return {
+    apiUrl: normalizeUrl(data.apiUrl),
+    wsUrl: normalizeUrl(data.wsUrl || data.apiUrl),
+  };
+}
+
 export async function loadConfig(): Promise<RuntimeConfig> {
   if (config) return config;
+
+  const injected = fromPartial(window.__BULLRUN_CONFIG__);
+  if (injected) {
+    config = injected;
+    return config;
+  }
 
   // Runtime config.json — generated at container start on Railway
   try {
     const res = await fetch('/config.json', { cache: 'no-store' });
-    if (res.ok) {
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
       const data = (await res.json()) as Partial<RuntimeConfig>;
-      if (data.apiUrl) {
-        config = {
-          apiUrl: normalizeUrl(data.apiUrl),
-          wsUrl: normalizeUrl(data.wsUrl || data.apiUrl),
-        };
+      const runtime = fromPartial(data);
+      if (runtime) {
+        config = runtime;
         return config;
       }
     }

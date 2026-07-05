@@ -1,15 +1,27 @@
 #!/bin/sh
 set -e
 
-DIST="apps/client/dist"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CLIENT_DIR="$(dirname "$SCRIPT_DIR")"
+DIST="$CLIENT_DIR/dist"
+
 API="${API_URL:-${VITE_API_URL:-http://localhost:3001}}"
 WS="${WS_URL:-${VITE_WS_URL:-$API}}"
 
-# Strip trailing slashes
 API=$(echo "$API" | sed 's:/*$::')
 WS=$(echo "$WS" | sed 's:/*$::')
 
+mkdir -p "$DIST"
+
 printf '{"apiUrl":"%s","wsUrl":"%s"}\n' "$API" "$WS" > "$DIST/config.json"
+
+# Inline config survives SPA fallback when /config.json is not served as a static file
+if [ -f "$DIST/index.html" ]; then
+  node "$SCRIPT_DIR/inject-config.mjs" "$DIST/index.html" "$API" "$WS"
+fi
+
 echo "Bull Run client config: api=$API ws=$WS"
 
-exec pnpm --filter @bullrun/client start
+cd "$CLIENT_DIR"
+PORT="${PORT:-4173}"
+exec pnpm exec vite preview --host 0.0.0.0 --port "$PORT"

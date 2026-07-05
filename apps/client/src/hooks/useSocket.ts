@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getWsUrl } from '../api/client';
 import { useGameStore } from '../store/gameStore';
@@ -80,7 +80,9 @@ export function useSocket() {
     };
   }, [token, me?.id]);
 
-  return {
-    emitMove: (x: number, y: number) => socketRef.current?.emit('move', { x, y }),
-  };
+  const emitMove = useCallback((x: number, y: number) => {
+    socketRef.current?.emit('move', { x, y });
+  }, []);
+
+  return { emitMove };
 }

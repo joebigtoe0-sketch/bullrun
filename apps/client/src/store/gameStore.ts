@@ -87,7 +87,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!prev) {
       set({
         me,
-        panel: me.helpSeen ? null : 'help',
+        panel: null,
         shopBulls: me.shopBulls,
         cam: { x: me.position.x, y: me.position.y },
       });

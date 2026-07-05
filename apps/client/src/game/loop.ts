@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
@@ -16,12 +16,14 @@ import { worldData } from '../store/gameStore';
 const M = worldData.M;
 
 export function useGameLoop() {
-  const me = useGameStore((s) => s.me);
+  const meId = useGameStore((s) => s.me?.id);
   const { emitMove } = useSocket();
-  const lastMoveEmit = { t: 0 };
+  const emitMoveRef = useRef(emitMove);
+  emitMoveRef.current = emitMove;
+  const lastMoveEmit = useRef(0);
 
   useEffect(() => {
-    if (!me) return;
+    if (!meId) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -88,9 +90,9 @@ export function useGameLoop() {
 
       if (s.me && (p.x !== s.me.position.x || p.y !== s.me.position.y)) {
         s.setPosition(p.x, p.y);
-        if (now - lastMoveEmit.t > 100) {
-          emitMove(p.x, p.y);
-          lastMoveEmit.t = now;
+        if (now - lastMoveEmit.current > 100) {
+          emitMoveRef.current(p.x, p.y);
+          lastMoveEmit.current = now;
         }
       }
 
@@ -109,7 +111,7 @@ export function useGameLoop() {
       const dt = Math.min(0.05, (t - lastT) / 1000);
       lastT = t;
       step(dt, t);
-      if (t - lastTick > 250) {
+      if (t - lastTick > 1000) {
         lastTick = t;
         api.me().then((m) => {
           if (m) useGameStore.getState().setMe(m);
@@ -124,7 +126,7 @@ export function useGameLoop() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [me, emitMove]);
+  }, [meId]);
 }
 
 function execPending(pending: { type: string; nodeId?: string; x: number; y: number }) {

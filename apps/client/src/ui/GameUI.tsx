@@ -363,6 +363,23 @@ function ResultsModal() {
   );
 }
 
+function WelcomeBanner() {
+  const setMe = useGameStore((s) => s.setMe);
+  const toast = useGameStore((s) => s.toastMsg);
+
+  return (
+    <div className="welcome-banner">
+      <p><b className="gold">Welcome!</b> Click ground to walk · WASD pans camera · Bottom buttons open Stable, Race, Market &amp; Forge</p>
+      <button
+        className={`${btn} gold`}
+        onClick={() => api.settings({ helpSeen: true }).then(setMe).catch((e) => toast(e.message))}
+      >
+        Got it
+      </button>
+    </div>
+  );
+}
+
 function HelpModal() {
   const setPanel = useGameStore((s) => s.setPanel);
   const setMe = useGameStore((s) => s.setMe);
@@ -432,6 +449,7 @@ export function GameUI() {
       {panel === 'market' && <MarketPanel />}
       {panel === 'forge' && <ForgePanel />}
       {panel === 'help' && <HelpModal />}
+      {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
       <ResultsModal />
       {toast && <div className="toast">{toast}</div>}

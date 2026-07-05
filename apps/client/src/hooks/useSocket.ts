@@ -5,13 +5,25 @@ import { useGameStore } from '../store/gameStore';
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
+  const me = useGameStore((s) => s.me);
   const token = useGameStore((s) => s.token);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !me) return;
 
-    const socket = io(getWsUrl(), { auth: { token } });
+    const socket = io(getWsUrl(), {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
     socketRef.current = socket;
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket connect_error', err.message);
+      useGameStore.getState().toastMsg(`World sync failed: ${err.message}`);
+    });
+    socket.on('disconnect', (reason) => {
+      console.warn('Socket disconnected', reason);
+    });
 
     socket.on('world_snapshot', (data: {
       players: import('@bullrun/shared').OtherPlayer[];
@@ -64,8 +76,9 @@ export function useSocket() {
 
     return () => {
       socket.disconnect();
+      socketRef.current = null;
     };
-  }, [token]);
+  }, [token, me?.id]);
 
   return {
     emitMove: (x: number, y: number) => socketRef.current?.emit('move', { x, y }),

@@ -29,6 +29,7 @@ interface GameStore {
 
   setAuth: (token: string, user: { id: string; username: string; displayName: string }) => void;
   setMe: (me: MeResponse) => void;
+  setPosition: (x: number, y: number) => void;
   setPanel: (p: PanelType) => void;
   setInvOpen: (v: boolean) => void;
   setEquipTarget: (id: number | null) => void;
@@ -81,12 +82,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
     localStorage.setItem('bullrun.token', token);
     set({ token, user });
   },
-  setMe: (me) => set({
-    me,
-    panel: me.helpSeen ? get().panel : 'help',
-    shopBulls: me.shopBulls,
-    cam: { x: me.position.x, y: me.position.y },
-  }),
+  setMe: (me) => {
+    const prev = get().me;
+    if (!prev) {
+      set({
+        me,
+        panel: me.helpSeen ? null : 'help',
+        shopBulls: me.shopBulls,
+        cam: { x: me.position.x, y: me.position.y },
+      });
+      return;
+    }
+    set({
+      me: { ...me, position: prev.position },
+      shopBulls: me.shopBulls,
+    });
+  },
+  setPosition: (x, y) => {
+    const me = get().me;
+    if (!me) return;
+    if (me.position.x === x && me.position.y === y) return;
+    set({ me: { ...me, position: { x, y } } });
+  },
   setPanel: (p) => set({ panel: p }),
   setInvOpen: (v) => set({ invOpen: v, equipTarget: v ? get().equipTarget : null }),
   setEquipTarget: (id) => set({ equipTarget: id }),

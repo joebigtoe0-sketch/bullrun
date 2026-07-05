@@ -47,10 +47,11 @@ export async function gameRoutes(app: FastifyInstance) {
     await app.authenticate(request, reply);
   });
 
-  app.get('/me', async (req) => {
+  app.get('/me', async (req, reply) => {
     const userId = (req.user as { sub: string }).sub;
     await game.tickEnergy(userId);
     const me = await getMeResponse(userId);
+    if (!me) return reply.status(404).send({ error: 'Player profile not found' });
     return me;
   });
 

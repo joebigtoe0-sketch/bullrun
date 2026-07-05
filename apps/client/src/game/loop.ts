@@ -87,7 +87,7 @@ export function useGameLoop() {
       }
 
       if (s.me && (p.x !== s.me.position.x || p.y !== s.me.position.y)) {
-        s.setMe({ ...s.me, position: { x: p.x, y: p.y } });
+        s.setPosition(p.x, p.y);
         if (now - lastMoveEmit.t > 100) {
           emitMove(p.x, p.y);
           lastMoveEmit.t = now;
@@ -111,7 +111,9 @@ export function useGameLoop() {
       step(dt, t);
       if (t - lastTick > 250) {
         lastTick = t;
-        api.me().then((m) => useGameStore.getState().setMe(m)).catch(() => {});
+        api.me().then((m) => {
+          if (m) useGameStore.getState().setMe(m);
+        }).catch((err) => console.warn('/me sync failed', err));
       }
       raf = requestAnimationFrame(frame);
     };

@@ -6,20 +6,36 @@ import { registerAuth } from './auth.js';
 import { authRoutes, gameRoutes } from './routes/index.js';
 import { setupSocket } from './socket/index.js';
 import { initWorldNodes } from './services/player.js';
+import { prisma } from './db.js';
 import { setIo as setGameIo } from './services/game.js';
 import { setRaceIo, startRaceScheduler } from './race/scheduler.js';
 
 const PORT = Number(process.env.PORT || 3001);
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
 
 async function main() {
   const app = Fastify({ logger: true });
 
-  await app.register(cors, { origin: CORS_ORIGIN, credentials: true });
+  await app.register(cors, {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const normalized = origin.replace(/\/+$/, '');
+      if (normalized === CORS_ORIGIN) return cb(null, true);
+      cb(null, false);
+    },
+    credentials: true,
+  });
   await app.register(jwt, { secret: process.env.JWT_SECRET || 'dev-secret-change-me' });
   registerAuth(app);
 
-  app.get('/health', async () => ({ ok: true, online: 0 }));
+  app.get('/health', async () => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return { ok: true, db: true };
+    } catch {
+      return { ok: false, db: false, hint: 'DATABASE_URL is wrong — reference Postgres from the server service' };
+    }
+  });
 
   await authRoutes(app);
   await gameRoutes(app);

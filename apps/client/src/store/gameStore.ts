@@ -1,0 +1,123 @@
+import { create } from 'zustand';
+import type { MeResponse, OtherPlayer, PanelType, RaceResult } from '@bullrun/shared';
+import { buildWorld } from '@bullrun/shared';
+
+export const worldData = buildWorld();
+
+interface GameStore {
+  token: string | null;
+  user: { id: string; username: string; displayName: string } | null;
+  me: MeResponse | null;
+  panel: PanelType;
+  invOpen: boolean;
+  equipTarget: number | null;
+  toast: string;
+  otherPlayers: OtherPlayer[];
+  nodeDead: Record<string, number>;
+  raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
+  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number }>; startT: number; endT: number } | null;
+  results: RaceResult[] | null;
+  betResult: string | null;
+  forgeResult: string;
+  moveTarget: { x: number; y: number } | null;
+  pending: { type: string; nodeId?: string; x: number; y: number } | null;
+  gather: { nodeId: string; start: number; dur: number } | null;
+  keys: Record<string, boolean>;
+  cam: { x: number; y: number };
+  freeCamUntil: number;
+  shopBulls: MeResponse['shopBulls'];
+
+  setAuth: (token: string, user: { id: string; username: string; displayName: string }) => void;
+  setMe: (me: MeResponse) => void;
+  setPanel: (p: PanelType) => void;
+  setInvOpen: (v: boolean) => void;
+  setEquipTarget: (id: number | null) => void;
+  toastMsg: (msg: string) => void;
+  setOtherPlayers: (p: OtherPlayer[]) => void;
+  updateOtherPlayer: (id: string, x: number, y: number) => void;
+  addOtherPlayer: (p: OtherPlayer) => void;
+  removeOtherPlayer: (id: string) => void;
+  setNodeDead: (id: string, until: number) => void;
+  clearNodeDead: (id: string) => void;
+  setRaceLive: (r: GameStore['raceLive']) => void;
+  setRaceAnim: (r: GameStore['raceAnim']) => void;
+  setResults: (r: RaceResult[] | null, betResult?: string | null) => void;
+  setForgeResult: (s: string) => void;
+  setMoveTarget: (t: { x: number; y: number } | null) => void;
+  setPending: (p: GameStore['pending']) => void;
+  setGather: (g: GameStore['gather']) => void;
+  setKey: (code: string, down: boolean) => void;
+  setCam: (x: number, y: number) => void;
+  setFreeCamUntil: (t: number) => void;
+  logout: () => void;
+}
+
+let toastTimer: ReturnType<typeof setTimeout>;
+
+export const useGameStore = create<GameStore>((set, get) => ({
+  token: localStorage.getItem('bullrun.token'),
+  user: null,
+  me: null,
+  panel: null,
+  invOpen: false,
+  equipTarget: null,
+  toast: '',
+  otherPlayers: [],
+  nodeDead: {},
+  raceLive: null,
+  raceAnim: null,
+  results: null,
+  betResult: null,
+  forgeResult: '',
+  moveTarget: null,
+  pending: null,
+  gather: null,
+  keys: {},
+  cam: { x: 33, y: 41 },
+  freeCamUntil: 0,
+  shopBulls: [],
+
+  setAuth: (token, user) => {
+    localStorage.setItem('bullrun.token', token);
+    set({ token, user });
+  },
+  setMe: (me) => set({
+    me,
+    panel: me.helpSeen ? get().panel : 'help',
+    shopBulls: me.shopBulls,
+    cam: { x: me.position.x, y: me.position.y },
+  }),
+  setPanel: (p) => set({ panel: p }),
+  setInvOpen: (v) => set({ invOpen: v, equipTarget: v ? get().equipTarget : null }),
+  setEquipTarget: (id) => set({ equipTarget: id }),
+  toastMsg: (msg) => {
+    clearTimeout(toastTimer);
+    set({ toast: msg });
+    toastTimer = setTimeout(() => set({ toast: '' }), 2600);
+  },
+  setOtherPlayers: (p) => set({ otherPlayers: p }),
+  updateOtherPlayer: (id, x, y) =>
+    set({ otherPlayers: get().otherPlayers.map((p) => (p.id === id ? { ...p, x, y } : p)) }),
+  addOtherPlayer: (p) => set({ otherPlayers: [...get().otherPlayers.filter((o) => o.id !== p.id), p] }),
+  removeOtherPlayer: (id) => set({ otherPlayers: get().otherPlayers.filter((p) => p.id !== id) }),
+  setNodeDead: (id, until) => set({ nodeDead: { ...get().nodeDead, [id]: until } }),
+  clearNodeDead: (id) => {
+    const nd = { ...get().nodeDead };
+    delete nd[id];
+    set({ nodeDead: nd });
+  },
+  setRaceLive: (r) => set({ raceLive: r }),
+  setRaceAnim: (r) => set({ raceAnim: r }),
+  setResults: (r, betResult = null) => set({ results: r, betResult: betResult ?? null, panel: r ? 'results' : get().panel }),
+  setForgeResult: (s) => set({ forgeResult: s }),
+  setMoveTarget: (t) => set({ moveTarget: t }),
+  setPending: (p) => set({ pending: p }),
+  setGather: (g) => set({ gather: g }),
+  setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),
+  setCam: (x, y) => set({ cam: { x, y } }),
+  setFreeCamUntil: (t) => set({ freeCamUntil: t }),
+  logout: () => {
+    localStorage.removeItem('bullrun.token');
+    set({ token: null, user: null, me: null, otherPlayers: [] });
+  },
+}));

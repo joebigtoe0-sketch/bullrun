@@ -1,0 +1,82 @@
+import type { Bull, GameItem, StatType } from './types.js';
+
+export function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
+  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
+  const b = Math.max(0, Math.min(255, (n & 255) + amt));
+  return `rgb(${r},${g},${b})`;
+}
+
+export function eff(bull: Bull, stat: StatType, items: GameItem[]): number {
+  let v = bull[stat];
+  for (const it of items) {
+    if (it.equippedTo === bull.id && it.bonus?.stat === stat) v += it.bonus.amt;
+  }
+  return v;
+}
+
+export function coatOf(bull: Bull, items: GameItem[]): string {
+  const c = items.find((it) => it.equippedTo === bull.id && it.slot === 'coat');
+  return c ? c.color : bull.coat;
+}
+
+export function statCap(bull: Bull): number {
+  return 10 + bull.level * 2;
+}
+
+export function bullSlots(stableLevel: number): number {
+  return 2 + Math.floor(stableLevel / 2);
+}
+
+export function stableWoodNeed(level: number): number {
+  return 20 * level;
+}
+
+export function stableGoldNeed(level: number): number {
+  return 50 * level;
+}
+
+export function energyRegen(stableLevel: number): number {
+  return 0.15 * (1 + 0.5 * (stableLevel - 1));
+}
+
+export function gridToWorld(x: number, y: number): [number, number, number] {
+  const wx = (x - y) * 2;
+  const wz = (x + y) * 1;
+  return [wx, 0, wz];
+}
+
+export function worldToGrid(wx: number, wz: number): { x: number; y: number } {
+  const x = (wx / 2 + wz) / 2;
+  const y = (wz - wx / 2) / 2;
+  return { x, y };
+}
+
+export function trackClamp(
+  o: { x: number; y: number },
+  CX: number,
+  CY: number,
+  RX: number,
+  RY: number
+): boolean {
+  const ex = (o.x - CX) / RX;
+  const ey = (o.y - CY) / RY;
+  const e = Math.hypot(ex, ey);
+  if (e > 0.79 && e < 1.225 && e > 0.01) {
+    const to = e < 1.0 ? 0.79 : 1.225;
+    o.x = CX + (ex / e) * to * RX;
+    o.y = CY + (ey / e) * to * RY;
+    return true;
+  }
+  return false;
+}
+
+export function fmtCountdown(ms: number): string {
+  const s = Math.ceil(Math.max(0, ms) / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+export function nodeId(x: number, y: number, mat: string): string {
+  return `${mat}:${x.toFixed(2)}:${y.toFixed(2)}`;
+}

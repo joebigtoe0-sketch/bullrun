@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#69a949}
+@keyframes br-in{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes br-pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes br-pulse{0%,100%{opacity:1}50%{opacity:.5}}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;overflow:hidden;font-family:'Pixelify Sans',system-ui,sans-serif;user-select:none" data-screen-label="Bull Run game">
+
+  <canvas ref="{{ canvasRef }}" onClick="{{ onCanvasClick }}" style="position:absolute;inset:0;display:block;cursor:pointer"></canvas>
+
+  <!-- ============ HUD: resources (top-left) ============ -->
+  <div data-screen-label="HUD" style="position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:8px;z-index:20">
+    <div style="display:flex;align-items:center;gap:8px;background:#2e2318;border:3px solid #17100a;border-radius:10px;padding:6px 12px 6px 8px;box-shadow:0 4px 0 rgba(0,0,0,.35)">
+      <svg width="17" height="17" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.6" fill="#f2b23a" stroke="#17100a" stroke-width="1.8"></circle><circle cx="7" cy="7" r="2.6" fill="none" stroke="#b57f1d" stroke-width="1.4"></circle></svg>
+      <span style="color:#f2b23a;font-weight:700;font-size:18px">{{ gold }}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:7px;background:#2e2318;border:3px solid #17100a;border-radius:10px;padding:6px 12px 6px 8px;box-shadow:0 4px 0 rgba(0,0,0,.35)">
+      <svg width="15" height="15" viewBox="0 0 14 14"><rect x="2" y="3" width="10" height="8" rx="1.5" fill="#d9c65a" stroke="#17100a" stroke-width="1.5"></rect><line x1="5.5" y1="3" x2="5.5" y2="11" stroke="#a8913c" stroke-width="1.2"></line><line x1="8.5" y1="3" x2="8.5" y2="11" stroke="#a8913c" stroke-width="1.2"></line></svg>
+      <span style="color:#f3e7cd;font-weight:600;font-size:15px">{{ hay }}</span>
+      <svg width="15" height="15" viewBox="0 0 14 14" style="margin-left:6px"><path d="M7 1 L13 7 L7 13 L1 7 Z" fill="#9aa0a6" stroke="#17100a" stroke-width="1.5"></path></svg>
+      <span style="color:#f3e7cd;font-weight:600;font-size:15px">{{ ore }}</span>
+      <svg width="15" height="15" viewBox="0 0 14 14" style="margin-left:6px"><rect x="1" y="4" width="12" height="3" rx="1.5" fill="#8a5a2b" stroke="#17100a" stroke-width="1.2"></rect><rect x="2.5" y="8" width="9" height="3" rx="1.5" fill="#a5764a" stroke="#17100a" stroke-width="1.2"></rect></svg>
+      <span style="color:#f3e7cd;font-weight:600;font-size:15px">{{ wood }}</span>
+    </div>
+  </div>
+
+  <!-- ============ HUD: race countdown ============ -->
+  <div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:6px">
+    <div style="display:flex;align-items:center;gap:10px;background:#2e2318;border:3px solid #17100a;border-radius:12px;padding:8px 18px;box-shadow:0 4px 0 rgba(0,0,0,.35)">
+      <span style="color:#c9b896;font-size:13px;font-weight:600;letter-spacing:1px">{{ raceStateTxt }}</span>
+      <span style="color:#f2b23a;font-size:22px;font-weight:700">{{ countdownTxt }}</span>
+    </div>
+    <sc-if value="{{ raceRunning }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:640px">
+        <sc-for list="{{ liveStandings }}" as="s" hint-placeholder-count="0">
+          <div style="background:rgba(23,16,10,.85);border:2px solid #17100a;border-radius:8px;padding:3px 9px;color:#f3e7cd;font-size:13px;font-weight:600">{{ s.posTxt }} {{ s.name }}</div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="position:absolute;top:14px;right:14px;z-index:20;background:#2e2318;border:3px solid #17100a;border-radius:10px;padding:6px 12px;box-shadow:0 4px 0 rgba(0,0,0,.35);color:#f3e7cd;font-size:14px;font-weight:600">You · Stable Lv {{ stableLevel }} · {{ bullCountTxt }}</div>
+
+  <!-- ============ gather bar ============ -->
+  <sc-if value="{{ gatherOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:120px;left:50%;transform:translateX(-50%);z-index:20;width:180px;height:16px;background:#17100a;border:3px solid #17100a;border-radius:8px;overflow:hidden">
+      <div style="height:100%;background:#7dc24f;width:{{ gatherPct }}"></div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Bottom buttons ============ -->
+  <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:9px;align-items:center">
+    <button onClick="{{ openStable }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Stable</button>
+    <button onClick="{{ openRace }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Race</button>
+    <button onClick="{{ openBet }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Bet</button>
+    <button onClick="{{ openMarket }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Market</button>
+    <button onClick="{{ openForge }}" style="font-family:inherit;background:#e07840;color:#2a1205;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Forge</button>
+    <button onClick="{{ openInv }}" style="font-family:inherit;background:#5fb4d8;color:#0d2430;border:3px solid #17100a;border-radius:9px;padding:8px 14px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Items ({{ invCount }})</button>
+    <button onClick="{{ openHelp }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:9px;padding:8px 12px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">?</button>
+  </div>
+
+  <!-- ============ Inventory popup ============ -->
+  <sc-if value="{{ invOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Inventory" style="position:absolute;top:70px;bottom:80px;right:452px;width:350px;max-width:80vw;background:#2e2318;border:4px solid #17100a;border-radius:14px;color:#f3e7cd;display:flex;flex-direction:column;z-index:35;animation:br-pop .18s ease-out;box-shadow:0 10px 0 rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:3px solid #17100a">
+        <div style="font-size:19px;font-weight:700;color:#5fb4d8">Inventory</div>
+        <button onClick="{{ closeInv }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:2px 10px;font-weight:700;font-size:14px;cursor:pointer">✕</button>
+      </div>
+      <div style="font-size:12px;color:#c9b896;padding:8px 16px 0">{{ invTargetTxt }}</div>
+      <div style="flex:1;overflow-y:auto;padding:10px 16px 14px;display:flex;flex-direction:column;gap:8px">
+        <sc-if value="{{ invEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:13px;color:#8f7f63;text-align:center;padding:20px 0">No items yet — forge some from ore, or buy from the market.</div>
+        </sc-if>
+        <sc-for list="{{ invItems }}" as="it" hint-placeholder-count="2">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="width:14px;height:14px;border:2px solid #17100a;border-radius:4px;display:inline-block;background:{{ it.color }}"></span>
+                <span style="font-weight:700;font-size:14px;color:{{ it.rarityColor }}">{{ it.name }}</span>
+              </div>
+              <div style="font-size:11.5px;color:#c9b896;margin-top:2px">{{ it.slotTxt }} · {{ it.rarity }}{{ it.bonusTxt }}</div>
+            </div>
+            <button onClick="{{ it.onEquip }}" style="font-family:inherit;background:#7dc24f;color:#14260c;border:3px solid #17100a;border-radius:8px;padding:4px 10px;font-weight:700;font-size:12px;cursor:pointer;box-shadow:0 2px 0 #17100a;white-space:nowrap" style-active="transform:translateY(1px);box-shadow:none">Equip</button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Stable panel ============ -->
+  <sc-if value="{{ showStable }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Stable panel" style="position:absolute;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#2e2318;border-left:4px solid #17100a;color:#f3e7cd;display:flex;flex-direction:column;z-index:30;animation:br-in .18s ease-out;box-shadow:-8px 0 24px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:3px solid #17100a">
+        <div style="font-size:22px;font-weight:700;color:#f2b23a">Your Stable</div>
+        <button onClick="{{ closePanel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:3px 11px;font-weight:700;font-size:15px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <span style="font-weight:700;font-size:17px">Stable Level {{ stableLevel }}</span>
+            <span style="font-size:12px;color:#c9b896">{{ stableBonusTxt }}</span>
+          </div>
+          <div style="height:14px;background:#17100a;border-radius:7px;overflow:hidden"><div style="height:100%;background:#8a5a2b;width:{{ stableWoodPct }}"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:#c9b896">Wood {{ stableWoodTxt }} · {{ slotsTxt }}</span>
+            <button onClick="{{ onUpgradeStable }}" style="font-family:inherit;background:#7dc24f;color:#14260c;border:3px solid #17100a;border-radius:8px;padding:5px 12px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">{{ stableUpgradeTxt }}</button>
+          </div>
+        </div>
+        <sc-for list="{{ bulls }}" as="b" hint-placeholder-count="1">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:9px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:18px;height:18px;border:2px solid #17100a;border-radius:5px;display:inline-block;background:{{ b.coat }}"></span>
+                <span style="font-weight:700;font-size:18px">{{ b.name }}</span>
+                <span style="background:#4c3b2a;border-radius:6px;padding:1px 7px;font-size:12px;color:#e8d9b8">Lv {{ b.level }}</span>
+              </div>
+              <button onClick="{{ b.onRename }}" style="font-family:inherit;background:#4c3b2a;color:#c9b896;border:2px solid #17100a;border-radius:7px;padding:2px 9px;font-size:11px;font-weight:700;cursor:pointer" style-hover="background:#5d4933">Rename</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg width="13" height="13" viewBox="0 0 14 14"><path d="M8 1 L3 8 H6.5 L5.5 13 L11 6 H7.5 Z" fill="#5fb4d8" stroke="#17100a" stroke-width="1"></path></svg>
+              <div style="flex:1;height:12px;background:#17100a;border-radius:6px;overflow:hidden"><div style="height:100%;background:#5fb4d8;width:{{ b.energyPct }}"></div></div>
+              <span style="font-size:13px;font-weight:600;width:34px;text-align:right">{{ b.energy }}</span>
+              <span style="font-size:11px;color:#8f7f63">XP {{ b.xpTxt }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+              <span style="font-size:14px">Speed <b style="color:#f2b23a">{{ b.speedTxt }}</b></span>
+              <button onClick="{{ b.onTrainSpeed }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer" style-hover="background:#5d4933">Train · 6 hay</button>
+              <span style="font-size:14px">Stamina <b style="color:#f2b23a">{{ b.staminaTxt }}</b></span>
+              <button onClick="{{ b.onTrainStamina }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer" style-hover="background:#5d4933">Train · 6 hay</button>
+              <span style="font-size:14px">Accel <b style="color:#f2b23a">{{ b.accelTxt }}</b></span>
+              <button onClick="{{ b.onTrainAccel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer" style-hover="background:#5d4933">Train · 6 hay</button>
+              <span style="font-size:14px">Temper <b style="color:#f2b23a">{{ b.temper }}</b></span>
+              <span style="font-size:11px;color:#8f7f63;text-align:right">wildcard factor</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+              <span style="font-size:11.5px;color:#8f7f63">Equipped:</span>
+              <sc-if value="{{ b.noItems }}" hint-placeholder-val="{{ true }}"><span style="font-size:11.5px;color:#6a5c46">nothing</span></sc-if>
+              <sc-for list="{{ b.equippedItems }}" as="eq" hint-placeholder-count="0">
+                <span style="display:inline-flex;align-items:center;gap:5px;background:#17100a;border-radius:7px;padding:3px 4px 3px 8px;font-size:11.5px;color:{{ eq.rarityColor }};font-weight:600">{{ eq.name }}<button onClick="{{ eq.onUnequip }}" style="font-family:inherit;background:#4c3b2a;color:#c9b896;border:none;border-radius:5px;padding:0 5px;font-size:11px;cursor:pointer">✕</button></span>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:7px">
+              <button onClick="{{ b.onEquipItems }}" style="font-family:inherit;background:#5fb4d8;color:#0d2430;border:3px solid #17100a;border-radius:8px;padding:5px 11px;font-weight:700;font-size:12.5px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">Equip items</button>
+              <button onClick="{{ b.onRest }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:5px 11px;font-weight:700;font-size:12.5px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">Rest +40⚡ (40g)</button>
+              <button onClick="{{ b.onBreedToggle }}" style="font-family:inherit;background:{{ b.breedBg }};color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:5px 11px;font-weight:700;font-size:12.5px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">{{ b.breedLabel }}</button>
+            </div>
+          </div>
+        </sc-for>
+        <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div>
+            <div style="font-weight:700;font-size:15px">Breeding</div>
+            <div style="font-size:12px;color:#c9b896">{{ breedSelTxt }}</div>
+          </div>
+          <button onClick="{{ onBreed }}" style="font-family:inherit;background:#c86ad4;color:#2a0e2e;border:3px solid #17100a;border-radius:8px;padding:6px 14px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">Breed (200g)</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Race signup panel ============ -->
+  <sc-if value="{{ showRace }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Race signup panel" style="position:absolute;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#2e2318;border-left:4px solid #17100a;color:#f3e7cd;display:flex;flex-direction:column;z-index:30;animation:br-in .18s ease-out;box-shadow:-8px 0 24px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:3px solid #17100a">
+        <div style="font-size:22px;font-weight:700;color:#f2b23a">Race Signup</div>
+        <button onClick="{{ closePanel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:3px 11px;font-weight:700;font-size:15px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+        <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;text-align:center">
+          <div style="font-size:13px;color:#c9b896;letter-spacing:1px">NEXT RACE IN</div>
+          <div style="font-size:34px;font-weight:700;color:#f2b23a">{{ countdownTxt }}</div>
+          <div style="font-size:13px;color:#c9b896;margin-top:4px">Entry: 50g + 30⚡ · Purse 300 / 150 / 80 / 40</div>
+          <div style="font-size:13px;color:#c9b896;margin-top:2px">{{ entrantCountTxt }}</div>
+        </div>
+        <sc-for list="{{ bulls }}" as="b" hint-placeholder-count="1">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:16px;height:16px;border:2px solid #17100a;border-radius:5px;display:inline-block;background:{{ b.coat }}"></span>
+                <span style="font-weight:700;font-size:16px">{{ b.name }}</span>
+                <span style="background:#4c3b2a;border-radius:6px;padding:1px 7px;font-size:12px">Lv {{ b.level }}</span>
+              </div>
+              <div style="font-size:12px;color:#c9b896;margin-top:3px">{{ b.statSummary }} · ⚡{{ b.energy }}</div>
+            </div>
+            <sc-if value="{{ b.entered }}" hint-placeholder-val="{{ false }}">
+              <span style="background:#7dc24f;color:#14260c;border:3px solid #17100a;border-radius:8px;padding:5px 12px;font-weight:700;font-size:13px">Entered ✓</span>
+            </sc-if>
+            <sc-if value="{{ b.notEntered }}" hint-placeholder-val="{{ true }}">
+              <button onClick="{{ b.onEnter }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:8px;padding:6px 13px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">Enter race</button>
+            </sc-if>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;color:#8f7f63;text-align:center">Races run automatically on the clock — your bull races even if you are off gathering.</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Betting panel ============ -->
+  <sc-if value="{{ showBet }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Betting panel" style="position:absolute;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#2e2318;border-left:4px solid #17100a;color:#f3e7cd;display:flex;flex-direction:column;z-index:30;animation:br-in .18s ease-out;box-shadow:-8px 0 24px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:3px solid #17100a">
+        <div style="font-size:22px;font-weight:700;color:#f2b23a">Betting Booth</div>
+        <button onClick="{{ closePanel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:3px 11px;font-weight:700;font-size:15px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:14px;font-weight:600">Bet amount</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onClick="{{ onBetMinus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;width:30px;height:30px;font-weight:700;font-size:16px;cursor:pointer">−</button>
+            <span style="color:#f2b23a;font-weight:700;font-size:20px;min-width:56px;text-align:center">{{ betAmount }}g</span>
+            <button onClick="{{ onBetPlus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;width:30px;height:30px;font-weight:700;font-size:16px;cursor:pointer">+</button>
+          </div>
+        </div>
+        <sc-if value="{{ hasBet }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#1d2a14;border:3px solid #17100a;border-radius:10px;padding:10px 14px;font-size:14px;color:#bfe3a4">{{ myBetTxt }}</div>
+        </sc-if>
+        <div style="font-size:12px;color:#8f7f63;letter-spacing:1px">FIELD · WIN BETS · 5% HOUSE RAKE</div>
+        <sc-for list="{{ entrants }}" as="e" hint-placeholder-count="4">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="width:14px;height:14px;border:2px solid #17100a;border-radius:4px;display:inline-block;background:{{ e.coat }}"></span>
+                <span style="font-weight:700;font-size:15px">{{ e.name }}</span>
+                <span style="font-size:11px;color:#8f7f63">{{ e.owner }}</span>
+              </div>
+              <div style="font-size:12px;color:#c9b896;margin-top:2px">{{ e.statSummary }}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="color:#f2b23a;font-weight:700;font-size:16px">{{ e.oddsTxt }}</span>
+              <button onClick="{{ e.onBet }}" style="font-family:inherit;background:#7dc24f;color:#14260c;border:3px solid #17100a;border-radius:8px;padding:5px 11px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">Bet</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Market panel ============ -->
+  <sc-if value="{{ showMarket }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Market panel" style="position:absolute;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#2e2318;border-left:4px solid #17100a;color:#f3e7cd;display:flex;flex-direction:column;z-index:30;animation:br-in .18s ease-out;box-shadow:-8px 0 24px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:3px solid #17100a">
+        <div style="font-size:22px;font-weight:700;color:#f2b23a">Player Market</div>
+        <button onClick="{{ closePanel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:3px 11px;font-weight:700;font-size:15px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:12px;color:#8f7f63;letter-spacing:1px">LIST MATERIALS FOR SALE · 5% FEE ON SALE</div>
+        <sc-for list="{{ listRows }}" as="m" hint-placeholder-count="3">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="width:14px;height:14px;border:2px solid #17100a;display:inline-block;background:{{ m.swatch }}"></span>
+              <span style="font-weight:700;font-size:15px">{{ m.name }}</span>
+              <span style="font-size:12px;color:#c9b896">×{{ m.qty }}</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <button onClick="{{ m.onMinus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:6px;width:24px;height:24px;font-weight:700;font-size:13px;cursor:pointer">−</button>
+              <span style="font-size:13px;font-weight:700;color:#f2b23a;min-width:30px;text-align:center">{{ m.priceTxt }}</span>
+              <button onClick="{{ m.onPlus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:6px;width:24px;height:24px;font-weight:700;font-size:13px;cursor:pointer">+</button>
+              <button onClick="{{ m.onList }}" style="font-family:inherit;background:#7dc24f;color:#14260c;border:3px solid #17100a;border-radius:8px;padding:4px 9px;font-weight:700;font-size:12px;cursor:pointer;box-shadow:0 2px 0 #17100a" style-active="transform:translateY(1px);box-shadow:none">List 10</button>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ hasMyListings }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px;color:#8f7f63;letter-spacing:1px;margin-top:4px">YOUR LISTINGS</div>
+          <sc-for list="{{ myListings }}" as="ml" hint-placeholder-count="1">
+            <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;font-weight:600">{{ ml.desc }}</span>
+              <span style="font-size:13px;font-weight:700;color:{{ ml.statusColor }}">{{ ml.statusTxt }}</span>
+            </div>
+          </sc-for>
+        </sc-if>
+        <div style="font-size:12px;color:#8f7f63;letter-spacing:1px;margin-top:4px">BULLS FOR SALE</div>
+        <sc-for list="{{ bullListings }}" as="bl" hint-placeholder-count="2">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>
+              <div style="display:flex;align-items:center;gap:7px">
+                <span style="width:15px;height:15px;border:2px solid #17100a;border-radius:4px;display:inline-block;background:{{ bl.coat }}"></span>
+                <span style="font-weight:700;font-size:15px">{{ bl.name }}</span>
+                <span style="font-size:11px;color:#8f7f63">seller: {{ bl.seller }}</span>
+              </div>
+              <div style="font-size:12px;color:#c9b896;margin-top:2px">{{ bl.statSummary }}</div>
+            </div>
+            <button onClick="{{ bl.onBuy }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:8px;padding:5px 12px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a;white-space:nowrap" style-active="transform:translateY(1px);box-shadow:none">{{ bl.priceTxt }}</button>
+          </div>
+        </sc-for>
+        <div style="font-size:12px;color:#8f7f63;letter-spacing:1px;margin-top:4px">PLAYER LISTINGS · ITEMS &amp; MATERIALS</div>
+        <sc-for list="{{ listings }}" as="l" hint-placeholder-count="3">
+          <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:16px;height:16px;border:2px solid #17100a;border-radius:5px;display:inline-block;background:{{ l.swatch }}"></span>
+                <span style="font-weight:700;font-size:15px">{{ l.name }}</span>
+                <span style="font-size:11px;padding:1px 6px;border-radius:5px;background:#4c3b2a;color:{{ l.rarityColor }}">{{ l.rarity }}</span>
+              </div>
+              <div style="font-size:12px;color:#c9b896;margin-top:2px">{{ l.desc }}</div>
+            </div>
+            <button onClick="{{ l.onBuy }}" style="font-family:inherit;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:8px;padding:5px 12px;font-weight:700;font-size:13px;cursor:pointer;box-shadow:0 2px 0 #17100a;white-space:nowrap" style-active="transform:translateY(1px);box-shadow:none">{{ l.priceTxt }}</button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Forge panel ============ -->
+  <sc-if value="{{ showForge }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Forge panel" style="position:absolute;top:0;right:0;bottom:0;width:430px;max-width:94vw;background:#2e2318;border-left:4px solid #17100a;color:#f3e7cd;display:flex;flex-direction:column;z-index:30;animation:br-in .18s ease-out;box-shadow:-8px 0 24px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:3px solid #17100a">
+        <div style="font-size:22px;font-weight:700;color:#e07840">The Forge</div>
+        <button onClick="{{ closePanel }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:3px solid #17100a;border-radius:8px;padding:3px 11px;font-weight:700;font-size:15px;cursor:pointer">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:13px;color:#c9b896;line-height:1.5">Feed ore into the forge and it hammers out a random bull item. Minimum 50 ore — every ore beyond 50 tilts the odds toward rarer items.</div>
+        <div style="background:#221a11;border:3px solid #17100a;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:14px;font-weight:600">Ore to smelt <span style="font-size:12px;color:#8f7f63">(you have {{ ore }})</span></span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onClick="{{ onOreMinus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;width:28px;height:28px;font-weight:700;font-size:15px;cursor:pointer">−</button>
+              <span style="color:#e07840;font-weight:700;font-size:20px;min-width:44px;text-align:center">{{ forgeOre }}</span>
+              <button onClick="{{ onOrePlus }}" style="font-family:inherit;background:#4c3b2a;color:#f3e7cd;border:2px solid #17100a;border-radius:7px;width:28px;height:28px;font-weight:700;font-size:15px;cursor:pointer">+</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <sc-for list="{{ forgeChanceRows }}" as="fc" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="width:74px;font-size:12.5px;font-weight:700;color:{{ fc.color }}">{{ fc.name }}</span>
+                <div style="flex:1;height:10px;background:#17100a;border-radius:5px;overflow:hidden"><div style="height:100%;background:{{ fc.color }};width:{{ fc.pctTxt }}"></div></div>
+                <span style="width:42px;text-align:right;font-size:12.5px;color:#c9b896">{{ fc.pctTxt }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <button onClick="{{ onForge }}" style="font-family:inherit;background:#e07840;color:#2a1205;border:3px solid #17100a;border-radius:9px;padding:9px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Forge it 🔨</button>
+        </div>
+        <sc-if value="{{ hasForgeResult }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#1d2a14;border:3px solid #17100a;border-radius:10px;padding:10px 14px;font-size:14px;color:#bfe3a4;animation:br-pop .2s ease-out">{{ forgeResultTxt }}</div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Results modal ============ -->
+  <sc-if value="{{ resultsOpen }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Race results" style="position:absolute;inset:0;background:rgba(12,8,4,.55);z-index:40;display:flex;align-items:center;justify-content:center">
+      <div style="width:420px;max-width:92vw;background:#2e2318;border:4px solid #17100a;border-radius:14px;color:#f3e7cd;box-shadow:0 10px 0 rgba(0,0,0,.4);animation:br-pop .2s ease-out;overflow:hidden">
+        <div style="background:#f2b23a;color:#201405;padding:12px 18px;font-size:20px;font-weight:700;border-bottom:4px solid #17100a">Race Results</div>
+        <div style="padding:14px 18px;display:flex;flex-direction:column;gap:7px">
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <div style="display:flex;justify-content:space-between;align-items:center;background:{{ r.rowBg }};border:2px solid #17100a;border-radius:8px;padding:7px 12px">
+              <div style="display:flex;align-items:center;gap:9px">
+                <span style="font-weight:700;color:#f2b23a;width:26px">{{ r.posTxt }}</span>
+                <span style="font-weight:700;font-size:15px">{{ r.name }}</span>
+                <span style="font-size:11px;color:#8f7f63">{{ r.owner }}</span>
+              </div>
+              <span style="font-size:13px;font-weight:600;color:#bfe3a4">{{ r.prizeTxt }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ hasBetResult }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:4px;background:#1d2a14;border:2px solid #17100a;border-radius:8px;padding:8px 12px;font-size:14px;color:#bfe3a4">{{ betResultTxt }}</div>
+          </sc-if>
+          <button onClick="{{ onDismissResults }}" style="font-family:inherit;margin-top:8px;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:9px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Continue</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Help ============ -->
+  <sc-if value="{{ showHelp }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Help" style="position:absolute;inset:0;background:rgba(12,8,4,.55);z-index:50;display:flex;align-items:center;justify-content:center">
+      <div style="width:470px;max-width:92vw;background:#2e2318;border:4px solid #17100a;border-radius:14px;color:#f3e7cd;box-shadow:0 10px 0 rgba(0,0,0,.4);animation:br-pop .2s ease-out;overflow:hidden">
+        <div style="background:#f2b23a;color:#201405;padding:12px 18px;font-size:22px;font-weight:700;border-bottom:4px solid #17100a">🐂 Bull Run</div>
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.45">
+          <div><b style="color:#f2b23a">Move &amp; interact</b> — click the ground to walk, click trees / rocks / hay / buildings to use them</div>
+          <div><b style="color:#f2b23a">Camera</b> — WASD / arrows to pan, it snaps back to you when you move</div>
+          <div><b style="color:#f2b23a">Prep</b> — train with hay, forge ore into items, level your stable with wood for faster energy regen</div>
+          <div><b style="color:#f2b23a">Race</b> — every {{ raceIntervalTxt }} a race runs on the oval. Enter a bull (50g + 30⚡) or bet on the field</div>
+          <div style="font-size:12px;color:#8f7f63">Prototype: timers compressed, all economy numbers are placeholders.</div>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button onClick="{{ onDismissHelp }}" style="font-family:inherit;flex:1;background:#f2b23a;color:#201405;border:3px solid #17100a;border-radius:9px;padding:9px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 3px 0 #17100a" style-active="transform:translateY(1px);box-shadow:0 1px 0 #17100a">Play</button>
+            <button onClick="{{ onResetSave }}" style="font-family:inherit;background:#4c3b2a;color:#c9b896;border:3px solid #17100a;border-radius:9px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer">Reset progress</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ============ Toast ============ -->
+  <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:60;background:#17100a;color:#f3e7cd;border:3px solid #17100a;border-radius:10px;padding:8px 16px;font-size:14px;font-weight:600;box-shadow:0 4px 0 rgba(0,0,0,.35);animation:br-in .15s ease-out;pointer-events:none">{{ toastTxt }}</div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;raceIntervalSec&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:120,&quot;min&quot;:30,&quot;max&quot;:1800,&quot;unit&quot;:&quot;s&quot;,&quot;section&quot;:&quot;Economy &amp; pacing&quot;},&quot;startingGold&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:500,&quot;min&quot;:0,&quot;max&quot;:10000,&quot;section&quot;:&quot;Economy &amp; pacing&quot;},&quot;npcWanderers&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:4,&quot;min&quot;:0,&quot;max&quot;:6,&quot;step&quot;:1,&quot;section&quot;:&quot;World&quot;}}">
+class Component extends DCLogic {
+  state = { v: 0 };
+  canvasRef = React.createRef();
+
+  componentDidMount() {
+    this.canvas = this.canvasRef.current;
+    this.ctx = this.canvas.getContext('2d');
+    this.keys = {};
+    this.camOff = { x: 0, y: 0 };
+    this.initGame();
+    this.buildWorld();
+    this.onKeyDown = (e) => {
+      if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) { this.keys[e.code] = true; e.preventDefault(); }
+      if (e.code === 'Escape') { this.g.panel = null; this.g.invOpen = false; this.ui(); }
+    };
+    this.onKeyUp = (e) => { this.keys[e.code] = false; };
+    this.onResize = () => this.resize();
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+    window.addEventListener('resize', this.onResize);
+    this.resize();
+    this.lastT = performance.now();
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+    this.tickIv = setInterval(() => this.tick(), 250);
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf); clearInterval(this.tickIv);
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('resize', this.onResize);
+  }
+  ui() { this.setState(s => ({ v: s.v + 1 })); this.saveSoon(); }
+
+  // ============ setup ============
+  initGame() {
+    const interval = (this.props.raceIntervalSec ?? 120) * 1000;
+    const startGold = this.props.startingGold ?? 500;
+    this.RAR = [
+      { k: 'Common',    c: '#c9b896' },
+      { k: 'Uncommon',  c: '#7dc24f' },
+      { k: 'Rare',      c: '#5fb4d8' },
+      { k: 'Epic',      c: '#c86ad4' },
+      { k: 'Legendary', c: '#f2b23a' }
+    ];
+    this.NPC_POOL = [
+      { name: 'Thunder',  owner: 'jigglz',   coat: '#1d1a17', speed: 8, stamina: 6, accel: 5, temper: 3 },
+      { name: 'Brisket',  owner: 'ac1978',   coat: '#6e4526', speed: 6, stamina: 8, accel: 5, temper: 2 },
+      { name: 'Maximus',  owner: 'DoRiiToS', coat: '#8e2f2f', speed: 7, stamina: 5, accel: 8, temper: 5 },
+      { name: 'Clover',   owner: 'Xhrbes',   coat: '#e8e4da', speed: 5, stamina: 7, accel: 6, temper: 1 },
+      { name: 'Diesel',   owner: 'moover22', coat: '#3d3d45', speed: 7, stamina: 7, accel: 4, temper: 6 },
+      { name: 'Peanut',   owner: 'hankk',    coat: '#c99a5b', speed: 6, stamina: 6, accel: 6, temper: 8 },
+      { name: 'Rampage',  owner: 'bullzeye', coat: '#472222', speed: 9, stamina: 4, accel: 6, temper: 7 },
+      { name: 'Duchess',  owner: 'mlk_2',    coat: '#d9cbb8', speed: 5, stamina: 9, accel: 5, temper: 2 }
+    ];
+    const def = {
+      gold: startGold, mats: { hay: 6, ore: 20, wood: 4 },
+      bulls: [{ id: 1, name: 'Tank', level: 1, xp: 0, speed: 7, stamina: 6, accel: 6, temper: 4, energy: 100, coat: '#33261d' }],
+      items: [], nextBullId: 2, nextItemId: 1,
+      stable: { level: 1, wood: 0 },
+      myListings: [], helpSeen: false
+    };
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem('bullrun.save.v2')); } catch (e) {}
+    if (!saved) { try { const v1 = JSON.parse(localStorage.getItem('bullrun.save.v1')); if (v1) saved = v1; } catch (e) {} }
+    this.g = Object.assign({}, def, saved || {});
+    this.g.mats = Object.assign({}, def.mats, this.g.mats);
+    this.g.items = this.g.items || [];
+    this.g.myListings = this.g.myListings || [];
+    this.g.interval = interval;
+    this.g.panel = this.g.helpSeen ? null : 'help';
+    this.g.invOpen = false;
+    this.g.equipTarget = null;
+    this.g.player = { x: 33, y: 41 };
+    this.g.moveTarget = null;
+    this.g.pending = null;
+    this.g.gather = null;
+    this.g.entered = [];
+    this.g.bet = null;
+    this.g.betAmount = 50;
+    this.g.race = null;
+    this.g.results = null;
+    this.g.betResult = null;
+    this.g.toast = '';
+    this.g.breeding = null;
+    this.g.breedSel = [];
+    this.g.forgeOre = 50;
+    this.g.forgeResult = '';
+    this.g.listPrice = { hay: 3, ore: 8, wood: 5 };
+    this.folPos = {};
+    this.cam = { x: this.g.player.x, y: this.g.player.y };
+    this.freeCamUntil = 0;
+    this.makeShopBulls();
+    this.scheduleRace();
+  }
+  saveSoon() {
+    clearTimeout(this._saveT);
+    this._saveT = setTimeout(() => {
+      const g = this.g;
+      try { localStorage.setItem('bullrun.save.v2', JSON.stringify({ gold: Math.round(g.gold), mats: g.mats, bulls: g.bulls, items: g.items, nextBullId: g.nextBullId, nextItemId: g.nextItemId, stable: g.stable, myListings: g.myListings.filter(l => l.status === 'open'), helpSeen: g.helpSeen })); } catch (e) {}
+    }, 400);
+  }
+  makeShopBulls() {
+    const names = ['Bandit', 'Ember', 'Chief', 'Juniper', 'Rocco', 'Sage', 'Nitro', 'Poppy'];
+    const coats = ['#1d1a17', '#6e4526', '#8e2f2f', '#c99a5b', '#3d3d45', '#d9cbb8'];
+    const sellers = ['hankk', 'bullzeye', 'mlk_2', 'ac1978'];
+    const r = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+    this.g.shopBulls = [0, 1].map(() => {
+      const b = { name: names[r(0, 7)], coat: coats[r(0, 5)], speed: r(4, 8), stamina: r(4, 8), accel: r(4, 8), temper: r(1, 8), seller: sellers[r(0, 3)] };
+      b.price = 200 + (b.speed + b.stamina + b.accel) * 15;
+      return b;
+    });
+  }
+  scheduleRace() {
+    const g = this.g;
+    g.nextRace = Date.now() + g.interval;
+    const pool = [...this.NPC_POOL].sort(() => Math.random() - 0.5);
+    g.field = pool.slice(0, 5).map((n, i) => ({ ...n, id: 'npc' + i, isNpc: true }));
+    g.entered = [];
+    g.bet = null;
+  }
+
+  // ============ world gen ============
+  buildWorld() {
+    const M = 52, CX = 26, CY = 22, RX = 13, RY = 9;
+    this.M = M; this.CX = CX; this.CY = CY; this.RX = RX; this.RY = RY;
+    const rng = (() => { let s = 42; return () => { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+    const ell = (x, y) => Math.hypot((x - CX) / RX, (y - CY) / RY);
+    const tiles = [];
+    for (let x = 0; x < M; x++) { tiles[x] = []; for (let y = 0; y < M; y++) {
+      const e = ell(x + 0.5, y + 0.5);
+      let t = rng() < 0.5 ? 'g1' : 'g2';
+      if (e >= 0.82 && e <= 1.18) t = (Math.floor(x + y) % 2 === 0) ? 'trk1' : 'trk2';
+      else if (e < 0.24) t = 'stone';
+      tiles[x][y] = t;
+    } }
+    const path = (x, y) => { if (tiles[x] && tiles[x][y] && tiles[x][y].startsWith('g')) tiles[x][y] = 'dirt'; };
+    for (let x = 3; x < 49; x++) { path(x, 38); path(x, 6); }
+    for (let y = 6; y < 39; y++) { path(6, y); path(45, y); }
+    for (let y = 33; y < 39; y++) path(26, y);
+    this.tiles = tiles;
+    const objs = [];
+    const nodes = [];
+    // fences around the track
+    const fence = (er, n) => { for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; objs.push({ t: 'post', x: CX + Math.cos(a) * RX * er, y: CY + Math.sin(a) * RY * er }); } };
+    fence(0.78, 40); fence(1.235, 60);
+    // buildings
+    [[9, 43], [15, 46], [22, 46], [31, 46], [38, 44], [46, 41], [47, 9], [5, 10]].forEach(([x, y]) => objs.push({ t: 'house', x, y }));
+    objs.push({ t: 'booth', x: 13, y: 9, label: 'BETS' });
+    objs.push({ t: 'market', x: 43, y: 17, label: 'MARKET' });
+    objs.push({ t: 'forge', x: 9, y: 30, label: 'FORGE' });
+    objs.push({ t: 'stable', x: 33, y: 38.5, label: 'YOUR STABLE' });
+    objs.push({ t: 'sign', x: 26, y: 32.6, label: 'RACE SIGNUP' });
+    const occupied = (x, y, r) => objs.some(o => Math.hypot(o.x - x, o.y - y) < r);
+    const free = (x, y) => {
+      if (ell(x, y) < 1.32) return false;
+      const tx = Math.floor(x), ty = Math.floor(y);
+      if (tx < 2 || ty < 2 || tx > M - 3 || ty > M - 3) return false;
+      if (tiles[tx][ty] === 'dirt') return false;
+      return !occupied(x, y, 2.4);
+    };
+    let tries = 0;
+    while (nodes.filter(n => n.mat === 'wood').length < 34 && tries++ < 1400) {
+      const x = 2 + rng() * (M - 4), y = 2 + rng() * (M - 4);
+      if (free(x, y)) { const n = { t: 'tree', mat: 'wood', x, y, dead: 0, big: rng() < 0.4 }; nodes.push(n); objs.push(n); }
+    }
+    tries = 0;
+    while (nodes.filter(n => n.mat === 'ore').length < 14 && tries++ < 900) {
+      const x = 2 + rng() * (M - 4), y = 2 + rng() * (M - 4);
+      if (free(x, y)) { const n = { t: 'rock', mat: 'ore', x, y, dead: 0 }; nodes.push(n); objs.push(n); }
+    }
+    tries = 0;
+    while (nodes.filter(n => n.mat === 'hay').length < 14 && tries++ < 900) {
+      const x = 2 + rng() * (M - 4), y = 2 + rng() * (M - 4);
+      if (free(x, y)) { const n = { t: 'hay', mat: 'hay', x, y, dead: 0 }; nodes.push(n); objs.push(n); }
+    }
+    this.objs = objs; this.nodes = nodes;
+    this.interactables = [
+      { t: 'stable', x: 33, y: 40, label: 'Stable' },
+      { t: 'bet', x: 13, y: 10.5, label: 'Betting booth' },
+      { t: 'market', x: 43, y: 18.5, label: 'Market' },
+      { t: 'forge', x: 9, y: 31.5, label: 'Forge' },
+      { t: 'race', x: 26, y: 33.4, label: 'Race signup' }
+    ];
+    const nNpc = this.props.npcWanderers ?? 4;
+    const names = [['jigglz', 27], ['ac1978', 29], ['Xhrbes', 1], ['DoRiiToS', 22], ['moover22', 9], ['hankk', 14]];
+    this.npcs = [];
+    for (let i = 0; i < Math.min(nNpc, 6); i++) {
+      this.npcs.push({ x: 10 + rng() * 32, y: 8 + rng() * 30, tx: 20, ty: 20, wait: rng() * 3, name: names[i][0], lvl: names[i][1], shirt: ['#4a72c4', '#c4574a', '#4ac47e', '#c4a94a', '#8a4ac4', '#4ac4bb'][i] });
+    }
+  }
+
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = innerWidth * dpr; this.canvas.height = innerHeight * dpr;
+    this.canvas.style.width = innerWidth + 'px'; this.canvas.style.height = innerHeight + 'px';
+    this.dpr = dpr;
+  }
+
+  // ============ clicking ============
+  onCanvasClick = (e) => {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left - this.camOff.x, my = e.clientY - rect.top - this.camOff.y;
+    const a = mx / 32, b = my / 16;
+    const wx = (b + a) / 2, wy = (b - a) / 2;
+    if (wx <= 0 || wy <= 0 || wx >= this.M || wy >= this.M) return;
+    const g = this.g;
+    // hit-test interactables & nodes
+    let best = null, bd = 1.6;
+    for (const it of this.interactables) { const d = Math.hypot(it.x - wx, it.y - wy); if (d < bd) { bd = d; best = { type: it.t, x: it.x, y: it.y }; } }
+    for (const n of this.nodes) {
+      if (n.dead > Date.now()) continue;
+      const d = Math.hypot(n.x - wx, n.y - wy);
+      if (d < Math.min(bd, 1.2)) { bd = d; best = { type: 'gather', node: n, x: n.x, y: n.y }; }
+    }
+    g.gather = null;
+    if (best) {
+      g.pending = best;
+      if (Math.hypot(g.player.x - best.x, g.player.y - best.y) < 2.0) { g.moveTarget = null; this.execPending(); }
+      else g.moveTarget = { x: best.x, y: best.y };
+    } else {
+      g.pending = null;
+      g.moveTarget = { x: wx, y: wy };
+    }
+    this.ui();
+  };
+  execPending() {
+    const g = this.g, p = g.pending;
+    if (!p) return;
+    g.pending = null;
+    if (p.type === 'gather') {
+      if (p.node.dead > Date.now()) return;
+      g.gather = { node: p.node, start: Date.now(), dur: 1500, px: g.player.x, py: g.player.y };
+    }
+    else if (p.type === 'stable') g.panel = 'stable';
+    else if (p.type === 'bet') g.panel = 'bet';
+    else if (p.type === 'market') g.panel = 'market';
+    else if (p.type === 'forge') g.panel = 'forge';
+    else if (p.type === 'race') g.panel = 'race';
+    this.ui();
+  }
+
+  toast(msg) {
+    this.g.toast = msg;
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(() => { this.g.toast = ''; this.ui(); }, 2600);
+    this.ui();
+  }
+
+  // ============ items ============
+  eff(b, stat) {
+    let v = b[stat];
+    for (const it of this.g.items) if (it.equippedTo === b.id && it.bonus && it.bonus.stat === stat) v += it.bonus.amt;
+    return v;
+  }
+  coatOf(b) {
+    const c = this.g.items.find(it => it.equippedTo === b.id && it.slot === 'coat');
+    return c ? c.color : b.coat;
+  }
+  forgeChances(ore) {
+    const b = Math.max(0, ore - 50);
+    const raw = [Math.max(8, 60 - b * 0.6), 25, 10 + b * 0.3, 4 + b * 0.2, 1 + b * 0.1];
+    const sum = raw.reduce((a, c) => a + c, 0);
+    return raw.map(x => x / sum);
+  }
+  makeItem(rarIdx) {
+    const g = this.g;
+    const slots = ['coat', 'horns', 'hooves', 'tail', 'accessory'];
+    const slot = slots[Math.floor(Math.random() * slots.length)];
+    const rar = this.RAR[rarIdx];
+    const adj = { Common: 'Plain', Uncommon: 'Sturdy', Rare: 'Polished', Epic: 'Enchanted', Legendary: 'Mythic' }[rar.k];
+    const noun = { coat: 'Coat', horns: 'Horns', hooves: 'Hooves', tail: 'Tail Wrap', accessory: 'Harness' }[slot];
+    const coatColors = ['#8e2f2f', '#e8e4da', '#14141a', '#3b6ea5', '#c99a5b', '#7a5296'];
+    const bonusAmt = [0, 1, 1 + Math.round(Math.random()), 2 + Math.round(Math.random()), 3 + Math.round(Math.random())][rarIdx];
+    const stats = ['speed', 'stamina', 'accel'];
+    const item = {
+      id: g.nextItemId++, slot, rarity: rar.k, rarityColor: rar.c,
+      name: adj + ' ' + noun,
+      color: slot === 'coat' ? coatColors[Math.floor(Math.random() * coatColors.length)] : rar.c,
+      bonus: bonusAmt > 0 ? { stat: stats[Math.floor(Math.random() * 3)], amt: bonusAmt } : null,
+      equippedTo: null
+    };
+    g.items.push(item);
+    return item;
+  }
+  equipItem(item, bull) {
+    const g = this.g;
+    const clash = g.items.find(it => it.equippedTo === bull.id && it.slot === item.slot);
+    if (clash) clash.equippedTo = null;
+    item.equippedTo = bull.id;
+    this.toast(item.name + ' equipped on ' + bull.name);
+  }
+
+  // ============ tick ============
+  tick() {
+    const g = this.g, now = Date.now();
+    const regen = 0.15 * (1 + 0.5 * (g.stable.level - 1));
+    for (const b of g.bulls) if (b.energy < 100) b.energy = Math.min(100, b.energy + regen);
+    if (g.breeding && now >= g.breeding.done) {
+      const { a, b } = g.breeding;
+      const mix = (k) => Math.max(1, Math.round((a[k] + b[k]) / 2 + (Math.random() * 3 - 1)));
+      const names = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder'];
+      const child = { id: g.nextBullId++, name: names[Math.floor(Math.random() * names.length)], level: 1, xp: 0, speed: mix('speed'), stamina: mix('stamina'), accel: mix('accel'), temper: mix('temper'), energy: 60, coat: Math.random() < 0.5 ? a.coat : b.coat };
+      g.bulls.push(child);
+      g.breeding = null;
+      this.toast('🎉 A calf is born: ' + child.name + '!');
+    }
+    if (g.gather) {
+      const gg = g.gather;
+      if (Math.hypot(g.player.x - gg.px, g.player.y - gg.py) > 0.6) g.gather = null;
+      else if (now - gg.start >= gg.dur) {
+        const qty = 2 + Math.floor(Math.random() * 3);
+        g.mats[gg.node.mat] += qty;
+        gg.node.dead = now + 25000;
+        g.gather = null;
+        this.toast('+' + qty + ' ' + gg.node.mat);
+      }
+    }
+    // market listings get bought by other players over time
+    const rates = { hay: 3, ore: 8, wood: 5 };
+    for (const l of g.myListings) {
+      if (l.status !== 'open') continue;
+      const fair = rates[l.mat] * l.qty;
+      const p = 0.035 * Math.min(2.5, fair / l.price);
+      if (Math.random() < p) {
+        l.status = 'sold';
+        l.soldAt = now;
+        const net = Math.floor(l.price * 0.95);
+        g.gold += net;
+        this.toast('💰 Your ' + l.qty + ' ' + l.mat + ' sold for ' + net + 'g');
+      }
+    }
+    g.myListings = g.myListings.filter(l => l.status === 'open' || now - (l.soldAt || 0) < 12000);
+    if (!g.race && now >= g.nextRace) this.startRace();
+    if (g.race && g.race.phase === 'running' && now >= g.race.endT + 700) this.finishRace();
+    this.setState(s => ({ v: s.v + 1 }));
+  }
+
+  // ============ races ============
+  raceScore(b) { return this.eff(b, 'speed') * 1.0 + this.eff(b, 'stamina') * 0.8 + this.eff(b, 'accel') * 0.6; }
+  npcScore(b) { return b.speed * 1.0 + b.stamina * 0.8 + b.accel * 0.6; }
+  odds(field) {
+    const bases = field.map(b => Math.pow(b.isNpc ? this.npcScore(b) : this.raceScore(b), 2));
+    const sum = bases.reduce((a, c) => a + c, 0);
+    return field.map((b, i) => Math.min(12, Math.max(1.2, 0.95 / (bases[i] / sum))));
+  }
+  startRace() {
+    const g = this.g, now = Date.now();
+    const mine = g.bulls.filter(b => g.entered.includes(b.id)).map(b => ({ ...b, speed: this.eff(b, 'speed'), stamina: this.eff(b, 'stamina'), accel: this.eff(b, 'accel'), coat: this.coatOf(b), owner: 'You', isMine: true }));
+    const field = [...mine, ...g.field].slice(0, 6);
+    const scored = field.map(b => ({ ...b, score: this.npcScore(b) + (Math.random() * 2 - 1) * b.temper * 0.9 }));
+    scored.sort((a, b) => b.score - a.score);
+    const base = 9000;
+    scored.forEach((b, i) => { b.pos = i + 1; b.finishT = base + i * (500 + Math.random() * 600); });
+    g.race = { phase: 'running', startT: now, endT: now + scored[scored.length - 1].finishT, bulls: scored };
+    this.ui();
+  }
+  finishRace() {
+    const g = this.g, purse = [300, 150, 80, 40];
+    const res = [...g.race.bulls].sort((a, b) => a.pos - b.pos);
+    let involved = false;
+    for (const rb of res) {
+      const prize = purse[rb.pos - 1] || 0;
+      if (rb.isMine) {
+        involved = true;
+        const real = g.bulls.find(x => x.id === rb.id);
+        if (real) {
+          g.gold += prize;
+          real.xp += rb.pos === 1 ? 60 : Math.max(10, 40 - rb.pos * 5);
+          real.energy = Math.max(0, real.energy - 10);
+          const need = real.level * 100;
+          if (real.xp >= need) { real.level++; real.xp -= need; this.toast(real.name + ' reached Lv ' + real.level + '!'); }
+        }
+      }
+    }
+    g.betResult = null;
+    if (g.bet) {
+      involved = true;
+      const winner = res[0];
+      if (winner.id === g.bet.bullId) {
+        const pay = Math.round(g.bet.amount * g.bet.odds);
+        g.gold += pay;
+        g.betResult = '🎉 Your bet hit! ' + winner.name + ' won — payout ' + pay + 'g (' + g.bet.odds.toFixed(1) + '×)';
+      } else {
+        g.betResult = 'Your bet on ' + g.bet.name + ' missed — ' + winner.name + ' took it. Lost ' + g.bet.amount + 'g.';
+      }
+    }
+    g.results = res.map(r => ({ name: r.name, owner: r.owner || '', pos: r.pos, prize: purse[r.pos - 1] || 0, mine: !!r.isMine }));
+    g.race = null;
+    this.scheduleRace();
+    if (involved) g.panel = 'results';
+    else this.toast('🏁 Race finished — ' + res[0].name + ' wins!');
+    this.ui();
+  }
+
+  // ============ actions ============
+  trainBull(b, stat) {
+    const g = this.g, cap = 10 + b.level * 2;
+    if (b[stat] >= cap) return this.toast(stat + ' is capped at ' + cap + ' — level up by racing');
+    if (g.mats.hay < 6) return this.toast('Need 6 hay');
+    g.mats.hay -= 6;
+    b[stat] += 1;
+    this.toast(b.name + ' trained ' + stat + ' → ' + b[stat]);
+  }
+  enterRace(b) {
+    const g = this.g;
+    if (g.entered.includes(b.id)) return;
+    if (g.race) return this.toast('Race in progress — enter the next one');
+    if (b.energy < 30) return this.toast(b.name + ' needs 30 energy (rest or wait)');
+    if (g.gold < 50) return this.toast('Entry fee is 50g');
+    g.gold -= 50;
+    b.energy -= 30;
+    g.entered.push(b.id);
+    this.toast(b.name + ' entered the next race!');
+  }
+  placeBet(fieldBull, odds) {
+    const g = this.g;
+    if (g.race) return this.toast('Race already running');
+    if (g.bet) return this.toast('One bet per race (prototype)');
+    if (g.gold < g.betAmount) return this.toast('Not enough gold');
+    g.gold -= g.betAmount;
+    g.bet = { bullId: fieldBull.id, name: fieldBull.name, amount: g.betAmount, odds };
+    this.toast('Bet placed: ' + g.betAmount + 'g on ' + fieldBull.name + ' @ ' + odds.toFixed(1) + '×');
+  }
+
+  // ============ frame ============
+  frame(t) {
+    const dt = Math.min(0.05, (t - this.lastT) / 1000); this.lastT = t;
+    this.step(dt);
+    this.draw();
+    this.raf = requestAnimationFrame((tt) => this.frame(tt));
+  }
+  trackClamp(o) {
+    const ex = (o.x - this.CX) / this.RX, ey = (o.y - this.CY) / this.RY;
+    const e = Math.hypot(ex, ey);
+    if (e > 0.79 && e < 1.225 && e > 0.01) {
+      const to = (e < 1.0) ? 0.79 : 1.225;
+      o.x = this.CX + ex / e * to * this.RX;
+      o.y = this.CY + ey / e * to * this.RY;
+      return true;
+    }
+    return false;
+  }
+  step(dt) {
+    const g = this.g, p = g.player, sp = 4.4, now = Date.now();
+    // camera pan with WASD
+    const k = this.keys;
+    let cx = 0, cy = 0;
+    if (k.KeyW || k.ArrowUp) { cx -= 1; cy -= 1; }
+    if (k.KeyS || k.ArrowDown) { cx += 1; cy += 1; }
+    if (k.KeyA || k.ArrowLeft) { cx -= 1; cy += 1; }
+    if (k.KeyD || k.ArrowRight) { cx += 1; cy -= 1; }
+    if (cx || cy) {
+      const l = Math.hypot(cx, cy);
+      this.cam.x += cx / l * 14 * dt; this.cam.y += cy / l * 14 * dt;
+      this.cam.x = Math.max(4, Math.min(this.M - 4, this.cam.x));
+      this.cam.y = Math.max(4, Math.min(this.M - 4, this.cam.y));
+      this.freeCamUntil = now + 3500;
+    }
+    // player movement (click-to-move)
+    if (g.moveTarget) {
+      this.freeCamUntil = 0;
+      const mt = g.moveTarget, d = Math.hypot(mt.x - p.x, mt.y - p.y);
+      const arriveDist = g.pending ? 1.7 : 0.15;
+      if (d < arriveDist) { g.moveTarget = null; if (g.pending) this.execPending(); }
+      else { p.x += (mt.x - p.x) / d * sp * dt; p.y += (mt.y - p.y) / d * sp * dt; }
+    }
+    p.x = Math.max(1, Math.min(this.M - 1, p.x)); p.y = Math.max(1, Math.min(this.M - 1, p.y));
+    if (this.trackClamp(p)) g.moveTarget = null;
+    // camera follows player when not free-panning
+    if (now > this.freeCamUntil) {
+      const f = Math.min(1, 4 * dt);
+      this.cam.x += (p.x - this.cam.x) * f; this.cam.y += (p.y - this.cam.y) * f;
+    }
+    // follower bulls (owned, not racing)
+    const racingIds = g.race ? g.race.bulls.filter(b => b.isMine).map(b => b.id) : [];
+    let prev = p;
+    for (const b of g.bulls) {
+      if (g.entered.includes(b.id) || racingIds.includes(b.id)) continue;
+      let f = this.folPos[b.id];
+      if (!f) f = this.folPos[b.id] = { x: p.x + 1.5, y: p.y + 1.5 };
+      const d = Math.hypot(prev.x - f.x, prev.y - f.y);
+      if (d > 1.5) {
+        const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
+        f.x += (prev.x - f.x) / d * spd * dt;
+        f.y += (prev.y - f.y) / d * spd * dt;
+      }
+      this.trackClamp(f);
+      prev = f;
+    }
+    // npcs
+    for (const n of this.npcs) {
+      if (n.wait > 0) { n.wait -= dt; continue; }
+      const d = Math.hypot(n.tx - n.x, n.ty - n.y);
+      if (d < 0.2) { n.tx = 4 + Math.random() * (this.M - 8); n.ty = 4 + Math.random() * (this.M - 10); n.wait = 1 + Math.random() * 4; }
+      else { n.x += (n.tx - n.x) / d * 1.6 * dt; n.y += (n.ty - n.y) / d * 1.6 * dt; }
+      if (this.trackClamp(n)) { n.tx = n.x; n.ty = n.y; n.wait = 0.5; }
+    }
+  }
+
+  iso(x, y) { return { x: (x - y) * 32, y: (x + y) * 16 }; }
+  draw() {
+    const ctx = this.ctx, dpr = this.dpr || 1, cw = innerWidth, ch = innerHeight;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#69a949'; ctx.fillRect(0, 0, cw, ch);
+    const cp = this.iso(this.cam.x, this.cam.y);
+    const ox = cw / 2 - cp.x, oy = ch / 2 - cp.y + 30;
+    this.camOff = { x: ox, y: oy };
+    ctx.save(); ctx.translate(ox, oy);
+    const COLORS = { g1: '#7cbf54', g2: '#74b64d', dirt: '#b58a5a', stone: '#c2c2bd', trk1: '#cfa871', trk2: '#c69e66' };
+    for (let x = 0; x < this.M; x++) for (let y = 0; y < this.M; y++) {
+      const s = this.iso(x, y);
+      if (s.x + ox < -80 || s.x + ox > cw + 80 || s.y + oy < -60 || s.y + oy > ch + 60) continue;
+      ctx.fillStyle = COLORS[this.tiles[x][y]];
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y); ctx.lineTo(s.x + 32, s.y + 16); ctx.lineTo(s.x, s.y + 32); ctx.lineTo(s.x - 32, s.y + 16); ctx.closePath();
+      ctx.fill();
+    }
+    this.drawRing(ctx, 0.82, '#f5f0e4'); this.drawRing(ctx, 1.18, '#f5f0e4');
+    // start/finish line
+    const p1 = this.iso(this.CX, this.CY + this.RY * 0.82);
+    const p2 = this.iso(this.CX, this.CY + this.RY * 1.18);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); ctx.setLineDash([]);
+    // infield countdown board
+    const c = this.iso(this.CX, this.CY);
+    this.cube(ctx, this.CX - 0.08, this.CY - 0.08, 0.16, 0.16, 20, 0, '#8a6a44', '#5e4527', '#6f5432');
+    const lbl = this.g.race ? 'RACING!' : ('NEXT RACE ' + this.fmtCd());
+    ctx.font = "700 14px 'Pixelify Sans', monospace";
+    const w = ctx.measureText(lbl).width + 16;
+    ctx.fillStyle = '#17100a'; ctx.fillRect(c.x - w / 2, c.y - 44, w, 22);
+    ctx.fillStyle = this.g.race ? '#7dc24f' : '#f2b23a'; ctx.textAlign = 'center';
+    ctx.fillText(lbl, c.x, c.y - 28); ctx.textAlign = 'left';
+    // depth-sorted objects + entities
+    const g = this.g;
+    const list = [];
+    for (const o of this.objs) list.push({ d: o.x + o.y, o });
+    for (const n of this.npcs) list.push({ d: n.x + n.y, o: { t: 'npc', ...n } });
+    list.push({ d: g.player.x + g.player.y, o: { t: 'player', x: g.player.x, y: g.player.y } });
+    const racingIds = g.race ? g.race.bulls.filter(b => b.isMine).map(b => b.id) : [];
+    for (const b of g.bulls) {
+      if (g.entered.includes(b.id) || racingIds.includes(b.id)) continue;
+      const f = this.folPos[b.id];
+      if (f) list.push({ d: f.x + f.y, o: { t: 'bull', x: f.x, y: f.y, coat: this.coatOf(b), label: b.name } });
+    }
+    if (g.race) {
+      const now = Date.now(), el = now - g.race.startT;
+      for (const b of g.race.bulls) {
+        const prog = Math.min(1, el / b.finishT);
+        const a = Math.PI / 2 + prog * Math.PI * 2;
+        const er = 0.88 + (b.pos % 3) * 0.1;
+        const bx = this.CX + Math.cos(a) * this.RX * er, by = this.CY + Math.sin(a) * this.RY * er;
+        list.push({ d: bx + by, o: { t: 'bull', x: bx, y: by, coat: b.coat, label: b.name } });
+      }
+    }
+    // move-target marker
+    if (g.moveTarget) {
+      const s = this.iso(g.moveTarget.x, g.moveTarget.y);
+      ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.ellipse(s.x, s.y, 10, 5, 0, 0, 7); ctx.stroke();
+    }
+    list.sort((a, b) => a.d - b.d);
+    for (const it of list) this.drawObj(ctx, it.o);
+    ctx.restore();
+  }
+  drawRing(ctx, er, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.setLineDash([8, 7]);
+    ctx.beginPath();
+    for (let i = 0; i <= 90; i++) {
+      const a = i / 90 * Math.PI * 2;
+      const s = this.iso(this.CX + Math.cos(a) * this.RX * er, this.CY + Math.sin(a) * this.RY * er);
+      if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  cube(ctx, wx, wy, wd, dd, h, elev, top, left, right) {
+    const c1 = this.iso(wx, wy), c2 = this.iso(wx + wd, wy), c3 = this.iso(wx + wd, wy + dd), c4 = this.iso(wx, wy + dd);
+    const e = elev, hh = elev + h;
+    ctx.fillStyle = right;
+    ctx.beginPath(); ctx.moveTo(c2.x, c2.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c3.x, c3.y - e); ctx.lineTo(c2.x, c2.y - e); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = left;
+    ctx.beginPath(); ctx.moveTo(c4.x, c4.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c3.x, c3.y - e); ctx.lineTo(c4.x, c4.y - e); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = top;
+    ctx.beginPath(); ctx.moveTo(c1.x, c1.y - hh); ctx.lineTo(c2.x, c2.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c4.x, c4.y - hh); ctx.closePath(); ctx.fill();
+  }
+  label(ctx, wx, wy, txt, yOff, color) {
+    const s = this.iso(wx, wy);
+    ctx.font = "600 11px 'Pixelify Sans', monospace";
+    const w = ctx.measureText(txt).width + 10;
+    ctx.fillStyle = 'rgba(23,16,10,.8)'; ctx.fillRect(s.x - w / 2, s.y - yOff - 13, w, 16);
+    ctx.fillStyle = color || '#f3e7cd'; ctx.textAlign = 'center';
+    ctx.fillText(txt, s.x, s.y - yOff - 1); ctx.textAlign = 'left';
+  }
+  drawObj(ctx, o) {
+    const now = Date.now();
+    if (o.t === 'tree') {
+      if (o.dead > now) { this.cube(ctx, o.x - 0.16, o.y - 0.16, 0.32, 0.32, 6, 0, '#8a6a44', '#5e4527', '#6f5432'); return; }
+      const s = o.big ? 1.25 : 1;
+      this.cube(ctx, o.x - 0.14, o.y - 0.14, 0.28, 0.28, 10 * s, 0, '#8a6a44', '#5e4527', '#6f5432');
+      this.cube(ctx, o.x - 0.5 * s, o.y - 0.5 * s, 1 * s, 1 * s, 13 * s, 10 * s, '#4fae3d', '#2e7a22', '#3d942e');
+      this.cube(ctx, o.x - 0.32 * s, o.y - 0.32 * s, 0.64 * s, 0.64 * s, 10 * s, 23 * s, '#5cbf48', '#37852a', '#47a136');
+    } else if (o.t === 'rock') {
+      if (o.dead > now) { this.cube(ctx, o.x - 0.2, o.y - 0.2, 0.4, 0.4, 4, 0, '#9a9a95', '#6f6f6a', '#84847f'); return; }
+      this.cube(ctx, o.x - 0.4, o.y - 0.3, 0.8, 0.6, 12, 0, '#b0b0aa', '#7c7c76', '#94948e');
+      this.cube(ctx, o.x + 0.05, o.y - 0.5, 0.45, 0.45, 8, 0, '#a5a59f', '#73736d', '#8a8a84');
+    } else if (o.t === 'hay') {
+      if (o.dead > now) return;
+      this.cube(ctx, o.x - 0.35, o.y - 0.3, 0.7, 0.6, 9, 0, '#e0c96a', '#a8913c', '#c4ad50');
+      this.cube(ctx, o.x - 0.2, o.y - 0.15, 0.4, 0.35, 6, 9, '#e8d47e', '#b09a48', '#ccb65c');
+    } else if (o.t === 'house') {
+      this.cube(ctx, o.x - 1, o.y - 1, 2, 2, 26, 0, '#d9c49a', '#8f7a52', '#b8a271');
+      this.cube(ctx, o.x - 1.15, o.y - 1.15, 2.3, 2.3, 10, 26, '#6b4a33', '#41291a', '#553a26');
+      const d = this.iso(o.x, o.y + 1);
+      ctx.fillStyle = '#41291a'; ctx.fillRect(d.x - 6, d.y - 20, 12, 20);
+      const wn = this.iso(o.x + 1, o.y);
+      ctx.fillStyle = '#a8d8e8'; ctx.fillRect(wn.x - 14, wn.y - 22, 10, 9);
+    } else if (o.t === 'stable') {
+      this.cube(ctx, o.x - 1.2, o.y - 1, 2.4, 2, 24, 0, '#c9a06a', '#8a6538', '#a8814d');
+      this.cube(ctx, o.x - 1.35, o.y - 1.15, 2.7, 2.3, 10, 24, '#8e3b2e', '#5e2119', '#762e23');
+      const d = this.iso(o.x, o.y + 1);
+      ctx.fillStyle = '#41291a'; ctx.fillRect(d.x - 9, d.y - 22, 18, 22);
+      ctx.strokeStyle = '#c9a06a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(d.x - 9, d.y - 22); ctx.lineTo(d.x + 9, d.y); ctx.moveTo(d.x + 9, d.y - 22); ctx.lineTo(d.x - 9, d.y); ctx.stroke();
+      this.label(ctx, o.x, o.y, o.label + ' · Lv ' + this.g.stable.level, 46, '#f2b23a');
+    } else if (o.t === 'booth') {
+      this.cube(ctx, o.x - 0.8, o.y - 0.6, 1.6, 1.2, 18, 0, '#3b6ea5', '#22436a', '#2d5787');
+      this.cube(ctx, o.x - 0.95, o.y - 0.75, 1.9, 1.5, 6, 18, '#e8e0cc', '#b0a88f', '#ccc4ab');
+      this.label(ctx, o.x, o.y, o.label, 36, '#7ec8e3');
+    } else if (o.t === 'market') {
+      this.cube(ctx, o.x - 0.9, o.y - 0.6, 1.8, 1.2, 16, 0, '#a5522f', '#6e321a', '#8a4224');
+      this.cube(ctx, o.x - 1.05, o.y - 0.75, 2.1, 1.5, 6, 16, '#e0c96a', '#a8913c', '#c4ad50');
+      this.label(ctx, o.x, o.y, o.label, 34, '#e0c96a');
+    } else if (o.t === 'forge') {
+      this.cube(ctx, o.x - 0.9, o.y - 0.7, 1.8, 1.4, 20, 0, '#6a6a66', '#44443f', '#57574f');
+      this.cube(ctx, o.x + 0.25, o.y - 0.35, 0.4, 0.4, 10, 20, '#4a4a45', '#2e2e2a', '#3c3c37');
+      const s = this.iso(o.x + 0.45, o.y - 0.15);
+      ctx.fillStyle = 'rgba(240,140,60,' + (0.5 + 0.3 * Math.sin(now / 250)) + ')';
+      ctx.beginPath(); ctx.arc(s.x, s.y - 34, 4, 0, 7); ctx.fill();
+      this.label(ctx, o.x, o.y, o.label, 40, '#e07840');
+    } else if (o.t === 'sign') {
+      this.cube(ctx, o.x - 0.06, o.y - 0.06, 0.12, 0.12, 16, 0, '#8a6a44', '#5e4527', '#6f5432');
+      this.label(ctx, o.x, o.y, o.label, 20, '#f2b23a');
+    } else if (o.t === 'post') {
+      this.cube(ctx, o.x - 0.08, o.y - 0.08, 0.16, 0.16, 13, 0, '#e0c96a', '#a8913c', '#c4ad50');
+      this.cube(ctx, o.x - 0.05, o.y - 0.05, 0.1, 0.1, 2, 13, '#f2b23a', '#b57f1d', '#d0991f');
+    } else if (o.t === 'player' || o.t === 'npc') {
+      const isMe = o.t === 'player';
+      const shirt = isMe ? '#e8a33d' : o.shirt;
+      const s = this.iso(o.x, o.y);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 10, 5, 0, 0, 7); ctx.fill();
+      this.cube(ctx, o.x - 0.18, o.y - 0.13, 0.36, 0.26, 13, 3, shirt, this.shade(shirt, -40), this.shade(shirt, -20));
+      this.cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 9, 16, '#e8c49a', '#b08d64', '#cca87d');
+      this.cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 3, 25, '#3a2a1a', '#241608', '#2f2012');
+      this.label(ctx, o.x, o.y, (isMe ? 'You' : 'Lvl ' + o.lvl + ' ' + o.name), 40, isMe ? '#f2b23a' : '#fff');
+    } else if (o.t === 'bull') {
+      const c = o.coat, s = this.iso(o.x, o.y);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; ctx.beginPath(); ctx.ellipse(s.x, s.y, 14, 6, 0, 0, 7); ctx.fill();
+      this.cube(ctx, o.x - 0.45, o.y - 0.22, 0.9, 0.44, 11, 5, c, this.shade(c, -35), this.shade(c, -18));
+      this.cube(ctx, o.x + 0.28, o.y - 0.18, 0.34, 0.36, 9, 10, c, this.shade(c, -35), this.shade(c, -18));
+      this.cube(ctx, o.x + 0.3, o.y - 0.3, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
+      this.cube(ctx, o.x + 0.3, o.y + 0.22, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
+      this.cube(ctx, o.x - 0.38, o.y - 0.16, 0.14, 0.12, 5, 0, this.shade(c, -25), this.shade(c, -50), this.shade(c, -35));
+      this.cube(ctx, o.x + 0.24, o.y - 0.16, 0.14, 0.12, 5, 0, this.shade(c, -25), this.shade(c, -50), this.shade(c, -35));
+      if (o.label) this.label(ctx, o.x, o.y, o.label, 34, '#fff');
+    }
+  }
+  shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.max(0, Math.min(255, (n >> 16) + amt)), g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt)), b = Math.max(0, Math.min(255, (n & 255) + amt));
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+  fmtCd() {
+    const ms = Math.max(0, this.g.nextRace - Date.now());
+    const s = Math.ceil(ms / 1000);
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+  allField() {
+    const g = this.g;
+    if (!g || !g.field) return [];
+    const mine = g.bulls.filter(b => g.entered.includes(b.id)).map(b => ({ ...b, owner: 'You' }));
+    return [...mine, ...g.field].slice(0, 6);
+  }
+
+  // ============ view models ============
+  renderVals() {
+    const g = this.g;
+    if (!g) return { canvasRef: this.canvasRef };
+    const now = Date.now();
+    const open = (p) => () => { g.panel = g.panel === p ? null : p; this.ui(); };
+    const field = this.allField();
+    const oddsArr = this.odds(field);
+    const cap = (b) => 10 + b.level * 2;
+    const slots = 2 + Math.floor(g.stable.level / 2);
+    const statTxt = (b, s) => {
+      const bonus = this.eff(b, s) - b[s];
+      return b[s] + (bonus ? '+' + bonus : '') + ' / ' + cap(b);
+    };
+    const bulls = g.bulls.map(b => ({
+      name: b.name, level: b.level, coat: this.coatOf(b),
+      xpTxt: Math.round(b.xp) + '/' + b.level * 100,
+      energy: Math.round(b.energy), energyPct: Math.round(b.energy) + '%',
+      speedTxt: statTxt(b, 'speed'), staminaTxt: statTxt(b, 'stamina'), accelTxt: statTxt(b, 'accel'), temper: b.temper,
+      statSummary: 'SPD ' + this.eff(b, 'speed') + ' · STA ' + this.eff(b, 'stamina') + ' · ACC ' + this.eff(b, 'accel') + ' · TMP ' + b.temper,
+      entered: g.entered.includes(b.id), notEntered: !g.entered.includes(b.id),
+      breedBg: g.breedSel.includes(b.id) ? '#c86ad4' : '#4c3b2a',
+      breedLabel: g.breedSel.includes(b.id) ? 'Selected ✓' : 'Select to breed',
+      equippedItems: g.items.filter(it => it.equippedTo === b.id).map(it => ({
+        name: it.name, rarityColor: it.rarityColor,
+        onUnequip: () => { it.equippedTo = null; this.toast(it.name + ' unequipped'); }
+      })),
+      noItems: !g.items.some(it => it.equippedTo === b.id),
+      onRename: () => {
+        const n = window.prompt('Rename ' + b.name, b.name);
+        if (n && n.trim()) { b.name = n.trim().slice(0, 14); this.ui(); }
+      },
+      onEquipItems: () => { g.equipTarget = b.id; g.invOpen = true; this.ui(); },
+      onTrainSpeed: () => this.trainBull(b, 'speed'),
+      onTrainStamina: () => this.trainBull(b, 'stamina'),
+      onTrainAccel: () => this.trainBull(b, 'accel'),
+      onRest: () => {
+        if (g.gold < 40) return this.toast('Need 40g');
+        if (b.energy >= 100) return this.toast(b.name + ' is fully rested');
+        g.gold -= 40; b.energy = Math.min(100, b.energy + 40); this.toast(b.name + ' rested +40⚡');
+      },
+      onBreedToggle: () => {
+        const i = g.breedSel.indexOf(b.id);
+        if (i >= 0) g.breedSel.splice(i, 1);
+        else { g.breedSel.push(b.id); if (g.breedSel.length > 2) g.breedSel.shift(); }
+        this.ui();
+      },
+      onEnter: () => this.enterRace(b)
+    }));
+    const woodNeed = 20 * g.stable.level;
+    const goldNeed = 50 * g.stable.level;
+    const entrants = field.map((b, i) => ({
+      name: b.name, owner: b.owner || '', coat: b.coat,
+      statSummary: 'SPD ' + b.speed + ' · STA ' + b.stamina + ' · ACC ' + b.accel,
+      oddsTxt: oddsArr[i].toFixed(1) + '×',
+      onBet: () => this.placeBet(b, oddsArr[i])
+    }));
+    // market
+    const rates = { hay: 3, ore: 8, wood: 5 };
+    const swatches = { hay: '#d9c65a', ore: '#9aa0a6', wood: '#8a5a2b' };
+    const listRows = ['hay', 'ore', 'wood'].map(m => ({
+      name: m[0].toUpperCase() + m.slice(1), qty: g.mats[m], swatch: swatches[m],
+      priceTxt: g.listPrice[m] + 'g',
+      onMinus: () => { g.listPrice[m] = Math.max(1, g.listPrice[m] - 1); this.ui(); },
+      onPlus: () => { g.listPrice[m] = g.listPrice[m] + 1; this.ui(); },
+      onList: () => {
+        if (g.mats[m] < 10) return this.toast('Need 10 ' + m + ' to list');
+        g.mats[m] -= 10;
+        g.myListings.push({ id: Date.now() + Math.random(), mat: m, qty: 10, price: g.listPrice[m] * 10, status: 'open' });
+        this.toast('Listed 10 ' + m + ' for ' + g.listPrice[m] * 10 + 'g');
+      }
+    }));
+    const myListings = g.myListings.map(l => ({
+      desc: l.qty + ' ' + l.mat + ' @ ' + l.price + 'g',
+      statusTxt: l.status === 'open' ? 'For sale…' : 'Sold ✓',
+      statusColor: l.status === 'open' ? '#c9b896' : '#7dc24f'
+    }));
+    const bullListings = (g.shopBulls || []).map((sb, i) => ({
+      name: sb.name, coat: sb.coat, seller: sb.seller,
+      statSummary: 'SPD ' + sb.speed + ' · STA ' + sb.stamina + ' · ACC ' + sb.accel + ' · TMP ' + sb.temper,
+      priceTxt: sb.price + 'g',
+      onBuy: () => {
+        if (g.bulls.length >= slots) return this.toast('No free bull slots — level your stable');
+        if (g.gold < sb.price) return this.toast('Not enough gold');
+        g.gold -= sb.price;
+        g.bulls.push({ id: g.nextBullId++, name: sb.name, level: 1, xp: 0, speed: sb.speed, stamina: sb.stamina, accel: sb.accel, temper: sb.temper, energy: 80, coat: sb.coat });
+        this.toast(sb.name + ' joined your stable!');
+        g.shopBulls.splice(i, 1);
+        setTimeout(() => { this.makeShopBulls(); this.ui(); }, 30000);
+      }
+    }));
+    const catalog = [
+      { name: 'Hay Bundle ×10', mat: 'hay', rarity: 'Common', rarityColor: '#c9b896', price: 35, desc: 'Materials · seller: hankk', swatch: '#d9c65a' },
+      { name: 'Wood Bundle ×10', mat: 'wood', rarity: 'Common', rarityColor: '#c9b896', price: 55, desc: 'Materials · seller: ac1978', swatch: '#8a5a2b' },
+      { name: 'Ore Bundle ×10', mat: 'ore', rarity: 'Common', rarityColor: '#c9b896', price: 85, desc: 'Materials · seller: bullzeye', swatch: '#9aa0a6' }
+    ];
+    const listings = catalog.map(c => ({
+      ...c, priceTxt: c.price + 'g',
+      onBuy: () => {
+        if (g.gold < c.price) return this.toast('Not enough gold');
+        g.gold -= c.price;
+        g.mats[c.mat] += 10;
+        this.toast('+10 ' + c.mat);
+      }
+    }));
+    // forge
+    const chances = this.forgeChances(g.forgeOre);
+    const forgeChanceRows = this.RAR.map((r, i) => ({ name: r.k, color: r.c, pctTxt: (chances[i] * 100).toFixed(chances[i] < 0.1 ? 1 : 0) + '%' }));
+    // inventory
+    const invItemsRaw = g.items.filter(it => !it.equippedTo);
+    const target = g.bulls.find(b => b.id === g.equipTarget) || g.bulls[0];
+    const invItems = invItemsRaw.map(it => ({
+      name: it.name, color: it.color, rarity: it.rarity, rarityColor: it.rarityColor,
+      slotTxt: it.slot[0].toUpperCase() + it.slot.slice(1),
+      bonusTxt: it.bonus ? ' · +' + it.bonus.amt + ' ' + it.bonus.stat : '',
+      onEquip: () => { if (!target) return this.toast('No bull to equip'); this.equipItem(it, target); }
+    }));
+    let liveStandings = [];
+    if (g.race) {
+      const el = now - g.race.startT;
+      liveStandings = [...g.race.bulls]
+        .map(b => ({ b, p: Math.min(1, el / b.finishT) }))
+        .sort((a, c) => c.p - a.p)
+        .map((x, i) => ({ posTxt: (i + 1) + '.', name: x.b.name }));
+    }
+    const results = (g.results || []).map(r => ({
+      posTxt: ['1st', '2nd', '3rd', '4th', '5th', '6th'][r.pos - 1], name: r.name, owner: r.owner,
+      prizeTxt: r.prize ? '+' + r.prize + 'g' : '—', rowBg: r.mine ? '#3a2f1a' : '#221a11'
+    }));
+    const selNames = g.breedSel.map(id => (g.bulls.find(b => b.id === id) || {}).name).filter(Boolean);
+    return {
+      canvasRef: this.canvasRef, onCanvasClick: this.onCanvasClick,
+      gold: Math.round(g.gold), hay: g.mats.hay, ore: g.mats.ore, wood: g.mats.wood,
+      countdownTxt: g.race ? 'LIVE' : this.fmtCd(),
+      raceStateTxt: g.race ? '🏁 RACE' : 'NEXT RACE',
+      raceRunning: !!g.race, liveStandings,
+      bullCountTxt: g.bulls.length + '/' + slots + ' bulls',
+      openStable: open('stable'), openRace: open('race'), openBet: open('bet'), openMarket: open('market'), openForge: open('forge'), openHelp: open('help'),
+      openInv: () => { g.invOpen = !g.invOpen; g.equipTarget = null; this.ui(); },
+      closeInv: () => { g.invOpen = false; this.ui(); },
+      invOpen: g.invOpen,
+      invCount: invItemsRaw.length,
+      invEmpty: invItemsRaw.length === 0,
+      invTargetTxt: target ? 'Equipping to: ' + target.name + (g.equipTarget ? '' : ' (first bull — open from a bull card to pick another)') : '',
+      invItems,
+      closePanel: () => { g.panel = null; this.ui(); },
+      showStable: g.panel === 'stable', showRace: g.panel === 'race', showBet: g.panel === 'bet', showMarket: g.panel === 'market', showForge: g.panel === 'forge', showHelp: g.panel === 'help',
+      resultsOpen: g.panel === 'results',
+      bulls,
+      stableLevel: g.stable.level,
+      stableWoodTxt: g.stable.wood + ' / ' + woodNeed,
+      stableWoodPct: Math.min(100, Math.round(g.stable.wood / woodNeed * 100)) + '%',
+      stableUpgradeTxt: 'Add 5 wood' + (g.stable.wood + 5 >= woodNeed ? ' (+' + goldNeed + 'g to level!)' : ''),
+      stableBonusTxt: '+' + (g.stable.level - 1) * 50 + '% energy regen',
+      slotsTxt: slots + ' bull slots',
+      onUpgradeStable: () => {
+        if (g.mats.wood < 5) return this.toast('Need 5 wood');
+        g.mats.wood -= 5; g.stable.wood += 5;
+        if (g.stable.wood >= woodNeed) {
+          if (g.gold < goldNeed) { g.stable.wood = woodNeed; return this.toast('Need ' + goldNeed + 'g to finish Lv ' + (g.stable.level + 1)); }
+          g.gold -= goldNeed; g.stable.level++; g.stable.wood = 0;
+          this.toast('🏠 Stable Level ' + g.stable.level + '! Energy regen boosted.');
+        } else this.ui();
+      },
+      breedSelTxt: g.breeding ? 'Calf arriving soon…' : (selNames.length ? 'Selected: ' + selNames.join(' + ') : 'Select two bulls above'),
+      onBreed: () => {
+        if (g.breeding) return this.toast('Already breeding');
+        if (g.breedSel.length !== 2) return this.toast('Select exactly two bulls');
+        if (g.bulls.length >= slots) return this.toast('No free bull slots — level your stable');
+        if (g.gold < 200) return this.toast('Need 200g');
+        const a = g.bulls.find(b => b.id === g.breedSel[0]), b2 = g.bulls.find(b => b.id === g.breedSel[1]);
+        g.gold -= 200; g.breeding = { a, b: b2, done: now + 8000 }; g.breedSel = [];
+        this.toast('Breeding ' + a.name + ' + ' + b2.name + '… (8s)');
+      },
+      entrantCountTxt: field.length + ' bulls in the field',
+      betAmount: g.betAmount,
+      onBetMinus: () => { g.betAmount = Math.max(25, g.betAmount - 25); this.ui(); },
+      onBetPlus: () => { g.betAmount = Math.min(500, g.betAmount + 25); this.ui(); },
+      entrants,
+      hasBet: !!g.bet,
+      myBetTxt: g.bet ? 'Active bet: ' + g.bet.amount + 'g on ' + g.bet.name + ' @ ' + g.bet.odds.toFixed(1) + '× → pays ' + Math.round(g.bet.amount * g.bet.odds) + 'g' : '',
+      listRows, myListings, hasMyListings: myListings.length > 0, bullListings, listings,
+      forgeOre: g.forgeOre,
+      onOreMinus: () => { g.forgeOre = Math.max(50, g.forgeOre - 10); this.ui(); },
+      onOrePlus: () => { g.forgeOre = g.forgeOre + 10; this.ui(); },
+      forgeChanceRows,
+      hasForgeResult: !!g.forgeResult, forgeResultTxt: g.forgeResult,
+      onForge: () => {
+        if (g.mats.ore < g.forgeOre) return this.toast('Not enough ore — you have ' + g.mats.ore);
+        g.mats.ore -= g.forgeOre;
+        const ch = this.forgeChances(g.forgeOre);
+        let roll = Math.random(), idx = 0, acc = 0;
+        for (let i = 0; i < 5; i++) { acc += ch[i]; if (roll < acc) { idx = i; break; } }
+        const item = this.makeItem(idx);
+        g.forgeResult = '🔨 Forged: ' + item.name + ' (' + item.rarity + ')' + (item.bonus ? ' · +' + item.bonus.amt + ' ' + item.bonus.stat : '') + ' — added to inventory';
+        this.toast('Forged ' + item.rarity + ' item!');
+      },
+      results, hasBetResult: !!g.betResult, betResultTxt: g.betResult || '',
+      onDismissResults: () => { g.panel = null; g.results = null; g.betResult = null; this.ui(); },
+      onDismissHelp: () => { g.helpSeen = true; g.panel = null; this.ui(); },
+      onResetSave: () => { try { localStorage.removeItem('bullrun.save.v2'); localStorage.removeItem('bullrun.save.v1'); } catch (e) {} location.reload(); },
+      raceIntervalTxt: g.interval >= 60000 ? Math.round(g.interval / 60000) + ' min' : Math.round(g.interval / 1000) + 's',
+      toastOn: !!g.toast, toastTxt: g.toast,
+      gatherOn: !!g.gather,
+      gatherPct: g.gather ? Math.min(100, Math.round((now - g.gather.start) / g.gather.dur * 100)) + '%' : '0%'
+    };
+  }
+}
+</script>
+</body>
+</html>

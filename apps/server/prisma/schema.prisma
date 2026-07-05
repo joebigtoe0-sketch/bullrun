@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  username     String         @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime       @default(now())
+  profile      PlayerProfile?
+  bulls        Bull[]
+  items        Item[]
+  raceEntries  RaceEntry[]
+  bets         Bet[]
+  listings     MarketListing[] @relation("SellerListings")
+  purchases    MarketListing[] @relation("BuyerListings")
+}
+
+model PlayerProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gold        Float    @default(500)
+  hay         Int      @default(6)
+  ore         Int      @default(20)
+  wood        Int      @default(4)
+  stableLevel Int      @default(1)
+  stableWood  Int      @default(0)
+  posX        Float    @default(33)
+  posY        Float    @default(41)
+  helpSeen    Boolean  @default(false)
+  betAmount   Int      @default(50)
+  forgeOre    Int      @default(50)
+  listHay     Int      @default(3)
+  listOre     Int      @default(8)
+  listWood    Int      @default(5)
+  breedSel    Int[]    @default([])
+  breedingAId Int?
+  breedingBId Int?
+  breedingDone DateTime?
+  nextBullId  Int      @default(2)
+  nextItemId  Int      @default(1)
+}
+
+model Bull {
+  id        Int      @id @default(autoincrement())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  level     Int      @default(1)
+  xp        Float    @default(0)
+  speed     Int
+  stamina   Int
+  accel     Int
+  temper    Int
+  energy    Float    @default(100)
+  coat      String
+  items     Item[]
+  entries   RaceEntry[] @relation("BullEntries")
+}
+
+model Item {
+  id          Int     @id @default(autoincrement())
+  ownerId     String
+  owner       User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  slot        String
+  rarity      String
+  rarityColor String
+  name        String
+  color       String
+  bonusStat   String?
+  bonusAmt    Int?
+  equippedTo  Int?
+  bull        Bull?   @relation(fields: [equippedTo], references: [id])
+}
+
+model WorldNode {
+  id        String    @id
+  type      String
+  mat       String
+  x         Float
+  y         Float
+  deadUntil DateTime?
+}
+
+model Race {
+  id        String      @id @default(cuid())
+  status    String      @default("scheduled")
+  startAt   DateTime
+  endAt     DateTime?
+  field     Json
+  results   Json?
+  entries   RaceEntry[]
+  bets      Bet[]
+  createdAt DateTime    @default(now())
+}
+
+model RaceEntry {
+  id       String  @id @default(cuid())
+  raceId   String
+  race     Race    @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  bullId   Int?
+  bull     Bull?   @relation("BullEntries", fields: [bullId], references: [id])
+  isNpc    Boolean @default(false)
+  npcData  Json?
+  bullData Json?
+}
+
+model Bet {
+  id           String @id @default(cuid())
+  raceId       String
+  race         Race   @relation(fields: [raceId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetBullId String
+  targetName   String
+  amount       Int
+  odds         Float
+  payout       Int?
+  won          Boolean?
+}
+
+model MarketListing {
+  id         String   @id @default(cuid())
+  sellerId   String
+  seller     User     @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyerId    String?
+  buyer      User?    @relation("BuyerListings", fields: [buyerId], references: [id])
+  type       String
+  mat        String?
+  qty        Int?
+  itemData   Json?
+  bullData   Json?
+  price      Int
+  status     String   @default("open")
+  createdAt  DateTime @default(now())
+  soldAt     DateTime?
+}

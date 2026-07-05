@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bullrun
+      POSTGRES_PASSWORD: bullrun
+      POSTGRES_DB: bullrun
+    volumes:
+      - bullrun_pg:/var/lib/postgresql/data
+
+volumes:
+  bullrun_pg:

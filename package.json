@@ -1,0 +1,16 @@
+{
+  "name": "bullrun",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:client": "pnpm --filter @bullrun/client dev",
+    "dev:server": "pnpm --filter @bullrun/server dev",
+    "build": "pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/server build && pnpm --filter @bullrun/client build",
+    "db:generate": "pnpm --filter @bullrun/server db:generate",
+    "db:migrate": "pnpm --filter @bullrun/server db:migrate",
+    "db:push": "pnpm --filter @bullrun/server db:push"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,85 @@
+import type { MeResponse } from '@bullrun/shared';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+function getToken() {
+  return localStorage.getItem('bullrun.token');
+}
+
+async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${API}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts.headers,
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Request failed');
+  }
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  register: (username: string, password: string, displayName?: string) =>
+    request<{ token: string; user: { id: string; username: string; displayName: string } }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, displayName }),
+    }),
+  login: (username: string, password: string) =>
+    request<{ token: string; user: { id: string; username: string; displayName: string } }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  me: () => request<MeResponse>('/me'),
+  updatePosition: (x: number, y: number) =>
+    request<{ ok: boolean }>('/me/position', { method: 'PATCH', body: JSON.stringify({ x, y }) }),
+  train: (bullId: number, stat: string) =>
+    request<MeResponse>('/bulls/train', { method: 'POST', body: JSON.stringify({ bullId, stat }) }),
+  rest: (bullId: number) =>
+    request<MeResponse>('/bulls/rest', { method: 'POST', body: JSON.stringify({ bullId }) }),
+  rename: (bullId: number, name: string) =>
+    request<MeResponse>('/bulls/rename', { method: 'POST', body: JSON.stringify({ bullId, name }) }),
+  breed: (bullAId: number, bullBId: number) =>
+    request<MeResponse>('/bulls/breed', { method: 'POST', body: JSON.stringify({ bullAId, bullBId }) }),
+  upgradeStable: () => request<MeResponse>('/stable/upgrade', { method: 'POST', body: '{}' }),
+  forge: (oreAmount: number) =>
+    request<{ me: MeResponse; item: { name: string; rarity: string } }>('/forge', { method: 'POST', body: JSON.stringify({ oreAmount }) }),
+  equip: (itemId: number, bullId: number) =>
+    request<MeResponse>('/items/equip', { method: 'POST', body: JSON.stringify({ itemId, bullId }) }),
+  unequip: (itemId: number) =>
+    request<MeResponse>('/items/unequip', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  gatherComplete: (nodeId: string) =>
+    request<{ qty: number; mat: string; me: MeResponse }>('/gather/complete', { method: 'POST', body: JSON.stringify({ nodeId }) }),
+  enterRace: (bullId: number) =>
+    request<MeResponse>('/race/enter', { method: 'POST', body: JSON.stringify({ bullId }) }),
+  placeBet: (targetBullId: string, targetName: string, amount: number, odds: number) =>
+    request<MeResponse>('/race/bet', { method: 'POST', body: JSON.stringify({ targetBullId, targetName, amount, odds }) }),
+  raceOdds: () => request<{ field: unknown[]; odds: number[] }>('/race/odds'),
+  listMaterial: (mat: string, pricePerUnit: number) =>
+    request<MeResponse>('/market/list', { method: 'POST', body: JSON.stringify({ mat, pricePerUnit }) }),
+  market: () => request<unknown[]>('/market'),
+  buyListing: (listingId: string) =>
+    request<MeResponse>('/market/buy', { method: 'POST', body: JSON.stringify({ listingId }) }),
+  buyNpc: (mat: string, price: number) =>
+    request<MeResponse>('/market/buy-npc', { method: 'POST', body: JSON.stringify({ mat, price }) }),
+  buyShopBull: (bull: Record<string, unknown>, price: number) =>
+    request<MeResponse>('/market/buy-bull', { method: 'POST', body: JSON.stringify({ bull, price }) }),
+  settings: (data: Record<string, unknown>) =>
+    request<MeResponse>('/me/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+};
+
+export function saveToken(token: string) {
+  localStorage.setItem('bullrun.token', token);
+}
+
+export function clearToken() {
+  localStorage.removeItem('bullrun.token');
+}
+
+export function getWsUrl() {
+  return import.meta.env.VITE_WS_URL || 'http://localhost:3001';
+}

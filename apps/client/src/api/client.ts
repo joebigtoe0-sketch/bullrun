@@ -1,14 +1,28 @@
 import type { MeResponse } from '@bullrun/shared';
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { getConfig } from '../config';
 
 function getToken() {
   return localStorage.getItem('bullrun.token');
 }
 
+async function parseError(res: Response): Promise<string> {
+  const text = await res.text();
+  try {
+    const err = JSON.parse(text) as { error?: string };
+    return err.error || res.statusText;
+  } catch {
+    if (text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html')) {
+      const api = getConfig().apiUrl;
+      return `Got HTML instead of JSON — the client is not reaching the game server. Set API_URL on the client service to your server URL (currently calling ${api}).`;
+    }
+    return text.slice(0, 120) || res.statusText;
+  }
+}
+
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  const { apiUrl } = getConfig();
   const token = getToken();
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(`${apiUrl}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -17,10 +31,14 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
     },
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || 'Request failed');
+    throw new Error(await parseError(res));
   }
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Invalid JSON from server at ${apiUrl}${path}`);
+  }
 }
 
 export const api = {
@@ -80,6 +98,6 @@ export function clearToken() {
   localStorage.removeItem('bullrun.token');
 }
 
-export function getWsUrl() {
-  return import.meta.env.VITE_WS_URL || 'http://localhost:3001';
+export function getWsUrl(): string {
+  return getConfig().wsUrl;
 }

@@ -26,6 +26,6 @@ RUN pnpm --filter @bullrun/client build
 # Expose port
 EXPOSE 5173
 
-# Serve static build (respects Railway PORT)
-CMD ["sh", "-c", "pnpm --filter @bullrun/client start"]
+# Serve static build — config.json written at startup from API_URL / WS_URL
+CMD ["sh", "apps/client/scripts/start.sh"]
 

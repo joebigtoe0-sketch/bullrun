@@ -75,12 +75,14 @@ Add the PostgreSQL plugin. Railway sets `DATABASE_URL` automatically.
 | Dockerfile | `Dockerfile.client` |
 | Start | auto via Dockerfile CMD |
 
-**Environment variables (required before build):**
-- `VITE_API_URL` — server public URL (e.g. `https://bullrun-server.up.railway.app`)
-- `VITE_WS_URL` — same as `VITE_API_URL`
+**Environment variables (client service):**
+- `API_URL` — your **server** public URL (e.g. `https://bullrun-server.up.railway.app`) — **required**
+- `WS_URL` — same as `API_URL` (optional, defaults to `API_URL`)
 - `PORT` — Railway sets this automatically
 
-> **Important:** `VITE_*` variables are baked in at **build time**. Set them in Railway before deploying the client, then redeploy.
+You can also set `VITE_API_URL` / `VITE_WS_URL` at build time, but `API_URL` at runtime is preferred (no rebuild needed when the server URL changes).
+
+> If register/login shows "Got HTML instead of JSON", `API_URL` is wrong or missing — it is calling the client site instead of the game server.
 
 ## Game features
 

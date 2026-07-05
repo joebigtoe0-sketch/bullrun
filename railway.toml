@@ -2,3 +2,6 @@
 builder = "RAILPACK"
 packageManager = "pnpm"
 
+[build.railpack]
+skipInstall = true
+

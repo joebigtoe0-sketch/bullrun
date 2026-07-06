@@ -105,7 +105,7 @@ export function useSocket() {
       });
       useGameStore.getState().setRaceLive({ id: data.id, standings: [] });
     });
-    socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string }[] }) => {
+    socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[] }) => {
       useGameStore.getState().setRaceLive(data);
     });
     socket.on('race_finished', (data: {

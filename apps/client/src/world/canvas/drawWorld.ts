@@ -17,9 +17,10 @@ import {
   RACE_LAPS,
   raceBullAt,
   raceGridPosition,
-  raceProgressAt,
   formatRaceLapLabel,
   currentLap,
+  liveStandings,
+  formatLiveStandingLine,
   CHAT_SPEECH_FADE_MS,
   type MeResponse,
   type OtherPlayer,
@@ -649,18 +650,10 @@ function drawRaceTrackBoard(
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
-    const sorted = [...raceAnim.bulls].sort((a, b) => {
-      const pa = a.lapTimes?.length
-        ? raceProgressAt(el, a.lapTimes)
-        : Math.min(1, el / (a.finishT ?? 1));
-      const pb = b.lapTimes?.length
-        ? raceProgressAt(el, b.lapTimes)
-        : Math.min(1, el / (b.finishT ?? 1));
-      return pb - pa;
-    });
+    const standings = liveStandings(raceAnim.bulls, el);
     drawGroundTextList(ctx, wx, listWy, {
       header: [{ text: formatRaceLapLabel(lap, laps), size: 24 }],
-      entries: sorted.map((b, i) => `${i + 1}. ${b.name}`),
+      entries: standings.map(formatLiveStandingLine),
     });
     return;
   }

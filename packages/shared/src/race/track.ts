@@ -9,7 +9,7 @@ export const RACE_GRID_MS = 10_000;
 export const RACE_BASE_LAP_MS = 12_000 * RACE_DURATION_SCALE;
 
 /** Max lap-to-lap spread (1st vs last on a single lap) grows toward the finish. */
-export const RACE_LAP_SPREAD = [0.03, 0.04, 0.055, 0.075, 0.095] as const;
+export const RACE_LAP_SPREAD = [0.04, 0.055, 0.075, 0.095, 0.12] as const;
 
 /** Slowest finisher vs winner total time (~1 lap behind when winner crosses on a 5-lap race). */
 export const RACE_MAX_FINISH_GAP = 0.24;
@@ -24,6 +24,16 @@ export function raceStartLane(lane: number): number {
 export function formatRaceLapLabel(lap: number, laps = RACE_LAPS): string {
   if (lap >= laps) return 'LAST LAP';
   return `LAP ${lap}/${laps}`;
+}
+
+export interface LiveStanding {
+  pos: number;
+  name: string;
+  finished: boolean;
+}
+
+export function formatLiveStandingLine(s: LiveStanding): string {
+  return s.finished ? `${s.pos}. ${s.name}` : `… ${s.name}`;
 }
 
 export function raceProgressAt(elapsed: number, lapTimes: number[]): number {

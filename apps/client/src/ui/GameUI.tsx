@@ -798,7 +798,11 @@ export function GameUI() {
       <div className="hud-tc">
         <div className="hud-chip">{raceLive ? '🏁 RACE' : 'NEXT RACE'} <span className="gold bold lg">{raceLive ? 'LIVE' : cd}</span></div>
         {raceLive && (
-          <div className="standings">{raceLive.standings.map((s) => <span key={s.pos} className="standing-chip">{s.pos}. {s.name}</span>)}</div>
+          <div className="standings">{raceLive.standings.map((s) => (
+            <span key={`${s.pos}-${s.name}`} className={`standing-chip${s.finished ? '' : ' standing-chip--racing'}`}>
+              {s.finished ? `${s.pos}. ${s.name}` : `… ${s.name}`}
+            </span>
+          ))}</div>
         )}
       </div>
       <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</div>

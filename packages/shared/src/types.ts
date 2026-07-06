@@ -348,7 +348,7 @@ export interface SocketEvents {
   node_respawned: { id: string };
   race_scheduled: { id: string; startAt: number; field: NpcBull[] };
   race_started: { id: string; bulls: RaceBull[]; startT: number; endT: number };
-  race_standings: { id: string; standings: { pos: number; name: string }[] };
+  race_standings: { id: string; standings: { pos: number; name: string; finished: boolean }[] };
   race_finished: { id: string; results: RaceResult[]; betResults: Record<string, string> };
   listing_created: MarketListing;
   listing_sold: { id: string; buyerId: string };

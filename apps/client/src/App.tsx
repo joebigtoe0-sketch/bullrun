@@ -3,7 +3,7 @@ import { useGameStore } from './store/gameStore';
 import { api } from './api/client';
 import { AuthScreen } from './ui/AuthScreen';
 import { GameUI } from './ui/GameUI';
-import { GameCanvas } from './world/GameCanvas';
+import { CanvasWorld } from './world/CanvasWorld';
 import { useGameLoop } from './game/loop';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
@@ -31,7 +31,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="game-root">
-        <GameCanvas />
+        <CanvasWorld />
         <GameUI />
       </div>
     </ErrorBoundary>

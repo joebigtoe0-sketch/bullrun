@@ -53,15 +53,33 @@ export function raceProgressAt(elapsed: number, lapTimes: number[]): number {
 const GRID_HOLD_MS = 800;
 const LANE_BLEND_MS = 1200;
 
-/** Interpolate server-authoritative race clock between standings ticks. */
+/** Interpolate server-authoritative race clock — never moves backwards. */
 export function raceElapsedMs(
-  anim: { startT: number; elapsedMs?: number; elapsedAt?: number },
+  anim: { startT: number; elapsedMs?: number; elapsedAt?: number; maxElapsedMs?: number },
   now: number,
 ): number {
+  let el: number;
   if (anim.elapsedMs != null && anim.elapsedAt != null) {
-    return Math.max(0, anim.elapsedMs + (now - anim.elapsedAt));
+    el = anim.elapsedMs + (now - anim.elapsedAt);
+  } else {
+    el = now - anim.startT;
   }
-  return Math.max(0, now - anim.startT);
+  if (anim.maxElapsedMs != null) el = Math.min(el, anim.maxElapsedMs);
+  return Math.max(0, el);
+}
+
+export function raceProgressFor(
+  elapsed: number,
+  finishT: number,
+  lapTimes?: number[],
+): number {
+  if (lapTimes?.length) return Math.min(1, Math.max(0, raceProgressAt(elapsed, lapTimes)));
+  if (finishT <= 0) return 0;
+  return Math.min(1, Math.max(0, elapsed / finishT));
+}
+
+export function raceMaxDurationMs(bulls: { finishT?: number }[]): number {
+  return Math.max(...bulls.map((b) => b.finishT ?? 0), 1000);
 }
 
 /** Side-by-side on the white finish line, ordered by place (1st … last). */
@@ -106,27 +124,24 @@ function raceBullAtProgress(
 export function raceBullAt(
   elapsed: number,
   finishT: number,
-  slot: number,
+  gridSlot: number,
   laps = RACE_LAPS,
   lapTimes?: number[],
   fieldSize = 6,
   finishPlace?: number,
 ): { x: number; y: number; facingLeft: boolean } {
   const t = Math.max(0, elapsed);
-  if (finishT > 0 && t >= finishT && finishPlace != null) {
+  const prog = raceProgressFor(t, finishT, lapTimes);
+
+  if (finishPlace != null && prog >= 1) {
     return raceFinishPosition(finishPlace, fieldSize);
   }
-
-  const totalProg = lapTimes?.length
-    ? raceProgressAt(t, lapTimes)
-    : Math.min(1, Math.max(0, finishT > 0 ? t / finishT : 0));
-  const prog = Math.min(1, Math.max(0, totalProg));
 
   const spreadFade = t < GRID_HOLD_MS
     ? 0
     : Math.min(1, (t - GRID_HOLD_MS) / LANE_BLEND_MS);
 
-  return raceBullAtProgress(prog, slot, fieldSize, spreadFade);
+  return raceBullAtProgress(prog, gridSlot, fieldSize, spreadFade);
 }
 
 /** Staggered grid slots on the start line before the race. */

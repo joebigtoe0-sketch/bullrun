@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS } from '@bullrun/shared';
+import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS, raceElapsedMs, raceMaxDurationMs } from '@bullrun/shared';
 import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrun/shared';
 import { api } from '../api/client';
 
@@ -39,7 +39,7 @@ interface GameStore {
   worldNodes: SyncedWorldNode[];
   walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string; finished: boolean }[] } | null;
-  raceAnim: { id?: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number; frozen?: boolean; elapsedMs?: number; elapsedAt?: number } | null;
+  raceAnim: { id?: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number; frozen?: boolean; elapsedMs?: number; elapsedAt?: number; maxElapsedMs?: number } | null;
   raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;
@@ -81,6 +81,8 @@ interface GameStore {
   setWalkDestination: (d: { x: number; y: number } | null) => void;
   setRaceLive: (r: GameStore['raceLive']) => void;
   setRaceAnim: (r: GameStore['raceAnim']) => void;
+  syncRaceClock: (raceId: string, elapsed: number) => void;
+  freezeRaceIfDue: () => void;
   setRaceGrid: (r: GameStore['raceGrid']) => void;
   setResults: (r: RaceResult[] | null, betResult?: string | null, until?: number) => void;
   clearResults: () => void;
@@ -231,7 +233,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setWorldNodes: (nodes) => set({ worldNodes: nodes }),
   setWalkDestination: (d) => set({ walkDestination: d }),
   setRaceLive: (r) => set({ raceLive: r }),
-  setRaceAnim: (r) => set({ raceAnim: r, ...(r ? { raceGrid: null } : {}) }),
+  setRaceAnim: (r) => {
+    if (!r) {
+      set({ raceAnim: null, raceGrid: null });
+      return;
+    }
+    const maxElapsedMs = raceMaxDurationMs(r.bulls) + 3000;
+    set({ raceAnim: { ...r, maxElapsedMs }, raceGrid: null });
+  },
+  syncRaceClock: (raceId, elapsed) => {
+    const anim = get().raceAnim;
+    if (!anim || anim.id !== raceId || anim.frozen) return;
+    const prev = anim.elapsedMs ?? 0;
+    if (elapsed < prev - 50) return;
+    const maxElapsedMs = anim.maxElapsedMs ?? raceMaxDurationMs(anim.bulls) + 3000;
+    set({
+      raceAnim: {
+        ...anim,
+        elapsedMs: Math.min(elapsed, maxElapsedMs),
+        elapsedAt: Date.now(),
+        maxElapsedMs,
+      },
+    });
+  },
+  freezeRaceIfDue: () => {
+    const anim = get().raceAnim;
+    if (!anim || anim.frozen || get().results) return;
+    const el = raceElapsedMs(anim, Date.now());
+    const endMs = anim.maxElapsedMs ?? raceMaxDurationMs(anim.bulls) + 800;
+    if (el >= endMs) {
+      set({ raceAnim: { ...anim, frozen: true }, raceLive: null });
+    }
+  },
   setRaceGrid: (r) => set({ raceGrid: r }),
   setResults: (r, betResult = null, until) =>
     set({

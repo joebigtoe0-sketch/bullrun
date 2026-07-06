@@ -19,6 +19,7 @@ import {
   raceGridPosition,
   raceFinishPosition,
   raceElapsedMs,
+  raceMaxDurationMs,
   formatRaceLapLabel,
   currentLap,
   liveStandings,
@@ -648,18 +649,6 @@ function drawRaceTrackBoard(
     return;
   }
 
-  if (raceAnim && !raceAnim.frozen) {
-    const el = raceElapsedMs(raceAnim, now);
-    const laps = raceAnim.laps ?? RACE_LAPS;
-    const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
-    const standings = liveStandings(raceAnim.bulls, el);
-    drawGroundTextList(ctx, wx, listWy, {
-      header: [{ text: formatRaceLapLabel(lap, laps), size: 24 }],
-      entries: standings.map(formatLiveStandingLine),
-    });
-    return;
-  }
-
   if (results?.length && resultsUntil && now < resultsUntil) {
     const labels = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
     const resultLines = results.map((r) => {
@@ -675,6 +664,28 @@ function drawRaceTrackBoard(
       header: [{ text: 'RACE RESULTS', size: 22 }],
       entries: resultLines,
       footer,
+    });
+    return;
+  }
+
+  if (raceAnim?.frozen) {
+    drawGroundTextList(ctx, wx, listWy, {
+      header: [{ text: 'FINISH', size: 28 }],
+      entries: [...raceAnim.bulls]
+        .sort((a, b) => (a.pos ?? 99) - (b.pos ?? 99))
+        .map((b) => `${b.pos}. ${b.name}`),
+    });
+    return;
+  }
+
+  if (raceAnim && !raceAnim.frozen) {
+    const el = raceElapsedMs(raceAnim, now);
+    const laps = raceAnim.laps ?? RACE_LAPS;
+    const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
+    const standings = liveStandings(raceAnim.bulls, el);
+    drawGroundTextList(ctx, wx, listWy, {
+      header: [{ text: formatRaceLapLabel(lap, laps), size: 24 }],
+      entries: standings.map(formatLiveStandingLine),
     });
     return;
   }
@@ -703,6 +714,7 @@ export interface DrawState {
     frozen?: boolean;
     elapsedMs?: number;
     elapsedAt?: number;
+    maxElapsedMs?: number;
   } | null;
   raceGrid: {
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
@@ -916,7 +928,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
 
   if (raceAnim) {
     const el = raceAnim.frozen
-      ? Math.max(...raceAnim.bulls.map((b) => b.finishT ?? 0), 0)
+      ? raceMaxDurationMs(raceAnim.bulls)
       : raceElapsedMs(raceAnim, now);
     const laps = raceAnim.laps ?? RACE_LAPS;
     const fieldSize = raceAnim.bulls.length;

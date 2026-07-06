@@ -93,31 +93,31 @@ export function useSocket() {
     });
     socket.on('race_started', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; owner?: string; trait?: string }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
       startT: number;
       endT: number;
       laps?: number;
       elapsed?: number;
     }) => {
-      const now = Date.now();
+      const prev = useGameStore.getState().raceAnim;
+      const elapsed = data.elapsed ?? 0;
+      if (prev?.id === data.id && !prev.frozen && (prev.elapsedMs ?? 0) > 300) {
+        useGameStore.getState().syncRaceClock(data.id, Math.max(elapsed, prev.elapsedMs ?? 0));
+        return;
+      }
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceAnim({
         ...data,
         bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
-        elapsedMs: data.elapsed ?? 0,
-        elapsedAt: now,
+        elapsedMs: elapsed,
+        elapsedAt: Date.now(),
       });
       useGameStore.getState().setRaceLive({ id: data.id, standings: [] });
     });
     socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[]; elapsed?: number }) => {
       useGameStore.getState().setRaceLive(data);
-      const anim = useGameStore.getState().raceAnim;
-      if (anim && anim.id === data.id && data.elapsed != null) {
-        useGameStore.getState().setRaceAnim({
-          ...anim,
-          elapsedMs: data.elapsed,
-          elapsedAt: Date.now(),
-        });
+      if (data.elapsed != null) {
+        useGameStore.getState().syncRaceClock(data.id, data.elapsed);
       }
     });
     socket.on('race_finished', (data: {
@@ -127,6 +127,7 @@ export function useSocket() {
     }) => {
       const userId = useGameStore.getState().user?.id;
       const anim = useGameStore.getState().raceAnim;
+      if (anim?.id && anim.id !== data.id) return;
       if (anim) {
         useGameStore.getState().setRaceAnim({ ...anim, frozen: true });
       }

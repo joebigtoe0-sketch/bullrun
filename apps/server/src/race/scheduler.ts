@@ -27,6 +27,26 @@ export function setRaceIo(server: SocketServer) {
   io = server;
 }
 
+/** Re-sync a client that connected mid-race. */
+export function syncRunningRaceToSocket(raceId: string, socket: { emit: (ev: string, data: unknown) => void }) {
+  const active = activeRaces.get(raceId);
+  if (!active) return;
+  const elapsed = Date.now() - active.startT;
+  socket.emit('race_started', {
+    id: raceId,
+    bulls: active.bulls,
+    startT: active.startT,
+    endT: active.endT,
+    laps: RACE_LAPS,
+    elapsed,
+  });
+  socket.emit('race_standings', {
+    id: raceId,
+    standings: liveStandings(active.bulls, elapsed),
+    elapsed,
+  });
+}
+
 export async function ensureScheduledRace() {
   const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
   if (running) return running;
@@ -114,8 +134,16 @@ async function startRace(raceId: string) {
 }
 
 async function finishRace(raceId: string) {
-  const active = activeRaces.get(raceId);
-  if (!active) return;
+  let active = activeRaces.get(raceId);
+  if (!active) {
+    const row = await prisma.race.findUnique({ where: { id: raceId } });
+    if (!row || row.status !== 'running') return;
+    console.warn(`[race] finishRace ${raceId} without in-memory state — rebuilding field`);
+    const bulls = raceBullsCache.get(raceId) ?? await buildRaceField(raceId);
+    const span = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
+    const endT = Date.now();
+    active = { bulls, startT: endT - span, endT };
+  }
   activeRaces.delete(raceId);
   raceBullsCache.delete(raceId);
 
@@ -254,7 +282,10 @@ async function schedulerTick() {
   const orphaned = await prisma.race.findMany({ where: { status: 'running' } });
   for (const race of orphaned) {
     if (!activeRaces.has(race.id)) {
-      await salvageRunningRace(race.id);
+      const endMs = race.endAt?.getTime() ?? 0;
+      if (endMs > 0 && endMs < now) {
+        await salvageRunningRace(race.id);
+      }
     }
   }
 

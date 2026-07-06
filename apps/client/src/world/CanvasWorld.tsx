@@ -44,6 +44,7 @@ export function CanvasWorld() {
         state = useGameStore.getState();
       }
       useGameStore.getState().pruneSpeechBubbles();
+      useGameStore.getState().freezeRaceIfDue();
       state = useGameStore.getState();
 
       if (state.me) {

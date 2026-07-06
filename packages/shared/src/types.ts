@@ -102,6 +102,7 @@ export interface MarketListing {
   tokenPrice?: number;
   status: 'open' | 'reserved' | 'cancelling' | 'sold' | 'cancelled';
   soldAt?: number;
+  cooldownUntil?: number;
 }
 
 export interface ShopBull {

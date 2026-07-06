@@ -24,6 +24,7 @@ import {
   statCap,
   TRAIN_STAT_GAIN,
   trainHayCost,
+  stableGoldNeed,
   stableWoodNeed,
   type MatType,
   type StatType,
@@ -91,20 +92,41 @@ export async function restBull(userId: string, bullId: number) {
 export async function upgradeStable(userId: string) {
   await requireNearInteractable(userId, 'stable');
   const p = await getProfile(userId);
+  const need = stableWoodNeed(p.stableLevel);
+  const goldNeed = stableGoldNeed(p.stableLevel);
+
+  if (p.stableWood >= need) {
+    if (p.gold < goldNeed) throw new Error(`Need ${goldNeed}g to reach stable level ${p.stableLevel + 1}`);
+    await prisma.playerProfile.update({
+      where: { userId },
+      data: {
+        gold: p.gold - goldNeed,
+        stableWood: 0,
+        stableLevel: p.stableLevel + 1,
+      },
+    });
+    return getMeResponse(userId);
+  }
+
   if (p.wood < 10) throw new Error('Need 10 wood');
   let wood = p.stableWood + 10;
-  let matsWood = p.wood - 10;
+  const matsWood = p.wood - 10;
   let level = p.stableLevel;
+  let gold = p.gold;
 
-  const need = stableWoodNeed(level);
   if (wood >= need) {
-    level += 1;
-    wood = 0;
+    if (gold < goldNeed) {
+      wood = need;
+    } else {
+      level += 1;
+      wood = 0;
+      gold -= goldNeed;
+    }
   }
 
   await prisma.playerProfile.update({
     where: { userId },
-    data: { wood: matsWood, stableWood: wood, stableLevel: level },
+    data: { wood: matsWood, gold, stableWood: wood, stableLevel: level },
   });
   return getMeResponse(userId);
 }
@@ -389,14 +411,17 @@ export async function placeBet(
   return getMeResponse(userId);
 }
 
-export async function listMaterial(userId: string, mat: MatType, pricePerUnit: number, qty: number) {
+export async function listMaterial(userId: string, mat: MatType, pricePer100: number, qty: number) {
   await requireNearInteractable(userId, 'market');
   const allowed = [100, 500, 1000];
   if (!allowed.includes(qty)) throw new Error('List 100, 500, or 1000 only');
+  if (pricePer100 < 1) throw new Error('Minimum 1 gold per 100');
 
   const p = await getProfile(userId);
   const field = mat;
   if ((p[field] as number) < qty) throw new Error(`Need ${qty} ${mat}`);
+
+  const price = Math.max(1, Math.round((pricePer100 * qty) / 100));
 
   const listing = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.playerProfile.update({
@@ -409,7 +434,7 @@ export async function listMaterial(userId: string, mat: MatType, pricePerUnit: n
         type: 'material',
         mat,
         qty,
-        price: pricePerUnit * qty,
+        price,
         status: 'open',
       },
       include: { seller: true },
@@ -529,6 +554,26 @@ export async function listBull(userId: string, bullId: number, price: number) {
   broadcast('listing_created', payload);
   const { broadcastPlayerBulls } = await import('../socket/index.js');
   await broadcastPlayerBulls(userId);
+  return getMeResponse(userId);
+}
+
+export async function cancelMaterialListing(userId: string, listingId: string) {
+  await requireNearInteractable(userId, 'market');
+  const listing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+  if (!listing || listing.status !== 'open') throw new Error('Listing not found');
+  if (listing.sellerId !== userId) throw new Error('Not your listing');
+  if (listing.type !== 'material' || !listing.mat || !listing.qty) throw new Error('Not a material listing');
+
+  const mat = listing.mat as MatType;
+  const p = await getProfile(userId);
+
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.playerProfile.update({
+      where: { userId },
+      data: { [mat]: (p[mat] as number) + listing.qty! },
+    });
+    await tx.marketListing.delete({ where: { id: listingId } });
+  });
   return getMeResponse(userId);
 }
 

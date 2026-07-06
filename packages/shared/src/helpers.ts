@@ -55,7 +55,12 @@ export function bullSlots(stableLevel: number): number {
 }
 
 export function stableWoodNeed(level: number): number {
-  return 35 * level * level;
+  return 50 * level + 100 * level * level;
+}
+
+/** Gold paid when stable wood progress is complete (level → level + 1). */
+export function stableGoldNeed(level: number): number {
+  return 75 * level;
 }
 
 /** Energy restored per minute (all bulls). Higher stable level = faster recovery. */

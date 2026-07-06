@@ -237,6 +237,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
       tokenPrice: l.tokenPrice ? Number(l.tokenPrice.toString()) : undefined,
       status: l.status as import('@bullrun/shared').MarketListing['status'],
       soldAt: l.soldAt?.getTime(),
+      cooldownUntil: l.cooldownUntil?.getTime(),
     })),
     shopBulls: makeShopBulls(),
   };

@@ -12,6 +12,7 @@ import { setIo as setGameIo } from './services/game.js';
 import { setRaceIo, startRaceScheduler } from './race/scheduler.js';
 import { startGoldMarketSweeper } from './routes/tokenMarket.js';
 import { grantFromEnvIfSet } from './lib/grantResources.js';
+import { getOnlineCount } from './socket/index.js';
 
 const PORT = Number(process.env.PORT || 3001);
 const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
@@ -39,6 +40,8 @@ async function main() {
       return { ok: false, db: false, hint: 'DATABASE_URL is wrong — reference Postgres from the server service' };
     }
   });
+
+  app.get('/online', async () => ({ online: getOnlineCount() }));
 
   await authRoutes(app);
   await gameRoutes(app);

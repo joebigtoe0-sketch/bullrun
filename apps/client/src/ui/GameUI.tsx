@@ -3,6 +3,9 @@ import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { ChatPanel } from './ChatPanel';
 import { ProfilePopup } from './ProfilePopup';
+import { GameGuide } from './GameGuide';
+import { OnlineBadge } from './OnlineBadge';
+import { useOnlineCount } from '../hooks/useOnlineCount';
 import {
   MAT_SWATCHES,
   bullSlots,
@@ -17,7 +20,9 @@ import {
   MARKET_FEE,
   buildGoldListingMessage,
   buyerPaysTokens,
+  materialListingTotal,
   stableWoodNeed,
+  stableGoldNeed,
   energyPerMinute,
   fmtCountdown,
   fmtRaceCountdown,
@@ -85,7 +90,14 @@ function StablePanel() {
   const setEquipTarget = useGameStore((s) => s.setEquipTarget);
   const slots = bullSlots(me.stable.level);
   const woodNeed = stableWoodNeed(me.stable.level);
+  const goldNeed = stableGoldNeed(me.stable.level);
   const stableBulls = me.bulls.filter((b) => (b.location ?? 'stable') === 'stable');
+  const readyToLevel = me.stable.wood >= woodNeed;
+  const upgradeLabel = readyToLevel
+    ? `Level up (${goldNeed}g)`
+    : me.stable.wood + 10 >= woodNeed
+      ? `Add 10 wood (+${goldNeed}g to level!)`
+      : 'Add 10 wood';
   const followingBulls = me.bulls.filter((b) => me.followingBullIds?.includes(b.id));
   const followSlots = MAX_FOLLOWING_BULLS;
 
@@ -105,8 +117,12 @@ function StablePanel() {
           </div>
           <div className="bar"><div className="bar-fill wood" style={{ width: `${Math.min(100, me.stable.wood / woodNeed * 100)}%` }} /></div>
           <div className="row-between">
-            <span className="muted">Wood {me.stable.wood} / {woodNeed} · {stableBulls.length}/{slots} bull slots</span>
-            <button className={`${btn} green`} onClick={() => act(api.upgradeStable)}>Add 10 wood{me.stable.wood + 10 >= woodNeed ? ' (level up!)' : ''}</button>
+            <span className="muted">
+              Wood {me.stable.wood} / {woodNeed}
+              {readyToLevel ? ` · ${goldNeed}g to level up` : ''}
+              {' · '}{stableBulls.length}/{slots} bull slots
+            </span>
+            <button className={`${btn} green`} onClick={() => act(api.upgradeStable)}>{upgradeLabel}</button>
           </div>
         </div>
         {stableBulls.map((b) => (
@@ -460,6 +476,18 @@ function BetPanel() {
   );
 }
 
+function CancelCountdown({ until }: { until?: number }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!until || until <= Date.now()) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [until]);
+  if (!until || until <= now) return null;
+  const secs = Math.ceil((until - now) / 1000);
+  return <span className="muted sm"> · returns in {secs}s</span>;
+}
+
 function MarketPanel() {
   const me = useGameStore((s) => s.me)!;
   const walletAddress = useGameStore((s) => s.walletAddress);
@@ -477,6 +505,27 @@ function MarketPanel() {
   const myBullListing = me.marketListings?.find((l) => l.sellerId === me.id && l.type === 'bull' && l.status === 'open');
   const myGoldListing = me.marketListings?.find((l) => l.sellerId === me.id && l.type === 'gold' && (l.status === 'open' || l.status === 'reserved' || l.status === 'cancelling'));
 
+  useEffect(() => {
+    if (myGoldListing?.status !== 'cancelling') return;
+    const id = setInterval(() => {
+      api.me().then(setMe).catch(() => {});
+    }, 3000);
+    return () => clearInterval(id);
+  }, [myGoldListing?.status, myGoldListing?.id, setMe]);
+
+  const myMaterialListings = me.marketListings?.filter((l) => l.sellerId === me.id && l.type === 'material' && l.status === 'open') ?? [];
+
+  const cancelGold = async (listingId: string) => {
+    try {
+      const res = await api.cancelGoldListing(listingId);
+      if (res.status === 'cancelling') {
+        toast('Gold listing cancelling — 30s wait before gold returns');
+      }
+      setMe(await api.me());
+    } catch (e) {
+      toast((e as Error).message);
+    }
+  };
   const listingLabel = (l: (typeof me.marketListings)[0]) => {
     if (l.type === 'gold') {
       return `${l.qty?.toLocaleString()} gold — ${l.sellerName}`;
@@ -592,15 +641,20 @@ function MarketPanel() {
                 <span className="bold">Your gold listing</span>
                 <div className="muted sm">
                   {myGoldListing.qty?.toLocaleString()}g · {myGoldListing.tokenPrice} tokens
-                  {myGoldListing.status !== 'open' ? ` · ${myGoldListing.status}` : ''}
+                  {myGoldListing.status === 'reserved' ? ' · buyer checking out' : ''}
+                  {myGoldListing.status === 'cancelling' ? ' · cancelling' : ''}
+                  <CancelCountdown until={myGoldListing.cooldownUntil} />
                 </div>
+                {myGoldListing.status !== 'cancelling' && (
+                  <div className="muted sm">Cancel takes 30s — protects buyers mid-purchase</div>
+                )}
               </div>
               <button
                 className={`${btn} sm`}
                 disabled={myGoldListing.status === 'cancelling'}
-                onClick={() => api.cancelGoldListing(myGoldListing.id).then(() => api.me().then(setMe)).catch((e) => toast(e.message))}
+                onClick={() => cancelGold(myGoldListing.id)}
               >
-                Cancel
+                {myGoldListing.status === 'cancelling' ? 'Cancelling…' : 'Cancel listing'}
               </button>
             </div>
           </div>
@@ -636,14 +690,14 @@ function MarketPanel() {
           </div>
         )}
 
-        <div className="muted sm" style={{ marginTop: 12 }}>LIST MATERIALS · CHOOSE QUANTITY</div>
+        <div className="muted sm" style={{ marginTop: 12 }}>LIST MATERIALS · GOLD PER 100 UNITS</div>
         {mats.map((m) => (
           <div key={m} className="card">
             <div className="row-between">
               <div className="row gap"><span className="swatch" style={{ background: MAT_SWATCHES[m] }} /><span className="bold">{m}</span> ×{me.mats[m]}</div>
               <div className="row gap">
                 <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: Math.max(1, me.listPrice[m] - 1) } }).then(setMe)}>−</button>
-                <span className="gold stat-num">{me.listPrice[m]}g/u</span>
+                <span className="gold stat-num">{me.listPrice[m]}g/100</span>
                 <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: me.listPrice[m] + 1 } }).then(setMe)}>+</button>
               </div>
             </div>
@@ -655,12 +709,31 @@ function MarketPanel() {
                   disabled={me.mats[m] < qty}
                   onClick={() => api.listMaterial(m, me.listPrice[m], qty).then(setMe).catch((e) => toast(e.message))}
                 >
-                  List {qty}
+                  List {qty} · {materialListingTotal(me.listPrice[m], qty)}g
                 </button>
               ))}
             </div>
           </div>
         ))}
+        {myMaterialListings.length > 0 && (
+          <>
+            <div className="muted sm" style={{ marginTop: 12 }}>YOUR MATERIAL LISTINGS</div>
+            {myMaterialListings.map((l) => (
+              <div key={l.id} className="card row-between">
+                <div>
+                  <span className="bold">{l.qty} {l.mat}</span>
+                  <div className="muted sm">{l.price}g total</div>
+                </div>
+                <button
+                  className={`${btn} sm`}
+                  onClick={() => api.cancelMaterialListing(l.id).then(setMe).catch((e) => toast(e.message))}
+                >
+                  Cancel listing
+                </button>
+              </div>
+            ))}
+          </>
+        )}
         {me.marketListings?.length ? (
           <>
             <div className="muted sm">OPEN LISTINGS</div>
@@ -673,7 +746,23 @@ function MarketPanel() {
                     : ` @ ${l.price}g`}
                 </span>
                 {l.sellerId === me.id ? (
-                  <span className="muted sm">Yours</span>
+                  l.type === 'material' ? (
+                    <button
+                      className={`${btn} sm`}
+                      onClick={() => api.cancelMaterialListing(l.id).then(setMe).catch((e) => toast(e.message))}
+                    >
+                      Cancel
+                    </button>
+                  ) : l.type === 'bull' ? (
+                    <button
+                      className={`${btn} sm`}
+                      onClick={() => api.cancelBullListing(l.id).then(setMe).catch((e) => toast(e.message))}
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <span className="muted sm">Yours</span>
+                  )
                 ) : l.type === 'gold' ? (
                   <button
                     className={`${btn} gold sm`}
@@ -791,17 +880,13 @@ function InventoryPopup() {
 }
 
 function WelcomeBanner() {
-  const setMe = useGameStore((s) => s.setMe);
-  const toast = useGameStore((s) => s.toastMsg);
+  const setPanel = useGameStore((s) => s.setPanel);
 
   return (
     <div className="welcome-banner">
-      <p><b className="gold">Welcome!</b> Click ground to walk · WASD pans camera · Bottom buttons open Stable, Race, Market &amp; Forge</p>
-      <button
-        className={`${btn} gold`}
-        onClick={() => api.settings({ helpSeen: true }).then(setMe).catch((e) => toast(e.message))}
-      >
-        Got it
+      <p><b className="gold">Welcome!</b> New to Bull Run? Open the guide for a full walkthrough.</p>
+      <button type="button" className={`${btn} gold`} onClick={() => setPanel('help')}>
+        Open guide
       </button>
     </div>
   );
@@ -812,18 +897,16 @@ function HelpModal() {
   const setMe = useGameStore((s) => s.setMe);
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <div className="modal-header">🐂 Bull Run</div>
-        <div className="panel-body">
-          <p><b className="gold">Move</b> — click ground to walk, click objects to interact</p>
-          <p><b className="gold">Camera</b> — WASD/arrows to pan</p>
-          <p><b className="gold">Race</b> — global races every 2 min, enter bulls and bet</p>
-          <p><b className="gold">MMO</b> — see other players live in the shared world</p>
-          <button className={`${btn} gold`} onClick={() => api.settings({ helpSeen: true }).then((m) => { setMe(m); setPanel(null); })}>Play</button>
-        </div>
-      </div>
-    </div>
+    <GameGuide
+      onClose={() => setPanel(null)}
+      onDismiss={() => {
+        api.settings({ helpSeen: true }).then((m) => {
+          setMe(m);
+          setPanel(null);
+        }).catch(() => setPanel(null));
+      }}
+      dismissLabel="Got it"
+    />
   );
 }
 
@@ -885,6 +968,7 @@ export function GameUI() {
   const setInvOpen = useGameStore((s) => s.setInvOpen);
   const invCount = me?.items.filter((i) => !i.equippedTo).length ?? 0;
   const setProfileOpen = useGameStore((s) => s.setProfileOpen);
+  const playersOnline = useOnlineCount();
 
   if (!me) return null;
 
@@ -925,7 +1009,10 @@ export function GameUI() {
           ))}</div>
         )}
       </div>
-      <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</div>
+      <div className="hud-tr">
+        <OnlineBadge count={playersOnline} />
+        <span className="hud-tr-meta">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</span>
+      </div>
 
       <GatherBar />
 

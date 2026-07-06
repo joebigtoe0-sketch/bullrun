@@ -56,6 +56,7 @@ export const api = {
     }),
   checkAccess: () =>
     request<{ balance: number; required: number; hasAccess: boolean; configured?: boolean }>('/auth/access'),
+  getOnline: () => request<{ online: number }>('/online'),
   goldMarket: () =>
     request<Array<{ id: string; sellerId: string; sellerName: string; type: 'gold'; qty: number; tokenPrice: number; status: string }>>('/market/gold'),
   listGold: (goldQty: number, tokenPrice: number, signature: string, message: string) =>
@@ -128,12 +129,14 @@ export const api = {
   placeBet: (targetBullId: string, targetName: string, amount: number, odds: number, x?: number, y?: number) =>
     request<MeResponse>('/race/bet', { method: 'POST', body: JSON.stringify({ targetBullId, targetName, amount, odds, x, y }) }),
   raceOdds: () => request<{ field: unknown[]; odds: number[] }>('/race/odds'),
-  listMaterial: (mat: string, pricePerUnit: number, qty: number) =>
-    request<MeResponse>('/market/list', { method: 'POST', body: JSON.stringify({ mat, pricePerUnit, qty }) }),
+  listMaterial: (mat: string, pricePer100: number, qty: number) =>
+    request<MeResponse>('/market/list', { method: 'POST', body: JSON.stringify({ mat, pricePer100, qty }) }),
   listBull: (bullId: number, price: number) =>
     request<MeResponse>('/market/list-bull', { method: 'POST', body: JSON.stringify({ bullId, price }) }),
   cancelBullListing: (listingId: string) =>
     request<MeResponse>('/market/cancel-bull', { method: 'POST', body: JSON.stringify({ listingId }) }),
+  cancelMaterialListing: (listingId: string) =>
+    request<MeResponse>('/market/cancel-material', { method: 'POST', body: JSON.stringify({ listingId }) }),
   market: () => request<unknown[]>('/market'),
   buyListing: (listingId: string) =>
     request<MeResponse>('/market/buy', { method: 'POST', body: JSON.stringify({ listingId }) }),

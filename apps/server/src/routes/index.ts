@@ -236,10 +236,10 @@ export async function gameRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post<{ Body: { mat: string; pricePerUnit: number; qty: number } }>('/market/list', async (req, reply) => {
+  app.post<{ Body: { mat: string; pricePer100: number; qty: number } }>('/market/list', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
-      return await game.listMaterial(userId, req.body.mat as 'hay', req.body.pricePerUnit, req.body.qty);
+      return await game.listMaterial(userId, req.body.mat as 'hay', req.body.pricePer100, req.body.qty);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }
@@ -258,6 +258,15 @@ export async function gameRoutes(app: FastifyInstance) {
     try {
       const userId = (req.user as { sub: string }).sub;
       return await game.cancelBullListing(userId, req.body.listingId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { listingId: string } }>('/market/cancel-material', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await game.cancelMaterialListing(userId, req.body.listingId);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

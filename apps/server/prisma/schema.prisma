@@ -41,7 +41,7 @@ model PlayerProfile {
   helpSeen    Boolean  @default(false)
   betAmount   Int      @default(50)
   forgeOre    Int      @default(100)
-  listHay     Int      @default(3)
+  listHay     Int      @default(5)
   listOre     Int      @default(8)
   listWood    Int      @default(5)
   breedSel    Int[]    @default([])

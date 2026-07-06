@@ -19,3 +19,8 @@ export function buildGoldListingMessage(args: {
 export function buyerPaysTokens(sellerPrice: number): number {
   return Math.round(sellerPrice * (1 + MARKET_FEE) * 1e6) / 1e6;
 }
+
+/** Total gold for a material listing (price is per 100 units). */
+export function materialListingTotal(pricePer100: number, qty: number): number {
+  return Math.max(1, Math.round((pricePer100 * qty) / 100));
+}

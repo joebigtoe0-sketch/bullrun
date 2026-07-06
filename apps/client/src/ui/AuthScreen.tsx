@@ -5,6 +5,9 @@ import bs58 from 'bs58';
 import { api, saveToken } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { Logo } from './Logo';
+import { OnlineBadge } from './OnlineBadge';
+import { GameGuide } from './GameGuide';
+import { useOnlineCount } from '../hooks/useOnlineCount';
 
 type Step = 'connect' | 'sign' | 'displayName';
 
@@ -22,6 +25,8 @@ export function AuthScreen() {
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const playersOnline = useOnlineCount();
 
   const wallet = publicKey?.toBase58() ?? null;
 
@@ -95,6 +100,7 @@ export function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
+        <OnlineBadge count={playersOnline} />
         <Logo className="auth-logo" />
         <h1>Bull Run</h1>
         <p>Token-gated bull racing MMO</p>
@@ -136,9 +142,11 @@ export function AuthScreen() {
               </span>
               Connect wallet
             </button>
+            <button type="button" className="link-btn" onClick={() => setGuideOpen(true)}>New here? Read the game guide →</button>
           </>
         )}
       </div>
+      {guideOpen && <GameGuide onClose={() => setGuideOpen(false)} />}
     </div>
   );
 }

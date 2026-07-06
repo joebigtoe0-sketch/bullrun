@@ -59,7 +59,7 @@ export const BET_HOUSE_EDGE = 1 - MARKET_FEE;
 export const ODDS_SIM_TRIALS = 1500;
 export const DEFAULT_RACE_INTERVAL_SEC = 360;
 /** How long finished-race results stay painted on the track center (ms). */
-export const RACE_RESULTS_DISPLAY_MS = 60_000;
+export const RACE_RESULTS_DISPLAY_MS = 10_000;
 export const CHAT_MAX_LEN = 120;
 export const CHAT_LOG_MAX = 80;
 export const CHAT_SPEECH_MS = 7_000;

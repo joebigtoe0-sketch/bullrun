@@ -33,6 +33,8 @@ const CX = WORLD_CX;
 const CY = WORLD_CY;
 const RX = WORLD_RX;
 const RY = WORLD_RY;
+/** Infield list anchor — just below the upper inner fence; list grows downward. */
+const TRACK_LIST_WY = CY - RY * FENCE_RINGS[0].er + 0.9;
 
 export function iso(x: number, y: number) {
   return { x: (x - y) * 32, y: (x + y) * 16 };
@@ -558,10 +560,11 @@ function drawTrackOverlayText(
   wx: number,
   wy: number,
   lines: GroundLine[],
+  screenPadY = -12,
 ) {
   const s = iso(wx, wy);
   ctx.save();
-  ctx.translate(s.x, s.y - 20);
+  ctx.translate(s.x, s.y + screenPadY);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
@@ -643,7 +646,7 @@ function drawGroundTextList(
     });
   }
 
-  drawTrackOverlayText(ctx, wx, wy, lines);
+  drawTrackOverlayText(ctx, wx, wy, lines, 14);
 }
 
 function drawRaceTrackBoard(
@@ -658,12 +661,12 @@ function drawRaceTrackBoard(
   betResult: string | null,
 ) {
   const wx = CX;
-  const wy = CY;
+  const listWy = TRACK_LIST_WY;
 
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
     const gridBulls = [...raceGrid.bulls].sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
-    drawGroundTextList(ctx, wx, wy, {
+    drawGroundTextList(ctx, wx, listWy, {
       header: [
         { text: cd > 0 ? String(cd) : 'GO!', size: 48 },
         { text: 'STARTING GRID', size: 18 },
@@ -686,7 +689,7 @@ function drawRaceTrackBoard(
         : Math.min(1, el / (b.finishT ?? 1));
       return pb - pa;
     });
-    drawGroundTextList(ctx, wx, wy, {
+    drawGroundTextList(ctx, wx, listWy, {
       header: [{ text: `LAP ${lap}/${laps}`, size: 24 }],
       entries: sorted.map((b, i) => `${i + 1}. ${b.name}`),
     });
@@ -704,7 +707,7 @@ function drawRaceTrackBoard(
     const footer = betResult
       ? [betResult.length > 40 ? `${betResult.slice(0, 38)}…` : betResult]
       : undefined;
-    drawGroundTextList(ctx, wx, wy, {
+    drawGroundTextList(ctx, wx, listWy, {
       header: [{ text: 'RACE RESULTS', size: 22 }],
       entries: resultLines,
       footer,
@@ -714,7 +717,7 @@ function drawRaceTrackBoard(
 
   if (me?.race && !raceLive) {
     const cd = fmtCountdown(new Date(me.race.startAt).getTime() - now);
-    drawTrackOverlayText(ctx, wx, wy, [
+    drawTrackOverlayText(ctx, wx, CY, [
       { text: 'NEXT RACE', size: 20, color: '#ffffff', y: 0 },
       { text: cd, size: 44, color: '#ffffff', y: 30 },
     ]);

@@ -42,6 +42,7 @@ interface GameStore {
   movePath: { x: number; y: number }[] | null;
   pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null;
   gather: { nodeId: string; start: number; dur: number; mat?: string } | null;
+  gatherPct: number;
   buyDenConfirm: { plotId: number; label: string; price: number } | null;
   keys: Record<string, boolean>;
   chatInputFocused: boolean;
@@ -114,6 +115,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   movePath: null,
   pending: null,
   gather: null,
+  gatherPct: 0,
   buyDenConfirm: null,
   keys: {},
   chatInputFocused: false,
@@ -202,7 +204,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ movePath: rest, moveTarget: rest[0] });
   },
   setPending: (p) => set({ pending: p }),
-  setGather: (g) => set({ gather: g }),
+  setGather: (g) => set({ gather: g, gatherPct: 0 }),
   setBuyDenConfirm: (c) => set({ buyDenConfirm: c }),
   setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),
   setChatInputFocused: (v) => set({ chatInputFocused: v }),

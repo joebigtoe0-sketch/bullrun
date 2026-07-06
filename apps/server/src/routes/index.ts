@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Item as PrismaItem, MarketListing } from '@prisma/client';
 import { hashPassword, verifyPassword } from '../auth.js';
 import { prisma } from '../db.js';
+import { clampForgeOre } from '@bullrun/shared';
 import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
@@ -328,7 +329,7 @@ export async function gameRoutes(app: FastifyInstance) {
       data: {
         ...(helpSeen !== undefined && { helpSeen }),
         ...(betAmount !== undefined && { betAmount }),
-        ...(forgeOre !== undefined && { forgeOre }),
+        ...(forgeOre !== undefined && { forgeOre: clampForgeOre(forgeOre) }),
         ...(breedSel !== undefined && { breedSel }),
         ...(listPrice?.hay !== undefined && { listHay: listPrice.hay }),
         ...(listPrice?.ore !== undefined && { listOre: listPrice.ore }),

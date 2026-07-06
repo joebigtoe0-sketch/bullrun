@@ -27,6 +27,8 @@ import {
   inferBullRarity,
   BULL_MAX_ENERGY,
   FORGE_MIN_ORE,
+  FORGE_MAX_ORE,
+  clampForgeOre,
   BREED_COST,
   trainHayCost,
   bullBaseStat,
@@ -492,21 +494,21 @@ function ForgePanel() {
     <div className={panel}>
       <PanelHeader title="The Forge" color="#e07840" onClose={() => setPanel(null)} />
       <div className="panel-body">
-        <p className="muted">Feed ore into the forge. Min {FORGE_MIN_ORE} ore — 100 ore = guaranteed Common. More ore = rarer items.</p>
+        <p className="muted">Feed ore into the forge ({FORGE_MIN_ORE}–{FORGE_MAX_ORE.toLocaleString()}). 100 ore = 100% Common · 500 ≈95% · 1,000 ≈88% · 10,000 ≈10%.</p>
         <div className="card">
           <div className="row-between">
             <span>Ore (have {me.mats.ore})</span>
             <div className="row gap">
-              <button className="small-btn" onClick={() => api.settings({ forgeOre: Math.max(FORGE_MIN_ORE, me.forgeOre - 10) }).then(setMe)}>−</button>
+              <button className="small-btn" onClick={() => api.settings({ forgeOre: clampForgeOre(me.forgeOre - 10) }).then(setMe)}>−</button>
               <span className="orange lg">{me.forgeOre}</span>
-              <button className="small-btn" onClick={() => api.settings({ forgeOre: me.forgeOre + 10 }).then(setMe)}>+</button>
+              <button className="small-btn" onClick={() => api.settings({ forgeOre: clampForgeOre(me.forgeOre + 10) }).then(setMe)}>+</button>
             </div>
           </div>
           {RARITIES.map((r, i) => (
             <div key={r.k} className="chance-row">
               <span style={{ color: r.c, width: 74 }}>{r.k}</span>
               <div className="bar flex1"><div className="bar-fill" style={{ width: `${chances[i] * 100}%`, background: r.c }} /></div>
-              <span className="muted">{(chances[i] * 100).toFixed(0)}%</span>
+              <span className="muted">{(chances[i] * 100).toFixed(chances[i] < 0.1 ? 1 : 0)}%</span>
             </div>
           ))}
           <button className={`${btn} orange`} onClick={() => api.forge(me.forgeOre).then((r) => {
@@ -648,24 +650,12 @@ function BuyDenModal() {
 
 function GatherBar() {
   const gather = useGameStore((s) => s.gather);
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!gather) return;
-    let raf = 0;
-    const frame = () => {
-      setTick((t) => t + 1);
-      raf = requestAnimationFrame(frame);
-    };
-    raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
-  }, [gather]);
+  const pct = useGameStore((s) => s.gatherPct);
 
   if (!gather) return null;
-  const pct = Math.min(100, ((Date.now() - gather.start) / gather.dur) * 100);
   return (
     <div className="gather-bar">
-      <div style={{ width: `${pct}%` }} />
+      <div className="gather-bar-fill" style={{ width: `${pct}%` }} />
     </div>
   );
 }

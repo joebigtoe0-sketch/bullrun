@@ -46,6 +46,7 @@ export const REST_COST = 80;
 export const REST_ENERGY = 50;
 export const TRAIN_HAY_COST = 75;
 export const FORGE_MIN_ORE = 100;
+export const FORGE_MAX_ORE = 10_000;
 export const GATHER_DURATION_MS = 1500;
 export const NODE_RESPAWN_MS = 15_000;
 export const MARKET_LIST_QUANTITIES = [100, 500, 1000] as const;

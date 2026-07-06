@@ -1,19 +1,47 @@
-import { RARITIES, COAT_COLORS, FORGE_MIN_ORE } from '../constants.js';
+import { RARITIES, COAT_COLORS, FORGE_MIN_ORE, FORGE_MAX_ORE } from '../constants.js';
 import type { GameItem, ItemSlot, RarityKey } from '../types.js';
 
+/** [ore, common chance] — log-interpolated between anchors. */
+const FORGE_COMMON_ANCHORS: [number, number][] = [
+  [FORGE_MIN_ORE, 1.0],
+  [500, 0.95],
+  [1000, 0.88],
+  [FORGE_MAX_ORE, 0.10],
+];
+
+/** How non-common odds split across Uncommon → Legendary. */
+const FORGE_RARE_SPLIT = [0.50, 0.28, 0.15, 0.07] as const;
+
+export function clampForgeOre(ore: number): number {
+  return Math.min(FORGE_MAX_ORE, Math.max(FORGE_MIN_ORE, Math.round(ore)));
+}
+
+function forgeCommonChance(ore: number): number {
+  const o = clampForgeOre(ore);
+  if (o <= FORGE_COMMON_ANCHORS[0][0]) return FORGE_COMMON_ANCHORS[0][1];
+
+  for (let i = 0; i < FORGE_COMMON_ANCHORS.length - 1; i++) {
+    const [o0, c0] = FORGE_COMMON_ANCHORS[i];
+    const [o1, c1] = FORGE_COMMON_ANCHORS[i + 1];
+    if (o <= o1) {
+      const t = (Math.log(o) - Math.log(o0)) / (Math.log(o1) - Math.log(o0));
+      return c0 + t * (c1 - c0);
+    }
+  }
+  return FORGE_COMMON_ANCHORS[FORGE_COMMON_ANCHORS.length - 1][1];
+}
+
 export function forgeChances(ore: number): number[] {
-  const o = Math.max(FORGE_MIN_ORE, ore);
+  const o = clampForgeOre(ore);
   if (o <= FORGE_MIN_ORE) return [1, 0, 0, 0, 0];
 
-  const extra = o - FORGE_MIN_ORE;
-  const uncommon = Math.min(0.42, extra * 0.0035);
-  const rare = Math.min(0.28, extra * 0.002);
-  const epic = Math.min(0.14, extra * 0.001);
-  const legendary = Math.min(0.10, extra * 0.0007);
-  const common = Math.max(0.05, 1 - uncommon - rare - epic - legendary);
-  const raw = [common, uncommon, rare, epic, legendary];
-  const sum = raw.reduce((a, c) => a + c, 0);
-  return raw.map((x) => x / sum);
+  const common = forgeCommonChance(o);
+  const rem = 1 - common;
+  const splitSum = FORGE_RARE_SPLIT.reduce((a, c) => a + c, 0);
+  return [
+    common,
+    ...FORGE_RARE_SPLIT.map((w) => (rem * w) / splitSum),
+  ];
 }
 
 export function rollRarityIndex(ore: number): number {

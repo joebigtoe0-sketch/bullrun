@@ -3,7 +3,6 @@ import {
   BREED_COST,
   BREED_DURATION_MS,
   BULL_MAX_ENERGY,
-  FORGE_MIN_ORE,
   GATHER_DURATION_MS,
   MARKET_FEE,
   NODE_RESPAWN_MS,
@@ -12,6 +11,7 @@ import {
   REST_ENERGY,
   buildWorld,
   bullSlots,
+  clampForgeOre,
   energyPerMinute,
   inferBullRarity,
   makeItem,
@@ -207,15 +207,16 @@ export async function completeBreed(userId: string) {
 export async function forgeItem(userId: string, oreAmount: number) {
   await requireNearInteractable(userId, 'forge');
   const p = await getProfile(userId);
-  if (p.ore < oreAmount || oreAmount < FORGE_MIN_ORE) throw new Error(`Need at least ${FORGE_MIN_ORE} ore`);
+  const ore = clampForgeOre(oreAmount);
+  if (p.ore < ore) throw new Error(`Need at least ${ore} ore`);
 
-  const rarIdx = rollRarityIndex(oreAmount);
+  const rarIdx = rollRarityIndex(ore);
   const item = makeItem(rarIdx, p.nextItemId);
 
   await prisma.$transaction([
     prisma.playerProfile.update({
       where: { userId },
-      data: { ore: p.ore - oreAmount, nextItemId: p.nextItemId + 1 },
+      data: { ore: p.ore - ore, nextItemId: p.nextItemId + 1 },
     }),
     prisma.item.create({
       data: {

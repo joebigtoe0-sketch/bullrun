@@ -136,7 +136,17 @@ export function useGameLoop() {
         }
       }
 
-      if (s.gather && now - s.gather.start >= s.gather.dur) {
+      if (s.gather) {
+        const dur = Math.max(1, s.gather.dur ?? GATHER_DURATION_MS);
+        const pct = Math.min(100, ((now - s.gather.start) / dur) * 100);
+        if (Math.abs(pct - s.gatherPct) > 0.3) {
+          useGameStore.setState({ gatherPct: pct });
+        }
+      } else if (s.gatherPct !== 0) {
+        useGameStore.setState({ gatherPct: 0 });
+      }
+
+      if (s.gather && now - s.gather.start >= (s.gather.dur ?? GATHER_DURATION_MS)) {
         const nodeIdStr = s.gather.nodeId;
         const pos = s.me?.position;
         s.setGather(null);

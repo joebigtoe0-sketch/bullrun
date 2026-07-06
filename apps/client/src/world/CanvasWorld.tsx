@@ -56,6 +56,12 @@ export function CanvasWorld() {
         raceAnim: state.raceAnim,
         raceLive: !!state.raceLive,
         pastures: state.pastures,
+        gather: state.gather,
+        walking: !!(
+          state.moveTarget ||
+          state.keys.KeyW || state.keys.KeyA || state.keys.KeyS || state.keys.KeyD ||
+          state.keys.ArrowUp || state.keys.ArrowDown || state.keys.ArrowLeft || state.keys.ArrowRight
+        ),
         folPos: folPosRef.current,
         otherFolPos: otherFolPosRef.current,
         camOff: camOffRef.current,

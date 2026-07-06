@@ -24,7 +24,8 @@ interface GameStore {
   moveTarget: { x: number; y: number } | null;
   movePath: { x: number; y: number }[] | null;
   pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null;
-  gather: { nodeId: string; start: number; dur: number } | null;
+  gather: { nodeId: string; start: number; dur: number; mat?: string } | null;
+  buyDenConfirm: { plotId: number; label: string; price: number } | null;
   keys: Record<string, boolean>;
   cam: { x: number; y: number };
   freeCamUntil: number;
@@ -52,6 +53,7 @@ interface GameStore {
   advanceMovePath: () => void;
   setPending: (p: GameStore['pending']) => void;
   setGather: (g: GameStore['gather']) => void;
+  setBuyDenConfirm: (c: GameStore['buyDenConfirm']) => void;
   setKey: (code: string, down: boolean) => void;
   setCam: (x: number, y: number) => void;
   setFreeCamUntil: (t: number) => void;
@@ -81,6 +83,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   movePath: null,
   pending: null,
   gather: null,
+  buyDenConfirm: null,
   keys: {},
   cam: { x: 33, y: 41 },
   freeCamUntil: 0,
@@ -157,6 +160,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   setPending: (p) => set({ pending: p }),
   setGather: (g) => set({ gather: g }),
+  setBuyDenConfirm: (c) => set({ buyDenConfirm: c }),
   setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),
   setCam: (x, y) => set({ cam: { x, y } }),
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
@@ -164,6 +168,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setDenPlotId: (id) => set({ denPlotId: id }),
   logout: () => {
     localStorage.removeItem('bullrun.token');
-    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [], denPlotId: null });
+    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [], denPlotId: null, buyDenConfirm: null });
   },
 }));

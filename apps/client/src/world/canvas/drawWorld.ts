@@ -147,7 +147,108 @@ type DrawObj = WorldObject & {
   trait?: BullTrait;
   facingLeft?: boolean;
   isMe?: boolean;
+  gatherMat?: string;
+  gatherStart?: number;
+  walking?: boolean;
 };
+
+function drawArm(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  wd: number,
+  dd: number,
+  h: number,
+  elev: number,
+  skin: string,
+  skinD: string,
+  skinL: string,
+) {
+  cube(ctx, wx, wy, wd, dd, h, elev, skin, skinD, skinL);
+}
+
+function drawPlayerCharacter(
+  ctx: CanvasRenderingContext2D,
+  o: DrawObj,
+  now: number,
+) {
+  const isMe = o.t === 'player';
+  const shirt = isMe ? '#e8a33d' : (o.shirt || '#e8a33d');
+  const skin = '#e8c49a';
+  const skinD = '#b08d64';
+  const skinL = '#cca87d';
+  const hair = '#3a2a1a';
+  const hairD = '#241608';
+  const hairL = '#2f2012';
+
+  const s = iso(o.x, o.y);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y, 10, 5, 0, 0, 7);
+  ctx.fill();
+
+  const gatherMat = o.gatherMat;
+  const gatherT = gatherMat && o.gatherStart ? (now - o.gatherStart) / 1000 : 0;
+  const swing = Math.sin(gatherT * 7);
+  const swing2 = Math.sin(gatherT * 7 + Math.PI);
+
+  let lArmY = 0;
+  let rArmY = 0;
+  let lArmH = 6;
+  let rArmH = 6;
+  let tool: 'axe' | 'pick' | 'pull' | null = null;
+
+  if (gatherMat === 'wood') {
+    lArmH = 7 + swing * 3;
+    rArmH = 7 + swing2 * 3;
+    lArmY = -swing * 0.06;
+    rArmY = swing * 0.06;
+    tool = 'axe';
+  } else if (gatherMat === 'ore') {
+    lArmH = 6 + Math.abs(swing) * 4;
+    rArmH = 5 + Math.abs(swing2) * 2;
+    lArmY = swing * 0.05;
+    tool = 'pick';
+  } else if (gatherMat === 'hay') {
+    lArmY = swing * 0.07;
+    rArmY = swing2 * 0.07;
+    lArmH = 5 + Math.abs(swing) * 2;
+    rArmH = 5 + Math.abs(swing2) * 2;
+    tool = 'pull';
+  } else if (o.walking) {
+    const bob = Math.sin(now / 140) * 0.04;
+    lArmY = bob;
+    rArmY = -bob;
+  }
+
+  // legs
+  cube(ctx, o.x - 0.16, o.y - 0.1, 0.14, 0.12, 5, 0, '#4a3728', '#2e2118', '#3b2c20');
+  cube(ctx, o.x + 0.02, o.y - 0.1, 0.14, 0.12, 5, 0, '#4a3728', '#2e2118', '#3b2c20');
+
+  // arms (behind torso when idle, animated when gathering)
+  drawArm(ctx, o.x - 0.3, o.y - 0.08 + lArmY, 0.11, 0.1, lArmH, 4, skin, skinD, skinL);
+  drawArm(ctx, o.x + 0.19, o.y - 0.08 + rArmY, 0.11, 0.1, rArmH, 4, skin, skinD, skinL);
+
+  // torso + head
+  cube(ctx, o.x - 0.18, o.y - 0.13, 0.36, 0.26, 13, 3, shirt, shade(shirt, -40), shade(shirt, -20));
+  cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 9, 16, skin, skinD, skinL);
+  cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 3, 25, hair, hairD, hairL);
+
+  // simple held tool while gathering
+  if (tool === 'axe') {
+    cube(ctx, o.x - 0.34, o.y - 0.12 + lArmY, 0.06, 0.06, 5 + swing * 2, 8, '#6e4526', '#4a2f18', '#5a3a20');
+    cube(ctx, o.x - 0.38, o.y - 0.14 + lArmY, 0.1, 0.04, 2, 12 + swing * 2, '#8a8a8a', '#5a5a5a', '#707070');
+  } else if (tool === 'pick') {
+    cube(ctx, o.x - 0.32, o.y - 0.1 + lArmY, 0.05, 0.05, 8, 7, '#6e4526', '#4a2f18', '#5a3a20');
+    cube(ctx, o.x - 0.36, o.y - 0.16 + lArmY, 0.12, 0.04, 2, 14, '#7a7a7a', '#4a4a4a', '#606060');
+  } else if (tool === 'pull') {
+    drawArm(ctx, o.x - 0.34, o.y - 0.06 + lArmY, 0.09, 0.08, 4, 10, skin, skinD, skinL);
+    drawArm(ctx, o.x + 0.25, o.y - 0.06 + rArmY, 0.09, 0.08, 4, 10, skin, skinD, skinL);
+  }
+
+  const lbl = isMe ? 'You' : (o.name || 'Player');
+  label(ctx, o.x, o.y, lbl, 40, isMe ? '#f2b23a' : '#fff');
+}
 
 function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: number): string {
   if (trait === 'rainbow') return `hsl(${((now / 18 + wx * 30) % 360)}, 72%, 55%)`;
@@ -307,6 +408,19 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
     cube(ctx, o.x - 0.8, o.y - 0.6, 1.6, 1.2, 18, 0, '#3b6ea5', '#22436a', '#2d5787');
     cube(ctx, o.x - 0.95, o.y - 0.75, 1.9, 1.5, 6, 18, '#e8e0cc', '#b0a88f', '#ccc4ab');
     if (o.label) label(ctx, o.x, o.y, o.label, 36, '#7ec8e3');
+  } else if (o.t === 'raceBooth') {
+    cube(ctx, o.x - 0.62, o.y - 0.48, 1.24, 0.96, 14, 0, '#a84a20', '#6e321a', '#8a3d18');
+    cube(ctx, o.x - 0.74, o.y - 0.58, 1.48, 1.16, 5, 14, '#f2b23a', '#b57f1d', '#d0991f');
+    const roof = iso(o.x, o.y - 0.2);
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 2; j++) {
+        if ((i + j) % 2 === 0) ctx.fillStyle = '#fff';
+        else ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(roof.x - 14 + i * 7, roof.y - 30 + j * 5, 7, 5);
+      }
+    }
+    if (o.label) label(ctx, o.x, o.y, o.label, 32, '#f2b23a');
   } else if (o.t === 'market') {
     cube(ctx, o.x - 0.9, o.y - 0.6, 1.8, 1.2, 16, 0, '#a5522f', '#6e321a', '#8a4224');
     cube(ctx, o.x - 1.05, o.y - 0.75, 2.1, 1.5, 6, 16, '#e0c96a', '#a8913c', '#c4ad50');
@@ -320,25 +434,11 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
     ctx.arc(s.x, s.y - 34, 4, 0, 7);
     ctx.fill();
     if (o.label) label(ctx, o.x, o.y, o.label, 40, '#e07840');
-  } else if (o.t === 'sign') {
-    cube(ctx, o.x - 0.06, o.y - 0.06, 0.12, 0.12, 16, 0, '#8a6a44', '#5e4527', '#6f5432');
-    if (o.label) label(ctx, o.x, o.y, o.label, 20, '#f2b23a');
   } else if (o.t === 'post') {
     cube(ctx, o.x - 0.08, o.y - 0.08, 0.16, 0.16, 13, 0, '#e0c96a', '#a8913c', '#c4ad50');
     cube(ctx, o.x - 0.05, o.y - 0.05, 0.1, 0.1, 2, 13, '#f2b23a', '#b57f1d', '#d0991f');
   } else if (o.t === 'player' || o.t === 'other') {
-    const isMe = o.t === 'player';
-    const shirt = isMe ? '#e8a33d' : (o.shirt || '#e8a33d');
-    const s = iso(o.x, o.y);
-    ctx.fillStyle = 'rgba(0,0,0,.18)';
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 10, 5, 0, 0, 7);
-    ctx.fill();
-    cube(ctx, o.x - 0.18, o.y - 0.13, 0.36, 0.26, 13, 3, shirt, shade(shirt, -40), shade(shirt, -20));
-    cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 9, 16, '#e8c49a', '#b08d64', '#cca87d');
-    cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 3, 25, '#3a2a1a', '#241608', '#2f2012');
-    const lbl = isMe ? 'You' : (o.name || 'Player');
-    label(ctx, o.x, o.y, lbl, 40, isMe ? '#f2b23a' : '#fff');
+    drawPlayerCharacter(ctx, o, now);
   } else if (o.t === 'bull') {
     drawBullVoxel(ctx, o.x, o.y, now, o.coat || '#33261d', o.trait, o.facingLeft ?? false, o.label);
   }
@@ -356,6 +456,8 @@ export interface DrawState {
   } | null;
   raceLive: boolean;
   pastures: PasturePlotState[];
+  gather: { mat?: string; start: number } | null;
+  walking: boolean;
   folPos: Record<number, { x: number; y: number }>;
   otherFolPos: Record<string, Record<number, { x: number; y: number }>>;
   camOff: { x: number; y: number };
@@ -363,7 +465,7 @@ export interface DrawState {
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, folPos, otherFolPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -465,7 +567,17 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   }
 
   if (me) {
-    list.push({ d: me.position.x + me.position.y, o: { t: 'player', x: me.position.x, y: me.position.y } });
+    list.push({
+      d: me.position.x + me.position.y,
+      o: {
+        t: 'player',
+        x: me.position.x,
+        y: me.position.y,
+        gatherMat: gather?.mat,
+        gatherStart: gather?.start,
+        walking: walking && !gather,
+      },
+    });
 
     const racingIds = raceAnim ? new Set(raceAnim.bulls.map((b) => b.id)) : new Set<number | string>();
 

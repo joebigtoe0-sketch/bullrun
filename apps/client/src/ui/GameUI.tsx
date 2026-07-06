@@ -526,6 +526,43 @@ function HelpModal() {
   );
 }
 
+function BuyDenModal() {
+  const confirm = useGameStore((s) => s.buyDenConfirm);
+  const setConfirm = useGameStore((s) => s.setBuyDenConfirm);
+  const setMe = useGameStore((s) => s.setMe);
+  const setPastures = useGameStore((s) => s.setPastures);
+  const toast = useGameStore((s) => s.toastMsg);
+
+  if (!confirm) return null;
+
+  const onBuy = () => {
+    const { plotId, label, price } = confirm;
+    setConfirm(null);
+    api.buyPasture(plotId).then((r) => {
+      setMe(r.me);
+      setPastures(r.pastures);
+      toast(`Bought ${label} for ${price}g!`);
+    }).catch((e) => toast(e.message));
+  };
+
+  return (
+    <div className="modal-overlay" onClick={() => setConfirm(null)}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">Buy den?</div>
+        <div className="panel-body">
+          <p className="center" style={{ margin: '8px 0 16px' }}>
+            Are you sure you want to buy <b className="gold">{confirm.label}</b> for <b className="gold">{confirm.price}g</b>?
+          </p>
+          <div className="row gap wrap" style={{ justifyContent: 'center' }}>
+            <button className={`${btn} green`} onClick={onBuy}>Buy den</button>
+            <button className={btn} onClick={() => setConfirm(null)}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GatherBar() {
   const gather = useGameStore((s) => s.gather);
   const [, setTick] = useState(0);
@@ -622,6 +659,7 @@ export function GameUI() {
       {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
       <ResultsModal />
+      <BuyDenModal />
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

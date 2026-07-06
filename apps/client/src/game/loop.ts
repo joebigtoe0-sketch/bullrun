@@ -169,7 +169,13 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
   const s = useGameStore.getState();
   s.setPending(null);
   if (pending.type === 'gather' && pending.nodeId) {
-    s.setGather({ nodeId: pending.nodeId, start: Date.now(), dur: GATHER_DURATION_MS });
+    const node = worldData.nodes.find((n) => nodeId(n.x, n.y, n.mat) === pending.nodeId);
+    s.setGather({
+      nodeId: pending.nodeId,
+      start: Date.now(),
+      dur: GATHER_DURATION_MS,
+      mat: node?.mat,
+    });
   } else if (pending.type === 'pasture' && pending.plotId !== undefined) {
     const plot = s.pastures.find((p) => p.id === pending.plotId);
     const def = PASTURE_PLOTS.find((p) => p.id === pending.plotId);
@@ -179,11 +185,7 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       return;
     }
     if (!plot.ownerId) {
-      api.buyPasture(plot.id).then((r) => {
-        s.setMe(r.me);
-        s.setPastures(r.pastures);
-        s.toastMsg(`Bought ${def.label} for ${def.price}g!`);
-      }).catch((e) => s.toastMsg(e.message));
+      s.setBuyDenConfirm({ plotId: plot.id, label: def.label, price: def.price });
     } else if (plot.ownerId === s.me?.id) {
       s.setDenPlotId(plot.id);
       s.setPanel('den');

@@ -19,17 +19,27 @@ export const DEN_INTERACT_RANGE = 2.4;
 const DEN_W = 3.6;
 const DEN_H = 3.5;
 const DEN_GAP = 1.5;
+const MAP = 52;
+const EDGE = 1.0;
 
-/** Fenced den plots along the left edge and bottom of the map (gaps between for walking). */
+const leftCy = (i: number) => EDGE + 2.5 + i * (DEN_H + DEN_GAP);
+const bottomCx = (i: number, count: number) => {
+  const span = MAP - EDGE * 2 - DEN_W;
+  const gap = count > 1 ? (span - count * DEN_W) / (count - 1) : 0;
+  return EDGE + i * (DEN_W + gap);
+};
+const bottomY = MAP - EDGE - DEN_H - PASTURE_FENCE_MARGIN;
+
+/** Dens pinned to the left edge and along the full bottom edge of the map. */
 export const PASTURE_PLOTS: PasturePlotDef[] = [
-  { id: 0, cx: 2.0, cy: 10.0, w: DEN_W, h: DEN_H, price: 120, label: 'Den 1' },
-  { id: 1, cx: 2.0, cy: 10.0 + DEN_H + DEN_GAP, w: DEN_W, h: DEN_H, price: 140, label: 'Den 2' },
-  { id: 2, cx: 2.0, cy: 10.0 + (DEN_H + DEN_GAP) * 2, w: DEN_W, h: DEN_H, price: 160, label: 'Den 3' },
-  { id: 3, cx: 2.0, cy: 10.0 + (DEN_H + DEN_GAP) * 3, w: DEN_W, h: DEN_H, price: 180, label: 'Den 4' },
+  { id: 0, cx: EDGE, cy: leftCy(0), w: DEN_W, h: DEN_H, price: 120, label: 'Den 1' },
+  { id: 1, cx: EDGE, cy: leftCy(1), w: DEN_W, h: DEN_H, price: 140, label: 'Den 2' },
+  { id: 2, cx: EDGE, cy: leftCy(2), w: DEN_W, h: DEN_H, price: 160, label: 'Den 3' },
+  { id: 3, cx: EDGE, cy: leftCy(3), w: DEN_W, h: DEN_H, price: 180, label: 'Den 4' },
   ...Array.from({ length: 8 }, (_, i) => ({
     id: 4 + i,
-    cx: 3.5 + i * (DEN_W + DEN_GAP),
-    cy: 39.0,
+    cx: bottomCx(i, 8),
+    cy: bottomY,
     w: DEN_W,
     h: DEN_H,
     price: 200 + i * 20,

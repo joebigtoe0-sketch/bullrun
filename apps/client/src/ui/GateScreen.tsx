@@ -5,6 +5,7 @@ export function GateScreen() {
     tokenBalance,
     accessRequired,
     accessChecking,
+    tokenGateConfigured,
     checkAccess,
     logout,
   } = useGameStore();
@@ -27,6 +28,16 @@ export function GateScreen() {
             <span className="gate-stat-val orange">{missing.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
+
+        {!tokenGateConfigured ? (
+          <p className="auth-hint gate-config-hint">
+            Token gate is not configured on the server. Set <strong>TOKEN_ADDRESS</strong> and <strong>HELIUS_RPC_URL</strong> in Railway.
+          </p>
+        ) : tokenBalance === 0 ? (
+          <p className="auth-hint gate-config-hint">
+            Balance reads as 0 — double-check <strong>TOKEN_ADDRESS</strong> matches your token mint on mainnet.
+          </p>
+        ) : null}
 
         <button type="button" className="br-btn gold auth-btn" onClick={() => void checkAccess()} disabled={accessChecking}>
           {accessChecking ? 'Checking balance…' : "I've bought — re-check balance"}

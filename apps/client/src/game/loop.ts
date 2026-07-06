@@ -22,7 +22,7 @@ import { worldData } from '../store/gameStore';
 const M = worldData.M;
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
-export function useGameLoop() {
+export function useGameLoop(active = true) {
   const meId = useGameStore((s) => s.me?.id);
   const { emitMove } = useSocket();
   const emitMoveRef = useRef(emitMove);
@@ -30,7 +30,7 @@ export function useGameLoop() {
   const lastMoveEmit = useRef(0);
 
   useEffect(() => {
-    if (!meId) return;
+    if (!active || !meId) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (useGameStore.getState().chatInputFocused) return;
@@ -178,7 +178,7 @@ export function useGameLoop() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [meId]);
+  }, [active, meId]);
 }
 
 function syncPosition(x: number, y: number) {

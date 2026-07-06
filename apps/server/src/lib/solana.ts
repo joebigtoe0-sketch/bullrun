@@ -17,10 +17,42 @@ function rpcUrl(): string {
   return HELIUS_RPC_URL;
 }
 
+const TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+const TOKEN_2022_PROGRAM_ID = 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb';
+
+interface ParsedTokenAmount {
+  uiAmount?: number | null;
+  uiAmountString?: string;
+  amount?: string;
+  decimals?: number;
+}
+
 interface TokenAccountsResponse {
   value?: Array<{
-    account?: { data?: { parsed?: { info?: { tokenAmount?: { uiAmount?: number | null } } } } };
+    account?: { data?: { parsed?: { info?: { tokenAmount?: ParsedTokenAmount } } } };
   }>;
+}
+
+function parseTokenAmount(ta?: ParsedTokenAmount): number {
+  if (!ta) return 0;
+  if (ta.uiAmount != null && Number.isFinite(ta.uiAmount)) return ta.uiAmount;
+  if (ta.uiAmountString) {
+    const n = parseFloat(ta.uiAmountString);
+    if (Number.isFinite(n)) return n;
+  }
+  if (ta.amount != null && ta.decimals != null) {
+    return Number(ta.amount) / 10 ** ta.decimals;
+  }
+  return 0;
+}
+
+async function tokenAccountsForProgram(walletAddress: string, programId: string): Promise<NonNullable<TokenAccountsResponse['value']>> {
+  const result = await rpc<TokenAccountsResponse>('getTokenAccountsByOwner', [
+    walletAddress,
+    { mint: TOKEN_ADDRESS },
+    { encoding: 'jsonParsed', programId },
+  ]);
+  return result?.value ?? [];
 }
 
 async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
@@ -51,15 +83,13 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
 
 export async function getTokenBalance(walletAddress: string): Promise<number> {
   if (!walletAddress || !TOKEN_ADDRESS) return 0;
-  const result = await rpc<TokenAccountsResponse>('getTokenAccountsByOwner', [
-    walletAddress,
-    { mint: TOKEN_ADDRESS },
-    { encoding: 'jsonParsed' },
-  ]);
-  const accounts = result?.value ?? [];
+  const accounts = [
+    ...(await tokenAccountsForProgram(walletAddress, TOKEN_PROGRAM_ID)),
+    ...(await tokenAccountsForProgram(walletAddress, TOKEN_2022_PROGRAM_ID)),
+  ];
   let total = 0;
   for (const acc of accounts) {
-    total += acc.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
+    total += parseTokenAmount(acc.account?.data?.parsed?.info?.tokenAmount);
   }
   return total;
 }

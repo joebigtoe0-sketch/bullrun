@@ -4,7 +4,7 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { prisma } from '../db.js';
 import { createStarterUser } from '../services/player.js';
-import { getTokenBalance, MIN_PLAY_TOKENS, walletHasAccess } from '../lib/solana.js';
+import { getTokenBalance, isTokenGateConfigured, MIN_PLAY_TOKENS, walletHasAccess } from '../lib/solana.js';
 
 function isValidSolanaAddress(addr: string): boolean {
   try {
@@ -131,13 +131,17 @@ export async function walletAuthRoutes(app: FastifyInstance) {
     const userId = (req.user as { sub: string }).sub;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.walletAddress) {
-      return { balance: 0, required: MIN_PLAY_TOKENS, hasAccess: false };
+      return { balance: 0, required: MIN_PLAY_TOKENS, hasAccess: false, configured: isTokenGateConfigured() };
+    }
+    if (!isTokenGateConfigured()) {
+      return { balance: 0, required: MIN_PLAY_TOKENS, hasAccess: true, configured: false };
     }
     const balance = await getTokenBalance(user.walletAddress);
     return {
       balance,
       required: MIN_PLAY_TOKENS,
       hasAccess: balance >= MIN_PLAY_TOKENS,
+      configured: true,
     };
   });
 }

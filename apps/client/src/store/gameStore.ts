@@ -27,6 +27,7 @@ interface GameStore {
   tokenBalance: number;
   accessRequired: number;
   accessChecking: boolean;
+  tokenGateConfigured: boolean;
   profileOpen: boolean;
   me: MeResponse | null;
   panel: PanelType;
@@ -112,6 +113,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tokenBalance: 0,
   accessRequired: 1000,
   accessChecking: false,
+  tokenGateConfigured: true,
   profileOpen: false,
   me: null,
   panel: null,
@@ -162,6 +164,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ hasAccess: null });
       return;
     }
+    if (get().accessChecking) return;
     set({ accessChecking: true });
     try {
       const data = await api.checkAccess();
@@ -170,6 +173,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         tokenBalance: data.balance,
         accessRequired: data.required,
         accessChecking: false,
+        tokenGateConfigured: data.configured !== false,
       });
     } catch {
       set({ accessChecking: false });

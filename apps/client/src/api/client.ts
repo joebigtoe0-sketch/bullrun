@@ -55,7 +55,7 @@ export const api = {
       body: JSON.stringify({ displayName }),
     }),
   checkAccess: () =>
-    request<{ balance: number; required: number; hasAccess: boolean }>('/auth/access'),
+    request<{ balance: number; required: number; hasAccess: boolean; configured?: boolean }>('/auth/access'),
   goldMarket: () =>
     request<Array<{ id: string; sellerId: string; sellerName: string; type: 'gold'; qty: number; tokenPrice: number; status: string }>>('/market/gold'),
   listGold: (goldQty: number, tokenPrice: number, signature: string, message: string) =>

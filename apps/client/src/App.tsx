@@ -13,6 +13,7 @@ export default function App() {
   const me = useGameStore((s) => s.me);
   const hasDisplayName = useGameStore((s) => s.hasDisplayName);
   const hasAccess = useGameStore((s) => s.hasAccess);
+  const meId = useGameStore((s) => s.me?.id);
   const setAuth = useGameStore((s) => s.setAuth);
   const setMe = useGameStore((s) => s.setMe);
   const setWallet = useGameStore((s) => s.setWallet);
@@ -37,12 +38,12 @@ export default function App() {
   }, [token, me, setAuth, setMe, setWallet]);
 
   useEffect(() => {
-    if (token && me && hasDisplayName) {
+    if (token && meId && hasDisplayName && hasAccess === null) {
       void checkAccess();
     }
-  }, [token, me, hasDisplayName, checkAccess]);
+  }, [token, meId, hasDisplayName, hasAccess, checkAccess]);
 
-  useGameLoop();
+  useGameLoop(hasAccess === true);
 
   if (!token) return <AuthScreen />;
   if (!me) {

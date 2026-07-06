@@ -79,7 +79,18 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .guide-nav {
   width: 220px; flex-shrink: 0; overflow-y: auto;
   background: #221a11; border-right: 3px solid #17100a; padding: 10px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #8a5a2b #17100a;
 }
+.guide-nav::-webkit-scrollbar { width: 10px; }
+.guide-nav::-webkit-scrollbar-track { background: #17100a; }
+.guide-nav::-webkit-scrollbar-thumb {
+  background: #6b5340;
+  border: 2px solid #17100a;
+  border-radius: 6px;
+}
+.guide-nav::-webkit-scrollbar-thumb:hover { background: #f2b23a; }
+.guide-nav::-webkit-scrollbar-button { display: none; height: 0; }
 .guide-nav-group { margin-bottom: 12px; }
 .guide-nav-label {
   font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
@@ -94,7 +105,20 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 }
 .guide-nav-item:hover { background: rgba(255,255,255,.05); color: #f3e7cd; }
 .guide-nav-item.active { background: rgba(242,178,58,.15); color: #f2b23a; }
-.guide-content { flex: 1; overflow-y: auto; padding: 18px 20px; color: #f3e7cd; }
+.guide-content {
+  flex: 1; overflow-y: auto; padding: 18px 20px; color: #f3e7cd;
+  scrollbar-width: thin;
+  scrollbar-color: #8a5a2b #17100a;
+}
+.guide-content::-webkit-scrollbar { width: 10px; }
+.guide-content::-webkit-scrollbar-track { background: #17100a; }
+.guide-content::-webkit-scrollbar-thumb {
+  background: #6b5340;
+  border: 2px solid #17100a;
+  border-radius: 6px;
+}
+.guide-content::-webkit-scrollbar-thumb:hover { background: #f2b23a; }
+.guide-content::-webkit-scrollbar-button { display: none; height: 0; }
 .guide-title { margin: 0 0 14px; color: #f2b23a; font-size: 22px; }
 .guide-p { margin: 0 0 12px; color: #c9b896; font-size: 14px; line-height: 1.55; }
 .guide-h3 { margin: 16px 0 8px; color: #f2b23a; font-size: 15px; }

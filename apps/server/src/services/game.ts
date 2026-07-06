@@ -10,7 +10,6 @@ import {
   RACE_ENTRY_ENERGY,
   REST_COST,
   REST_ENERGY,
-  TRAIN_HAY_COST,
   buildWorld,
   bullSlots,
   energyPerMinute,
@@ -23,6 +22,7 @@ import {
   rollRarityIndex,
   statCap,
   TRAIN_STAT_GAIN,
+  trainHayCost,
   stableGoldNeed,
   stableWoodNeed,
   type MatType,
@@ -59,11 +59,12 @@ export async function trainBull(userId: string, bullId: number, stat: StatType) 
   if (!bull) throw new Error('Bull not found');
   const cap = statCap(mapBull(bull));
   const cur = normalizeStat(bull[stat]);
+  const cost = trainHayCost(bull.level);
   if (cur >= cap) throw new Error(`${stat} capped at ${cap}`);
-  if (profile.hay < TRAIN_HAY_COST) throw new Error(`Need ${TRAIN_HAY_COST} hay`);
+  if (profile.hay < cost) throw new Error(`Need ${cost} hay`);
 
   await prisma.$transaction([
-    prisma.playerProfile.update({ where: { userId }, data: { hay: profile.hay - TRAIN_HAY_COST } }),
+    prisma.playerProfile.update({ where: { userId }, data: { hay: profile.hay - cost } }),
     prisma.bull.update({ where: { id: bullId }, data: { [stat]: cur + TRAIN_STAT_GAIN } }),
   ]);
   return getMeResponse(userId);

@@ -44,6 +44,7 @@ interface GameStore {
   gather: { nodeId: string; start: number; dur: number; mat?: string } | null;
   buyDenConfirm: { plotId: number; label: string; price: number } | null;
   keys: Record<string, boolean>;
+  chatInputFocused: boolean;
   cam: { x: number; y: number };
   freeCamUntil: number;
   shopBulls: MeResponse['shopBulls'];
@@ -78,6 +79,7 @@ interface GameStore {
   setGather: (g: GameStore['gather']) => void;
   setBuyDenConfirm: (c: GameStore['buyDenConfirm']) => void;
   setKey: (code: string, down: boolean) => void;
+  setChatInputFocused: (v: boolean) => void;
   setCam: (x: number, y: number) => void;
   setFreeCamUntil: (t: number) => void;
   setPastures: (p: PasturePlotState[]) => void;
@@ -114,6 +116,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gather: null,
   buyDenConfirm: null,
   keys: {},
+  chatInputFocused: false,
   cam: { x: 33, y: 41 },
   freeCamUntil: 0,
   shopBulls: [],
@@ -202,6 +205,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setGather: (g) => set({ gather: g }),
   setBuyDenConfirm: (c) => set({ buyDenConfirm: c }),
   setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),
+  setChatInputFocused: (v) => set({ chatInputFocused: v }),
   setCam: (x, y) => set({ cam: { x, y } }),
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
   setPastures: (p) => set({ pastures: p }),

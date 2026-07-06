@@ -1,9 +1,37 @@
 import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
 import { ENERGY_REGEN_BASE_PER_MIN, INTERACT_USE_RANGE } from './constants.js';
-import { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN } from './stats.js';
+import {
+  normalizeStat,
+  statCap,
+  maxBullLevel,
+  matNodeType,
+  TRAIN_STAT_GAIN,
+  trainHayCost,
+  STAT_LEGACY_THRESHOLD,
+  STAT_LEGACY_MULT,
+} from './stats.js';
 
 export { isNearPasturePlot } from './pastures.js';
-export { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN } from './stats.js';
+export { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN, trainHayCost } from './stats.js';
+
+export function itemBonusAmt(amt: number): number {
+  if (amt < STAT_LEGACY_THRESHOLD && amt <= 20) return amt * STAT_LEGACY_MULT;
+  return amt;
+}
+
+export function bullBaseStat(bull: Bull, stat: StatType): number {
+  return normalizeStat(bull[stat]);
+}
+
+export function bullItemBonus(bull: Bull, stat: StatType, items: GameItem[]): number {
+  let bonus = 0;
+  for (const it of items) {
+    if (it.equippedTo === bull.id && it.bonus?.stat === stat) {
+      bonus += itemBonusAmt(it.bonus.amt);
+    }
+  }
+  return bonus;
+}
 
 export function shade(hex: string, amt: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -14,13 +42,7 @@ export function shade(hex: string, amt: number): string {
 }
 
 export function eff(bull: Bull, stat: StatType, items: GameItem[]): number {
-  let v = normalizeStat(bull[stat]);
-  for (const it of items) {
-    if (it.equippedTo === bull.id && it.bonus?.stat === stat) {
-      v += normalizeStat(it.bonus.amt);
-    }
-  }
-  return v;
+  return bullBaseStat(bull, stat) + bullItemBonus(bull, stat, items);
 }
 
 export function coatOf(bull: Bull, items: GameItem[]): string {

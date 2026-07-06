@@ -134,6 +134,25 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .bar-row { display: flex; align-items: center; gap: 8px; }
 .flex1 { flex: 1; }
 .grid-train { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; }
+.equip-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+.equip-slot {
+  background: #1a140e;
+  border: 2px solid #17100a;
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 52px;
+}
+.equip-slot.filled { border-color: #5fb4d8; background: #1e2830; }
+.equip-slot-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #c9b896; letter-spacing: 0.04em; }
+.equip-slot-name { font-size: 12px; font-weight: 700; line-height: 1.2; }
 .chance-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
 
 .gather-bar { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); width: 180px; height: 16px; background: #17100a; border: 3px solid #17100a; border-radius: 8px; overflow: hidden; }

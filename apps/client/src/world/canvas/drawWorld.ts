@@ -528,7 +528,7 @@ function drawGroundText(
   ctx: CanvasRenderingContext2D,
   wx: number,
   wy: number,
-  lines: { text: string; size: number; color: string; y: number }[],
+  lines: { text: string; size: number; color: string; y: number; x?: number }[],
   scale = 0.034,
 ) {
   const s = iso(wx, wy);
@@ -542,12 +542,59 @@ function drawGroundText(
     for (const line of lines) {
       ctx.font = `700 ${line.size}px 'Nunito', system-ui, sans-serif`;
       ctx.fillStyle = shadow ? 'rgba(23,16,10,0.9)' : line.color;
-      ctx.fillText(line.text, ox, line.y + oy);
+      ctx.fillText(line.text, ox + (line.x ?? 0), line.y + oy);
     }
     ctx.restore();
   };
   paint(2.5, 2.5, 0.75, true);
   paint(0, 0, 1);
+}
+
+type GroundLine = { text: string; size: number; color: string; y: number; x?: number };
+
+function raceListLayout(count: number): { fontSize: number; lineHeight: number; cols: number; scale: number; colGap: number } {
+  if (count <= 6) return { fontSize: 20, lineHeight: 30, cols: 1, scale: 0.032, colGap: 0 };
+  if (count <= 12) return { fontSize: 16, lineHeight: 24, cols: 2, scale: 0.028, colGap: 190 };
+  if (count <= 24) return { fontSize: 14, lineHeight: 20, cols: 2, scale: 0.026, colGap: 210 };
+  if (count <= 36) return { fontSize: 12, lineHeight: 16, cols: 3, scale: 0.023, colGap: 175 };
+  return { fontSize: 10, lineHeight: 13, cols: 3, scale: 0.02, colGap: 165 };
+}
+
+/** Multi-line / multi-column list in one ground transform — avoids isometric overlap. */
+function drawGroundTextList(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  options: {
+    header?: { text: string; size: number }[];
+    entries: string[];
+    scale?: number;
+  },
+) {
+  const count = Math.max(1, options.entries.length);
+  const layout = raceListLayout(count);
+  const scale = options.scale ?? layout.scale;
+  const perCol = Math.ceil(options.entries.length / layout.cols) || 1;
+  const lines: GroundLine[] = [];
+  let y = 0;
+
+  if (options.header?.length) {
+    for (const h of options.header) {
+      lines.push({ text: h.text, size: h.size, color: '#ffffff', y });
+      y += h.size + 10;
+    }
+    y += 6;
+  }
+
+  for (let c = 0; c < layout.cols; c++) {
+    const slice = options.entries.slice(c * perCol, (c + 1) * perCol);
+    const x = layout.cols === 1 ? 0 : (c - (layout.cols - 1) / 2) * layout.colGap;
+    slice.forEach((text, i) => {
+      lines.push({ text, size: layout.fontSize, color: '#ffffff', y: y + i * layout.lineHeight, x });
+    });
+  }
+
+  drawGroundText(ctx, wx, wy, lines, scale);
 }
 
 function drawRaceTrackBoard(
@@ -566,18 +613,13 @@ function drawRaceTrackBoard(
 
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
-    drawGroundText(ctx, wx, wy - 0.75, [
-      { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 64 : 52, color: '#ffffff', y: 0 },
-      { text: 'STARTING GRID', size: 22, color: '#ffffff', y: 48 },
-    ], 0.036);
-    raceGrid.bulls.slice(0, 6).forEach((b, i) => {
-      const row = Math.floor(i / 2);
-      const col = i % 2;
-      const tx = wx - 1.6 + col * 3.2;
-      const ty = wy + 0.75 + row * 0.5;
-      drawGroundText(ctx, tx, ty, [
-        { text: `${b.pos}. ${b.name}`, size: 18, color: '#ffffff', y: 0 },
-      ], 0.032);
+    const gridBulls = [...raceGrid.bulls].sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
+    drawGroundTextList(ctx, wx, wy + 0.15, {
+      header: [
+        { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 56 : 44 },
+        { text: 'STARTING GRID', size: 20 },
+      ],
+      entries: gridBulls.map((b) => `${b.pos}. ${b.name}`),
     });
     return;
   }
@@ -586,9 +628,6 @@ function drawRaceTrackBoard(
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
-    drawGroundText(ctx, wx, wy - 0.85, [
-      { text: `LAP ${lap}/${laps}`, size: 32, color: '#ffffff', y: 0 },
-    ], 0.036);
     const sorted = [...raceAnim.bulls].sort((a, b) => {
       const pa = a.lapTimes?.length
         ? raceProgressAt(el, a.lapTimes)
@@ -598,39 +637,29 @@ function drawRaceTrackBoard(
         : Math.min(1, el / (b.finishT ?? 1));
       return pb - pa;
     });
-    sorted.slice(0, 5).forEach((b, i) => {
-      drawGroundText(ctx, wx, wy + 0.1 + i * 0.46, [
-        { text: `${i + 1}. ${b.name}`, size: 20, color: '#ffffff', y: 0 },
-      ], 0.032);
+    drawGroundTextList(ctx, wx, wy + 0.15, {
+      header: [{ text: `LAP ${lap}/${laps}`, size: 28 }],
+      entries: sorted.map((b, i) => `${i + 1}. ${b.name}`),
     });
     return;
   }
 
   if (results?.length && resultsUntil && now < resultsUntil) {
     const labels = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
-    drawGroundText(ctx, wx, wy - 1.2, [
-      { text: 'RACE RESULTS', size: 28, color: '#ffffff', y: 0 },
-    ], 0.036);
-    results.slice(0, 5).forEach((r, i) => {
+    const resultLines = results.map((r) => {
       const label = labels[r.pos - 1] ?? `${r.pos}th`;
       const prize = r.prize ? `+${r.prize}g` : '—';
-      drawGroundText(ctx, wx - 0.9, wy - 0.5 + i * 0.46, [
-        {
-          text: `${label} ${r.name}`,
-          size: r.mine ? 22 : 20,
-          color: '#ffffff',
-          y: 0,
-        },
-      ], 0.032);
-      drawGroundText(ctx, wx + 2.4, wy - 0.5 + i * 0.46, [
-        { text: prize, size: 20, color: '#ffffff', y: 0 },
-      ], 0.032);
+      return `${label} ${r.name}  ${prize}`;
+    });
+    drawGroundTextList(ctx, wx, wy + 0.1, {
+      header: [{ text: 'RACE RESULTS', size: 26 }],
+      entries: resultLines,
     });
     if (betResult) {
       const short = betResult.length > 36 ? `${betResult.slice(0, 34)}…` : betResult;
-      drawGroundText(ctx, wx, wy + 1.2, [
-        { text: short, size: 18, color: '#ffffff', y: 0 },
-      ], 0.03);
+      drawGroundText(ctx, wx, wy + 2.8, [
+        { text: short, size: 16, color: '#ffffff', y: 0 },
+      ], 0.028);
     }
     return;
   }

@@ -66,16 +66,20 @@ export async function createStarterUser(userId: string) {
       wood: 4,
     },
   });
-  await prisma.bull.create({
+  const bull = await prisma.bull.create({
     data: {
       ownerId: userId,
       name: pickStarterBullName(Date.now()),
       coat: COAT_COLORS[Math.floor(Math.random() * COAT_COLORS.length)],
       trait: 'normal',
       rarity: 'common',
-      location: 'stable',
+      location: 'following',
       ...STARTER_BULL_STATS,
     },
+  });
+  await prisma.playerProfile.update({
+    where: { userId },
+    data: { followingBullIds: [bull.id] },
   });
   return profile;
 }

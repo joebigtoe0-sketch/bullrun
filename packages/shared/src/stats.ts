@@ -24,8 +24,13 @@ export function maxBullLevel(rarityOrTrait?: BullRarity | BullTrait): number {
 
 export function statCap(bull: { level: number; trait?: BullTrait; rarity?: BullRarity }): number {
   const rarity = inferBullRarity(bull.trait, bull.rarity);
-  const base = rarity === 'legendary' ? 200 : rarity === 'rare' ? 170 : rarity === 'uncommon' ? 155 : 140;
-  return base + bull.level * 6;
+  const base = rarity === 'legendary' ? 780 : rarity === 'rare' ? 720 : rarity === 'uncommon' ? 680 : 640;
+  return base + bull.level * 15;
+}
+
+/** Hay cost to train one stat — scales with bull level. */
+export function trainHayCost(level: number): number {
+  return 50 + level * 25;
 }
 
 export function matNodeType(mat: MatType): 'tree' | 'rock' | 'hay' {

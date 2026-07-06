@@ -20,6 +20,7 @@ import {
 import { worldData } from '../store/gameStore';
 
 const M = worldData.M;
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
 export function useGameLoop() {
   const meId = useGameStore((s) => s.me?.id);
@@ -32,7 +33,8 @@ export function useGameLoop() {
     if (!meId) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      if (useGameStore.getState().chatInputFocused) return;
+      if (MOVE_KEYS.includes(e.code)) {
         useGameStore.getState().setKey(e.code, true);
         e.preventDefault();
       }
@@ -41,7 +43,10 @@ export function useGameLoop() {
         useGameStore.getState().setInvOpen(false);
       }
     };
-    const onKeyUp = (e: KeyboardEvent) => useGameStore.getState().setKey(e.code, false);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (useGameStore.getState().chatInputFocused) return;
+      useGameStore.getState().setKey(e.code, false);
+    };
 
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);

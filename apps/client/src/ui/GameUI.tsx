@@ -27,14 +27,26 @@ import {
   inferBullRarity,
   BULL_MAX_ENERGY,
   FORGE_MIN_ORE,
-  TRAIN_HAY_COST,
   BREED_COST,
+  trainHayCost,
+  bullBaseStat,
+  bullItemBonus,
+  itemBonusAmt,
 } from '@bullrun/shared';
-import type { Bull, BullRarity, MatType, MeResponse, StatType } from '@bullrun/shared';
+import type { Bull, BullRarity, ItemSlot, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 
 const btn = 'br-btn';
+
+const EQUIP_SLOTS: ItemSlot[] = ['coat', 'horns', 'hooves', 'tail', 'accessory'];
+const SLOT_LABEL: Record<ItemSlot, string> = {
+  coat: 'Coat',
+  horns: 'Horns',
+  hooves: 'Hooves',
+  tail: 'Tail',
+  accessory: 'Gear',
+};
 const panel = 'br-panel';
 
 function bullRarity(bull: Bull): BullRarity {
@@ -162,17 +174,45 @@ function BullCard({ bull, items, onTrain, onRename, onEquip, onFollow, onDelete 
         <span className="muted">XP {Math.round(bull.xp)}/{bull.level * 100}</span>
       </div>
       {(['speed', 'stamina', 'accel'] as StatType[]).map((stat) => {
-        const base = Math.round(bull[stat]);
-        const total = Math.round(eff(bull, stat, items));
-        const bonus = total - base;
+        const base = Math.round(bullBaseStat(bull, stat));
+        const itemBonus = Math.round(bullItemBonus(bull, stat, items));
+        const total = base + itemBonus;
+        const trainCost = trainHayCost(bull.level);
+        const capped = base >= cap;
         return (
         <div key={stat} className="grid-train">
-          <span>{stat} <b className="gold stat-num">{base}{bonus > 0 ? `+${bonus}` : ''} / {cap}</b></span>
-          <button className="small-btn" onClick={() => onTrain(stat)}>Train · {TRAIN_HAY_COST} hay</button>
+          <span>
+            {stat}{' '}
+            <b className="gold stat-num">{base} / {cap}</b>
+            {itemBonus > 0 && <span className="blue sm"> (+{itemBonus} gear → {total})</span>}
+          </span>
+          <button className="small-btn" disabled={capped} onClick={() => onTrain(stat)}>
+            Train · {trainCost} hay
+          </button>
         </div>
         );
       })}
-      <div className="muted sm">Equipped: {equipped.length ? equipped.map((e) => e.name).join(', ') : 'nothing'}</div>
+      <div className="equip-slots">
+        {EQUIP_SLOTS.map((slot) => {
+          const item = equipped.find((e) => e.slot === slot);
+          return (
+            <div key={slot} className={`equip-slot${item ? ' filled' : ''}`} title={item?.name ?? `Empty ${SLOT_LABEL[slot]} slot`}>
+              <span className="equip-slot-label">{SLOT_LABEL[slot]}</span>
+              {item ? (
+                <>
+                  <span className="swatch" style={{ background: item.color }} />
+                  <span className="equip-slot-name">{item.name}</span>
+                  {item.bonus && (
+                    <span className="muted sm">+{itemBonusAmt(item.bonus.amt)} {item.bonus.stat}</span>
+                  )}
+                </>
+              ) : (
+                <span className="muted sm">empty</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
       <div className="row gap wrap">
         <button className={`${btn} blue sm`} onClick={onEquip}>Equip items</button>
         <button className={`${btn} sm`} onClick={toggleBreed}>Select to breed</button>
@@ -491,6 +531,7 @@ function InventoryPopup() {
   if (!invOpen) return null;
 
   const target = me.bulls.find((b) => b.id === equipTarget) || me.bulls[0];
+  const equippedOnTarget = target ? me.items.filter((it) => it.equippedTo === target.id) : [];
   const items = me.items.filter((it) => !it.equippedTo);
 
   return (
@@ -499,8 +540,24 @@ function InventoryPopup() {
         <span className="bold blue">Inventory</span>
         <button className="close-btn" onClick={() => setInvOpen(false)}>✕</button>
       </div>
-      <div className="muted sm">Equipping to: {target?.name}</div>
-      {items.length === 0 && <div className="muted center">No items — forge some ore!</div>}
+      <div className="muted sm">Equipping to: <b>{target?.name}</b></div>
+      {target && equippedOnTarget.length > 0 && (
+        <div className="card">
+          <div className="bold sm">Worn by {target.name}</div>
+          {equippedOnTarget.map((it) => (
+            <div key={it.id} className="row-between" style={{ marginTop: 6 }}>
+              <div className="row gap">
+                <span className="swatch" style={{ background: it.color }} />
+                <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
+                <span className="muted sm">{it.slot}</span>
+              </div>
+              <button className="small-btn" onClick={() => api.unequip(it.id).then(setMe).catch((e) => toast(e.message))}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="bold sm">Bag</div>
+      {items.length === 0 && <div className="muted center">No loose items — forge some ore!</div>}
       {items.map((it) => (
         <div key={it.id} className="card row-between">
           <div>

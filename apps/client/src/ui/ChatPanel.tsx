@@ -3,9 +3,13 @@ import { CHAT_MAX_LEN } from '@bullrun/shared';
 import { emitChat } from '../hooks/useSocket';
 import { useGameStore } from '../store/gameStore';
 
+const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+
 export function ChatPanel() {
   const chatLog = useGameStore((s) => s.chatLog);
   const userId = useGameStore((s) => s.user?.id);
+  const setChatInputFocused = useGameStore((s) => s.setChatInputFocused);
+  const setKey = useGameStore((s) => s.setKey);
   const [text, setText] = useState('');
   const [open, setOpen] = useState(true);
   const logRef = useRef<HTMLDivElement>(null);
@@ -20,6 +24,20 @@ export function ChatPanel() {
     if (!msg) return;
     emitChat(msg);
     setText('');
+  };
+
+  const releaseMoveKeys = () => {
+    for (const code of MOVE_KEYS) setKey(code, false);
+  };
+
+  const onChatFocus = () => {
+    setChatInputFocused(true);
+    releaseMoveKeys();
+  };
+
+  const onChatBlur = () => {
+    setChatInputFocused(false);
+    releaseMoveKeys();
   };
 
   return (
@@ -53,6 +71,8 @@ export function ChatPanel() {
               maxLength={CHAT_MAX_LEN}
               placeholder="Message…"
               onChange={(e) => setText(e.target.value)}
+              onFocus={onChatFocus}
+              onBlur={onChatBlur}
             />
             <button type="submit" className="br-btn sm gold" disabled={!text.trim()}>
               Send

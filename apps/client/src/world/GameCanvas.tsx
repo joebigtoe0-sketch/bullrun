@@ -6,9 +6,9 @@ import { useGameStore } from '../store/gameStore';
 import { WorldScene } from './WorldScene';
 import { gridToWorld } from '@bullrun/shared';
 
-const ISO_CAM_DIST = 22;
-const ISO_CAM_HEIGHT = 26;
-const ISO_ZOOM = 34;
+const ISO_CAM_DIST = 24;
+const ISO_CAM_HEIGHT = 28;
+const ISO_ZOOM = 24;
 
 function GameCamera() {
   const cam = useGameStore((s) => s.cam);

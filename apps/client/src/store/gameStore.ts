@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { MeResponse, OtherPlayer, PanelType, RaceResult } from '@bullrun/shared';
+import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait } from '@bullrun/shared';
 import { buildWorld } from '@bullrun/shared';
 
 export const worldData = buildWorld();
@@ -15,12 +15,13 @@ interface GameStore {
   otherPlayers: OtherPlayer[];
   nodeDead: Record<string, number>;
   raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
-  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number }>; startT: number; endT: number } | null;
+  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number }>; startT: number; endT: number } | null;
+  pastures: PasturePlotState[];
   results: RaceResult[] | null;
   betResult: string | null;
   forgeResult: string;
   moveTarget: { x: number; y: number } | null;
-  pending: { type: string; nodeId?: string; x: number; y: number } | null;
+  pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null;
   gather: { nodeId: string; start: number; dur: number } | null;
   keys: Record<string, boolean>;
   cam: { x: number; y: number };
@@ -50,6 +51,7 @@ interface GameStore {
   setKey: (code: string, down: boolean) => void;
   setCam: (x: number, y: number) => void;
   setFreeCamUntil: (t: number) => void;
+  setPastures: (p: PasturePlotState[]) => void;
   logout: () => void;
 }
 
@@ -77,6 +79,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   cam: { x: 33, y: 41 },
   freeCamUntil: 0,
   shopBulls: [],
+  pastures: [],
 
   setAuth: (token, user) => {
     localStorage.setItem('bullrun.token', token);
@@ -133,8 +136,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),
   setCam: (x, y) => set({ cam: { x, y } }),
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
+  setPastures: (p) => set({ pastures: p }),
   logout: () => {
     localStorage.removeItem('bullrun.token');
-    set({ token: null, user: null, me: null, otherPlayers: [] });
+    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [] });
   },
 }));

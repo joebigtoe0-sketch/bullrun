@@ -88,6 +88,11 @@ export const api = {
     request<MeResponse>('/market/buy-bull', { method: 'POST', body: JSON.stringify({ bull, price }) }),
   settings: (data: Record<string, unknown>) =>
     request<MeResponse>('/me/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  pastures: () => request<import('@bullrun/shared').PasturePlotState[]>('/pastures'),
+  buyPasture: (id: number) =>
+    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[] }>(`/pastures/${id}/buy`, { method: 'POST', body: '{}' }),
+  upgradePasture: (id: number) =>
+    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[]; woodToNext: number }>(`/pastures/${id}/upgrade`, { method: 'POST', body: '{}' }),
 };
 
 export function saveToken(token: string) {

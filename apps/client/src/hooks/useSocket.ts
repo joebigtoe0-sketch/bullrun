@@ -28,9 +28,11 @@ export function useSocket() {
     socket.on('world_snapshot', (data: {
       players: import('@bullrun/shared').OtherPlayer[];
       nodes: { id: string; deadUntil: number | null }[];
+      pastures: import('@bullrun/shared').PasturePlotState[];
       race: unknown;
     }) => {
       useGameStore.getState().setOtherPlayers(data.players);
+      useGameStore.getState().setPastures(data.pastures ?? []);
       for (const n of data.nodes) {
         if (n.deadUntil) useGameStore.getState().setNodeDead(n.id, n.deadUntil);
       }
@@ -50,6 +52,13 @@ export function useSocket() {
     });
     socket.on('node_respawned', ({ id }: { id: string }) => {
       useGameStore.getState().clearNodeDead(id);
+    });
+    socket.on('pastures_updated', (pastures: import('@bullrun/shared').PasturePlotState[]) => {
+      useGameStore.getState().setPastures(pastures);
+    });
+    socket.on('pasture_spawned', (data: { plotId: number; bull: { name: string; trait?: string } }) => {
+      const trait = data.bull.trait && data.bull.trait !== 'normal' ? ` (${data.bull.trait})` : '';
+      useGameStore.getState().toastMsg(`New bull in plot ${data.plotId + 1}: ${data.bull.name}${trait}!`);
     });
     socket.on('race_started', (data: {
       id: string;

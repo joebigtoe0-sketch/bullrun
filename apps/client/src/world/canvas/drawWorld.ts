@@ -5,13 +5,17 @@ import {
   WORLD_RY,
   TILE_COLORS,
   FENCE_RINGS,
+  PASTURE_PLOTS,
+  pastureCenter,
   fmtCountdown,
   coatOf,
   trackClamp,
   nodeId,
   type MeResponse,
   type OtherPlayer,
+  type PasturePlotState,
   type WorldObject,
+  type BullTrait,
 } from '@bullrun/shared';
 import { worldData } from '../../store/gameStore';
 
@@ -130,8 +134,119 @@ type DrawObj = WorldObject & {
   lvl?: number;
   name?: string;
   coat?: string;
+  trait?: BullTrait;
+  facingLeft?: boolean;
   isMe?: boolean;
 };
+
+function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: number): string {
+  if (trait === 'rainbow') return `hsl(${((now / 18 + wx * 30) % 360)}, 72%, 55%)`;
+  return coat || '#33261d';
+}
+
+function drawBullVoxel(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  now: number,
+  coat: string,
+  trait: BullTrait | undefined,
+  facingLeft: boolean,
+  labelText?: string,
+) {
+  const c = bullCoat(coat, trait, now, wx);
+  const ghost = trait === 'ghost';
+  const head = facingLeft ? -0.28 : 0.28;
+  const horn = facingLeft ? -0.3 : 0.3;
+  const legF = facingLeft ? -0.38 : 0.24;
+  const legB = facingLeft ? 0.24 : -0.38;
+  const s = iso(wx, wy);
+
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath();
+  ctx.ellipse(s.x, s.y, 14, 6, 0, 0, 7);
+  ctx.fill();
+
+  if (ghost) ctx.globalAlpha = 0.2;
+
+  cube(ctx, wx - 0.45, wy - 0.22, 0.9, 0.44, 11, 5, c, shade(c, -35), shade(c, -18));
+  cube(ctx, wx + head, wy - 0.18, 0.34, 0.36, 9, 10, c, shade(c, -35), shade(c, -18));
+  cube(ctx, wx + horn, wy - 0.3, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
+  cube(ctx, wx + horn, wy + 0.22, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
+  cube(ctx, wx + legB, wy - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
+  cube(ctx, wx + legF, wy - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
+
+  if (ghost) {
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y - 12, 16, 8, 0, 0, 7);
+    ctx.stroke();
+  }
+
+  if (labelText) label(ctx, wx, wy, labelText, 34, ghost ? '#e8e4ff' : '#fff');
+}
+
+function drawRectPastureFence(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
+  const corners = [
+    { x: cx, y: cy },
+    { x: cx + w, y: cy },
+    { x: cx + w, y: cy + h },
+    { x: cx, y: cy + h },
+  ];
+  const railHeights = [7, 14];
+
+  for (const rh of railHeights) {
+    ctx.strokeStyle = '#8a6a2e';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let i = 0; i <= corners.length; i++) {
+      const p = corners[i % corners.length];
+      const s = iso(p.x, p.y);
+      if (i === 0) ctx.moveTo(s.x, s.y - rh);
+      else ctx.lineTo(s.x, s.y - rh);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = '#e0c96a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i <= corners.length; i++) {
+      const p = corners[i % corners.length];
+      const s = iso(p.x, p.y);
+      if (i === 0) ctx.moveTo(s.x, s.y - rh - 1);
+      else ctx.lineTo(s.x, s.y - rh - 1);
+    }
+    ctx.stroke();
+  }
+
+  for (const p of corners) {
+    cube(ctx, p.x - 0.07, p.y - 0.07, 0.14, 0.14, 11, 0, '#e0c96a', '#a8913c', '#c4ad50');
+  }
+}
+
+function drawPasturePlots(
+  ctx: CanvasRenderingContext2D,
+  pastures: PasturePlotState[],
+  meId: string | undefined,
+) {
+  for (const def of PASTURE_PLOTS) {
+    drawRectPastureFence(ctx, def.cx, def.cy, def.w, def.h);
+    const state = pastures.find((p) => p.id === def.id);
+    const c = pastureCenter(def);
+    let lbl = `FOR SALE ${def.price}g`;
+    let col = '#7dc24f';
+    if (state?.ownerId) {
+      col = state.ownerId === meId ? '#f2b23a' : '#c9b896';
+      lbl = state.ownerId === meId ? `${def.label} · Lv${state.level}` : (state.ownerName ?? 'Taken');
+    }
+    label(ctx, c.x, c.y, lbl, 22, col);
+    if (state?.ownerId === meId) {
+      label(ctx, c.x, c.y, 'click: +10 wood', 38, '#bfe3a4');
+    }
+  }
+}
 
 function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number) {
   if (o.t === 'tree') {
@@ -215,19 +330,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
     const lbl = isMe ? 'You' : (o.name || 'Player');
     label(ctx, o.x, o.y, lbl, 40, isMe ? '#f2b23a' : '#fff');
   } else if (o.t === 'bull') {
-    const c = o.coat || '#33261d';
-    const s = iso(o.x, o.y);
-    ctx.fillStyle = 'rgba(0,0,0,.18)';
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y, 14, 6, 0, 0, 7);
-    ctx.fill();
-    cube(ctx, o.x - 0.45, o.y - 0.22, 0.9, 0.44, 11, 5, c, shade(c, -35), shade(c, -18));
-    cube(ctx, o.x + 0.28, o.y - 0.18, 0.34, 0.36, 9, 10, c, shade(c, -35), shade(c, -18));
-    cube(ctx, o.x + 0.3, o.y - 0.3, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
-    cube(ctx, o.x + 0.3, o.y + 0.22, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
-    cube(ctx, o.x - 0.38, o.y - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
-    cube(ctx, o.x + 0.24, o.y - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
-    if (o.label) label(ctx, o.x, o.y, o.label, 34, '#fff');
+    drawBullVoxel(ctx, o.x, o.y, now, o.coat || '#33261d', o.trait, o.facingLeft ?? false, o.label);
   }
 }
 
@@ -238,17 +341,18 @@ export interface DrawState {
   nodeDead: Record<string, number>;
   moveTarget: { x: number; y: number } | null;
   raceAnim: {
-    bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number }>;
     startT: number;
   } | null;
   raceLive: boolean;
+  pastures: PasturePlotState[];
   folPos: Record<number, { x: number; y: number }>;
   camOff: { x: number; y: number };
   dpr: number;
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, folPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, folPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -282,6 +386,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   }
 
   drawFenceRails(ctx);
+  drawPasturePlots(ctx, pastures, me?.id);
 
   drawRing(ctx, 0.82, '#f5f0e4');
   drawRing(ctx, 1.18, '#f5f0e4');
@@ -343,9 +448,37 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       }
       list.push({
         d: f.x + f.y,
-        o: { t: 'bull', x: f.x, y: f.y, coat: coatOf(b, me.items), label: b.name },
+        o: {
+          t: 'bull',
+          x: f.x,
+          y: f.y,
+          coat: coatOf(b, me.items),
+          trait: b.trait,
+          label: b.name,
+          facingLeft: f.x > me.position.x,
+        },
       });
     }
+  }
+
+  for (const plot of pastures) {
+    if (!plot.displayBull) continue;
+    const def = PASTURE_PLOTS.find((p) => p.id === plot.id);
+    if (!def) continue;
+    const c = pastureCenter(def);
+    const b = plot.displayBull;
+    list.push({
+      d: c.x + c.y,
+      o: {
+        t: 'bull',
+        x: c.x,
+        y: c.y,
+        coat: b.coat,
+        trait: b.trait,
+        label: b.name,
+        facingLeft: false,
+      },
+    });
   }
 
   if (raceAnim) {
@@ -356,7 +489,21 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       const er = 0.88 + (b.pos % 3) * 0.1;
       const bx = CX + Math.cos(a) * RX * er;
       const by = CY + Math.sin(a) * RY * er;
-      list.push({ d: bx + by, o: { t: 'bull', x: bx, y: by, coat: b.coat, label: b.name } });
+      const tx = -Math.sin(a) * RX * er;
+      const ty = Math.cos(a) * RY * er;
+      const facingLeft = (tx - ty) * 32 < 0;
+      list.push({
+        d: bx + by,
+        o: {
+          t: 'bull',
+          x: bx,
+          y: by,
+          coat: b.coat,
+          trait: b.trait as BullTrait | undefined,
+          label: b.name,
+          facingLeft,
+        },
+      });
     }
   }
 

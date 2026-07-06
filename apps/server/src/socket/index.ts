@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
+import { listPastures } from '../services/pasture.js';
 
 const onlinePlayers = new Map<string, { socketId: string; username: string; displayName: string; x: number; y: number; stableLevel: number }>();
 
@@ -43,6 +44,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
     onlinePlayers.set(userId, { socketId: socket.id, ...player });
 
     const nodes = await prisma.worldNode.findMany();
+    const pastures = await listPastures();
     const race = await prisma.race.findFirst({
       where: { status: { in: ['scheduled', 'running'] } },
       orderBy: { startAt: 'asc' },
@@ -67,6 +69,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
         mat: n.mat,
         deadUntil: n.deadUntil?.getTime() ?? null,
       })),
+      pastures,
       race: race
         ? { id: race.id, status: race.status, startAt: race.startAt.getTime(), field: race.field }
         : null,

@@ -55,7 +55,7 @@ export async function createStarterUser(userId: string) {
   return profile;
 }
 
-function mapBull(b: {
+export function mapBull(b: {
   id: number;
   name: string;
   level: number;
@@ -66,6 +66,7 @@ function mapBull(b: {
   temper: number;
   energy: number;
   coat: string;
+  trait: string;
 }): Bull {
   return {
     id: b.id,
@@ -78,6 +79,7 @@ function mapBull(b: {
     temper: b.temper,
     energy: b.energy,
     coat: b.coat,
+    trait: (b.trait as Bull['trait']) || 'normal',
   };
 }
 

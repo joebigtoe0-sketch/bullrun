@@ -4,11 +4,14 @@ import { useGameStore } from '../store/gameStore';
 import { useSocket } from '../hooks/useSocket';
 import {
   GATHER_DURATION_MS,
+  NODE_RESPAWN_MS,
   WORLD_CX,
   WORLD_CY,
   WORLD_RX,
   WORLD_RY,
   INTERACT_USE_RANGE,
+  PASTURE_PLOTS,
+  pastureCenter,
   nodeId,
   trackClamp,
   isNearInteractable,
@@ -111,6 +114,7 @@ export function useGameLoop() {
         s.setGather(null);
         api.gatherComplete(nodeIdStr).then((res) => {
           const r = res as { qty: number; mat: string; me: import('@bullrun/shared').MeResponse };
+          useGameStore.getState().setNodeDead(nodeIdStr, Date.now() + NODE_RESPAWN_MS);
           useGameStore.getState().setMe(r.me);
           useGameStore.getState().toastMsg(`+${r.qty} ${r.mat}`);
         }).catch((e) => useGameStore.getState().toastMsg(e.message));
@@ -120,7 +124,7 @@ export function useGameLoop() {
     const frame = (t: number) => {
       const dt = Math.min(0.05, (t - lastT) / 1000);
       lastT = t;
-      step(dt, t);
+      step(dt, Date.now());
       if (t - lastTick > 1000) {
         lastTick = t;
         api.me().then((m) => {
@@ -139,11 +143,34 @@ export function useGameLoop() {
   }, [meId]);
 }
 
-function execPending(pending: { type: string; nodeId?: string; x: number; y: number }) {
+function execPending(pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number }) {
   const s = useGameStore.getState();
   s.setPending(null);
   if (pending.type === 'gather' && pending.nodeId) {
     s.setGather({ nodeId: pending.nodeId, start: Date.now(), dur: GATHER_DURATION_MS });
+  } else if (pending.type === 'pasture' && pending.plotId !== undefined) {
+    const plot = s.pastures.find((p) => p.id === pending.plotId);
+    const def = PASTURE_PLOTS.find((p) => p.id === pending.plotId);
+    const pos = s.me?.position;
+    if (!plot || !def || !pos || Math.hypot(pos.x - pending.x, pos.y - pending.y) >= INTERACT_USE_RANGE) {
+      s.toastMsg('Get closer to the plot');
+      return;
+    }
+    if (!plot.ownerId) {
+      api.buyPasture(plot.id).then((r) => {
+        s.setMe(r.me);
+        s.setPastures(r.pastures);
+        s.toastMsg(`Bought ${def.label} for ${def.price}g!`);
+      }).catch((e) => s.toastMsg(e.message));
+    } else if (plot.ownerId === s.me?.id) {
+      api.upgradePasture(plot.id).then((r) => {
+        s.setMe(r.me);
+        s.setPastures(r.pastures);
+        s.toastMsg('Plot upgraded — faster bull spawns!');
+      }).catch((e) => s.toastMsg(e.message));
+    } else {
+      s.toastMsg(`Owned by ${plot.ownerName}`);
+    }
   } else if (['stable', 'bet', 'market', 'forge', 'race'].includes(pending.type)) {
     const pos = s.me?.position;
     if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race', worldData.interactables)) {
@@ -158,8 +185,17 @@ export function handleWorldClick(wx: number, wy: number) {
   const s = useGameStore.getState();
   if (wx <= 0 || wy <= 0 || wx >= M || wy >= M) return;
 
-  let best: { type: string; nodeId?: string; x: number; y: number } | null = null;
+  let best: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null = null;
   let bd = 1.6;
+
+  for (const def of PASTURE_PLOTS) {
+    const c = pastureCenter(def);
+    const d = Math.hypot(c.x - wx, c.y - wy);
+    if (d < Math.min(bd, 2.4)) {
+      bd = d;
+      best = { type: 'pasture', plotId: def.id, x: c.x, y: c.y };
+    }
+  }
 
   for (const it of worldData.interactables) {
     const d = Math.hypot(it.x - wx, it.y - wy);

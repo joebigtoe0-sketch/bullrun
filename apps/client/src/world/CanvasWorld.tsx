@@ -52,6 +52,7 @@ export function CanvasWorld() {
         moveTarget: state.moveTarget,
         raceAnim: state.raceAnim,
         raceLive: !!state.raceLive,
+        pastures: state.pastures,
         folPos: folPosRef.current,
         camOff: camOffRef.current,
         dpr: window.devicePixelRatio || 1,

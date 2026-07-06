@@ -23,7 +23,7 @@ import {
 } from '@bullrun/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
-import { getMeResponse } from './player.js';
+import { getMeResponse, mapBull } from './player.js';
 import { requireNearInteractable } from './proximity.js';
 
 type Io = SocketServer | null;
@@ -50,7 +50,7 @@ export async function trainBull(userId: string, bullId: number, stat: StatType) 
     getProfile(userId),
   ]);
   if (!bull) throw new Error('Bull not found');
-  const cap = statCap(bull);
+  const cap = statCap(mapBull(bull));
   if (bull[stat] >= cap) throw new Error(`${stat} capped at ${cap}`);
   if (profile.hay < TRAIN_HAY_COST) throw new Error('Need 6 hay');
 

@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from '../auth.js';
 import { prisma } from '../db.js';
 import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
+import * as pasture from '../services/pasture.js';
 import { odds, raceScore, type Bull, type GameItem } from '@bullrun/shared';
 
 export async function authRoutes(app: FastifyInstance) {
@@ -257,6 +258,26 @@ export async function gameRoutes(app: FastifyInstance) {
     try {
       const userId = (req.user as { sub: string }).sub;
       return await game.buyShopBull(userId, req.body.bull, req.body.price);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.get('/pastures', async () => pasture.listPastures());
+
+  app.post<{ Params: { id: string } }>('/pastures/:id/buy', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await pasture.buyPasture(userId, Number(req.params.id));
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Params: { id: string } }>('/pastures/:id/upgrade', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await pasture.upgradePasture(userId, Number(req.params.id));
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

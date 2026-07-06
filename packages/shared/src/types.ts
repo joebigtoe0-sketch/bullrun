@@ -4,6 +4,7 @@ export type ItemSlot = 'coat' | 'horns' | 'hooves' | 'tail' | 'accessory';
 export type RarityKey = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
 export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'help' | 'results' | null;
+export type BullTrait = 'normal' | 'rainbow' | 'ghost';
 
 export interface Materials {
   hay: number;
@@ -38,6 +39,7 @@ export interface Bull {
   temper: number;
   energy: number;
   coat: string;
+  trait?: BullTrait;
 }
 
 export interface NpcBull {
@@ -63,6 +65,7 @@ export interface RaceBull {
   temper: number;
   energy?: number;
   coat: string;
+  trait?: BullTrait;
   owner?: string;
   isMine?: boolean;
   isNpc?: boolean;
@@ -150,6 +153,23 @@ export interface WorldData {
   nodes: WorldNode[];
   interactables: Interactable[];
   npcs: NpcWanderer[];
+  pasturePlots: import('./pastures.js').PasturePlotDef[];
+}
+
+export interface PastureDisplayBull {
+  id: number;
+  name: string;
+  coat: string;
+  trait?: BullTrait;
+}
+
+export interface PasturePlotState {
+  id: number;
+  ownerId: string | null;
+  ownerName: string | null;
+  level: number;
+  woodInvested: number;
+  displayBull: PastureDisplayBull | null;
 }
 
 export interface PlayerPosition {

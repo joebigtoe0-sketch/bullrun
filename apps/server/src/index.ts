@@ -6,6 +6,7 @@ import { registerAuth } from './auth.js';
 import { authRoutes, gameRoutes } from './routes/index.js';
 import { setupSocket } from './socket/index.js';
 import { initWorldNodes } from './services/player.js';
+import { initPasturePlots, setPastureIo, startPastureSpawner } from './services/pasture.js';
 import { prisma } from './db.js';
 import { setIo as setGameIo } from './services/game.js';
 import { setRaceIo, startRaceScheduler } from './race/scheduler.js';
@@ -41,6 +42,7 @@ async function main() {
   await gameRoutes(app);
 
   await initWorldNodes();
+  await initPasturePlots();
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 
@@ -51,7 +53,9 @@ async function main() {
   setupSocket(io, app);
   setGameIo(io);
   setRaceIo(io);
+  setPastureIo(io);
   startRaceScheduler();
+  startPastureSpawner();
 
   console.log(`Bull Run server on :${PORT}`);
 }

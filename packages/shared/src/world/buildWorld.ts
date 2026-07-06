@@ -8,6 +8,7 @@ import {
   NPC_SHIRT_COLORS,
   FENCE_RINGS,
 } from '../constants.js';
+import { PASTURE_PLOTS } from '../pastures.js';
 import type { Interactable, NpcWanderer, TileType, WorldData, WorldNode, WorldObject } from '../types.js';
 
 function makeRng(seed: number) {
@@ -57,9 +58,6 @@ export function buildWorld(npcWanderers = 0): WorldData {
   };
   for (const { er, n } of FENCE_RINGS) fence(er, n);
 
-  [[9, 43], [15, 46], [22, 46], [31, 46], [38, 44], [46, 41], [47, 9], [5, 10]].forEach(([x, y]) =>
-    objs.push({ t: 'house', x, y })
-  );
   objs.push({ t: 'booth', x: 13, y: 9, label: 'BETS' });
   objs.push({ t: 'market', x: 43, y: 17, label: 'MARKET' });
   objs.push({ t: 'forge', x: 9, y: 30, label: 'FORGE' });
@@ -134,5 +132,5 @@ export function buildWorld(npcWanderers = 0): WorldData {
     });
   }
 
-  return { M, CX, CY, RX, RY, tiles, objs, nodes, interactables, npcs };
+  return { M, CX, CY, RX, RY, tiles, objs, nodes, interactables, npcs, pasturePlots: PASTURE_PLOTS };
 }

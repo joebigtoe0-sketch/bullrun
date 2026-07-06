@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { Html } from '@react-three/drei';
 import { TILE_COLORS, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY, nodeId, shade } from '@bullrun/shared';
 import { useGameStore, worldData } from '../store/gameStore';
 import { VoxelBox, Tile, gridPos } from './Voxel';
+import { WorldLabel } from './WorldLabel';
 import { handleWorldClick } from '../game/loop';
 
 function Tree({ x, y, big, dead }: { x: number; y: number; big?: boolean; dead?: boolean }) {
@@ -52,9 +52,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
       <group>
         <VoxelBox x={x - 1.2} y={y - 1} w={2.4} h={0.48} d={2} top="#c9a06a" left="#8a6538" right="#a8814d" />
         <VoxelBox x={x - 1.35} y={y - 1.15} w={2.7} h={0.2} d={2.3} elev={0.48} top="#8e3b2e" left="#5e2119" right="#762e23" />
-        <Html position={gridPos(x, y, 1.2)} center distanceFactor={12}>
-          <div className="world-label gold">{label} · Lv {lvl}</div>
-        </Html>
+        <WorldLabel position={gridPos(x, y, 1.2)} className="gold">{label} · Lv {lvl}</WorldLabel>
       </group>
     );
   }
@@ -62,26 +60,26 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
     <group>
       <VoxelBox x={x - 0.8} y={y - 0.6} w={1.6} h={0.36} d={1.2} top="#3b6ea5" left="#22436a" right="#2d5787" />
       <VoxelBox x={x - 0.95} y={y - 0.75} w={1.9} h={0.12} d={1.5} elev={0.36} top="#e8e0cc" left="#b0a88f" right="#ccc4ab" />
-      <Html position={gridPos(x, y, 0.8)} center distanceFactor={12}><div className="world-label cyan">{label}</div></Html>
+      <WorldLabel position={gridPos(x, y, 0.8)} className="cyan">{label}</WorldLabel>
     </group>
   );
   if (t === 'market') return (
     <group>
       <VoxelBox x={x - 0.9} y={y - 0.6} w={1.8} h={0.32} d={1.2} top="#a5522f" left="#6e321a" right="#8a4224" />
       <VoxelBox x={x - 1.05} y={y - 0.75} w={2.1} h={0.12} d={1.5} elev={0.32} top="#e0c96a" left="#a8913c" right="#c4ad50" />
-      <Html position={gridPos(x, y, 0.7)} center distanceFactor={12}><div className="world-label gold">{label}</div></Html>
+      <WorldLabel position={gridPos(x, y, 0.7)} className="gold">{label}</WorldLabel>
     </group>
   );
   if (t === 'forge') return (
     <group>
       <VoxelBox x={x - 0.9} y={y - 0.7} w={1.8} h={0.4} d={1.4} top="#6a6a66" left="#44443f" right="#57574f" />
-      <Html position={gridPos(x, y, 0.9)} center distanceFactor={12}><div className="world-label orange">{label}</div></Html>
+      <WorldLabel position={gridPos(x, y, 0.9)} className="orange">{label}</WorldLabel>
     </group>
   );
   if (t === 'sign') return (
     <group>
       <VoxelBox x={x - 0.06} y={y - 0.06} w={0.12} h={0.32} d={0.12} top="#8a6a44" left="#5e4527" right="#6f5432" />
-      <Html position={gridPos(x, y, 0.6)} center distanceFactor={12}><div className="world-label gold">{label}</div></Html>
+      <WorldLabel position={gridPos(x, y, 0.6)} className="gold">{label}</WorldLabel>
     </group>
   );
   if (t === 'post') return (
@@ -94,36 +92,34 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
 }
 
 function Avatar({ x, y, shirt, label, isMe }: { x: number; y: number; shirt: string; label: string; isMe?: boolean }) {
+  const [gx, , gz] = gridPos(x, y);
   const c = shirt;
   return (
-    <group position={gridPos(x, y)}>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group>
+      <mesh position={[gx, 0.02, gz]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.35, 16]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.18} />
       </mesh>
       <VoxelBox x={x - 0.18} y={y - 0.13} w={0.36} h={0.26} d={0.26} elev={0.06} top={c} left={shade(c, -40)} right={shade(c, -20)} />
       <VoxelBox x={x - 0.14} y={y - 0.11} w={0.28} h={0.18} d={0.22} elev={0.32} top="#e8c49a" left="#b08d64" right="#cca87d" />
-      <Html position={[0, 1.1, 0]} center distanceFactor={10}>
-        <div className={`world-label ${isMe ? 'gold' : 'white'}`}>{label}</div>
-      </Html>
+      <WorldLabel position={[gx, 1.1, gz]} className={isMe ? 'gold' : 'white'}>{label}</WorldLabel>
     </group>
   );
 }
 
 function BullAvatar({ x, y, coat, label }: { x: number; y: number; coat: string; label?: string }) {
+  const [gx, , gz] = gridPos(x, y);
   const c = coat;
   return (
-    <group position={gridPos(x, y)}>
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+    <group>
+      <mesh position={[gx, 0.02, gz]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.45, 16]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.18} />
       </mesh>
       <VoxelBox x={x - 0.45} y={y - 0.22} w={0.9} h={0.22} d={0.44} elev={0.1} top={c} left={shade(c, -35)} right={shade(c, -18)} />
       <VoxelBox x={x + 0.28} y={y - 0.18} w={0.34} h={0.18} d={0.36} elev={0.2} top={c} left={shade(c, -35)} right={shade(c, -18)} />
       {label && (
-        <Html position={[0, 0.9, 0]} center distanceFactor={10}>
-          <div className="world-label white">{label}</div>
-        </Html>
+        <WorldLabel position={[gx, 0.9, gz]} className="white">{label}</WorldLabel>
       )}
     </group>
   );
@@ -171,9 +167,7 @@ export function WorldScene() {
   const others = useGameStore((s) => s.otherPlayers);
   const nodeDead = useGameStore((s) => s.nodeDead);
   const raceAnim = useGameStore((s) => s.raceAnim);
-  const cam = useGameStore((s) => s.cam);
   const moveTarget = useGameStore((s) => s.moveTarget);
-  const now = Date.now();
 
   const tiles = useMemo(() => {
     const list: { x: number; y: number; color: string }[] = [];
@@ -185,7 +179,7 @@ export function WorldScene() {
 
   const raceBulls = useMemo(() => {
     if (!raceAnim) return [];
-    const el = now - raceAnim.startT;
+    const el = Date.now() - raceAnim.startT;
     return raceAnim.bulls.map((b) => {
       const prog = Math.min(1, el / b.finishT);
       const a = Math.PI / 2 + prog * Math.PI * 2;
@@ -196,9 +190,9 @@ export function WorldScene() {
         y: WORLD_CY + Math.sin(a) * WORLD_RY * er,
       };
     });
-  }, [raceAnim, now]);
+  }, [raceAnim]);
 
-  const camPos = gridPos(cam.x, cam.y, 0);
+  const now = Date.now();
 
   return (
     <group>
@@ -233,7 +227,6 @@ export function WorldScene() {
         </mesh>
       )}
       <GroundClick />
-      <group position={camPos} />
     </group>
   );
 }

@@ -32,7 +32,7 @@ function GameCamera() {
 
 export function GameCanvas() {
   return (
-    <Canvas style={{ position: 'absolute', inset: 0 }} gl={{ antialias: true }}>
+    <Canvas style={{ position: 'absolute', inset: 0 }} gl={{ antialias: true, alpha: false }}>
       <color attach="background" args={['#69a949']} />
       <GameCamera />
       <WorldScene />

@@ -99,6 +99,13 @@ export function fmtCountdown(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** Countdown for the next race — shows a friendly label once the clock hits zero. */
+export function fmtRaceCountdown(startAtMs: number, now = Date.now()): string {
+  const ms = startAtMs - now;
+  if (ms <= 0) return 'Starting…';
+  return fmtCountdown(ms);
+}
+
 export function nodeId(x: number, y: number, mat: string): string {
   return `${mat}:${x.toFixed(2)}:${y.toFixed(2)}`;
 }

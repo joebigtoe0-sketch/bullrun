@@ -8,7 +8,7 @@ import {
   PASTURE_PLOTS,
   pastureCenter,
   type PasturePlotDef,
-  fmtCountdown,
+  fmtRaceCountdown,
   coatOf,
   applyWorldCollision,
   trackClamp,
@@ -682,7 +682,7 @@ function drawRaceTrackBoard(
   }
 
   if (me?.race && !raceLive) {
-    const cd = fmtCountdown(new Date(me.race.startAt).getTime() - now);
+    const cd = fmtRaceCountdown(new Date(me.race.startAt).getTime(), now);
     drawGroundText(ctx, wx, CY - 0.35, [
       { text: 'NEXT RACE', size: 22, color: '#ffffff', y: -12 },
       { text: cd, size: 50, color: '#ffffff', y: 28 },

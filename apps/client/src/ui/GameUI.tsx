@@ -16,6 +16,7 @@ import {
   stableWoodNeed,
   energyPerMinute,
   fmtCountdown,
+  fmtRaceCountdown,
   RARITIES,
   MAX_FOLLOWING_BULLS,
   PASTURE_PLOTS,
@@ -343,7 +344,7 @@ function RacePanel() {
   const toast = useGameStore((s) => s.toastMsg);
   const raceLive = useGameStore((s) => s.raceLive);
   const followingBulls = me.bulls.filter((b) => me.followingBullIds?.includes(b.id));
-  const cd = me.race ? fmtCountdown(new Date(me.race.startAt).getTime() - Date.now()) : '—';
+  const cd = me.race ? fmtRaceCountdown(new Date(me.race.startAt).getTime()) : '—';
   const alreadyEntered = me.entered.length > 0;
 
   return (
@@ -679,7 +680,7 @@ export function GameUI() {
     navigateToBuilding(p);
   };
 
-  const cd = me.race ? fmtCountdown(new Date(me.race.startAt).getTime() - Date.now()) : '—';
+  const cd = me.race ? fmtRaceCountdown(new Date(me.race.startAt).getTime()) : '—';
   const slots = bullSlots(me.stable.level);
 
   return (

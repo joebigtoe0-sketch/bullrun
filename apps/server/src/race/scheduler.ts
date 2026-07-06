@@ -79,6 +79,9 @@ async function buildRaceField(raceId: string): Promise<RaceBull[]> {
 }
 
 async function startRace(raceId: string) {
+  const row = await prisma.race.findUnique({ where: { id: raceId } });
+  if (!row || row.status !== 'scheduled') return;
+
   const bulls = await buildRaceField(raceId);
   const now = Date.now();
   const endT = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
@@ -191,50 +194,124 @@ async function finishRace(raceId: string) {
   io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field });
 }
 
-export function startRaceScheduler() {
-  void ensureScheduledRace().then((race) => {
-    io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
+/** Finish a race that lost in-memory state (e.g. server restarted mid-race). */
+async function salvageRunningRace(raceId: string) {
+  const row = await prisma.race.findUnique({ where: { id: raceId } });
+  if (!row || row.status !== 'running' || activeRaces.has(raceId)) return;
+
+  console.warn(`[race] Salvaging orphaned running race ${raceId}`);
+  const bulls = await buildRaceField(raceId);
+  const span = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
+  const endT = Date.now();
+  activeRaces.set(raceId, { bulls, startT: endT - span, endT });
+  await finishRace(raceId);
+}
+
+async function recoverRaceState() {
+  const stuck = await prisma.race.findMany({
+    where: { status: 'running' },
+    orderBy: { startAt: 'asc' },
   });
-
-  schedulerTimer = setInterval(async () => {
-    const now = Date.now();
-    const gridWindow = await prisma.race.findFirst({
-      where: {
-        status: 'scheduled',
-        startAt: { lte: new Date(now + 10_000), gt: new Date(now) },
-      },
-      orderBy: { startAt: 'asc' },
-    });
-    if (gridWindow && !gridEmitted.has(gridWindow.id)) {
-      gridEmitted.add(gridWindow.id);
-      const bulls = await buildRaceField(gridWindow.id);
-      io?.emit('race_grid', {
-        id: gridWindow.id,
-        bulls,
-        startAt: gridWindow.startAt.getTime(),
-        laps: RACE_LAPS,
-      });
+  for (const race of stuck) {
+    if (!activeRaces.has(race.id)) {
+      await salvageRunningRace(race.id);
     }
+  }
 
-    const due = await prisma.race.findFirst({
+  let overdue = await prisma.race.findFirst({
+    where: { status: 'scheduled', startAt: { lte: new Date() } },
+    orderBy: { startAt: 'asc' },
+  });
+  while (overdue) {
+    gridEmitted.delete(overdue.id);
+    try {
+      await startRace(overdue.id);
+    } catch (err) {
+      console.error('[race] Failed to start overdue race', overdue.id, err);
+      await prisma.race.update({
+        where: { id: overdue.id },
+        data: { status: 'finished', results: [] },
+      });
+      break;
+    }
+    overdue = await prisma.race.findFirst({
       where: { status: 'scheduled', startAt: { lte: new Date() } },
       orderBy: { startAt: 'asc' },
     });
-    if (due) {
-      gridEmitted.delete(due.id);
-      await startRace(due.id);
-    }
+  }
 
-    const nodes = await prisma.worldNode.findMany({
-      where: { deadUntil: { lte: new Date() } },
+  return ensureScheduledRace();
+}
+
+async function schedulerTick() {
+  const now = Date.now();
+
+  const orphaned = await prisma.race.findMany({ where: { status: 'running' } });
+  for (const race of orphaned) {
+    if (!activeRaces.has(race.id)) {
+      await salvageRunningRace(race.id);
+    }
+  }
+
+  const gridWindow = await prisma.race.findFirst({
+    where: {
+      status: 'scheduled',
+      startAt: { lte: new Date(now + 10_000), gt: new Date(now) },
+    },
+    orderBy: { startAt: 'asc' },
+  });
+  if (gridWindow && !gridEmitted.has(gridWindow.id)) {
+    gridEmitted.add(gridWindow.id);
+    const bulls = await buildRaceField(gridWindow.id);
+    io?.emit('race_grid', {
+      id: gridWindow.id,
+      bulls,
+      startAt: gridWindow.startAt.getTime(),
+      laps: RACE_LAPS,
     });
-    for (const n of nodes) {
-      await prisma.worldNode.update({ where: { id: n.id }, data: { deadUntil: null } });
-      io?.emit('node_respawned', { id: n.id });
-    }
+  }
 
-    const users = await prisma.user.findMany({ select: { id: true } });
-    for (const u of users) await completeBreed(u.id);
+  const due = await prisma.race.findFirst({
+    where: { status: 'scheduled', startAt: { lte: new Date() } },
+    orderBy: { startAt: 'asc' },
+  });
+  if (due) {
+    gridEmitted.delete(due.id);
+    try {
+      await startRace(due.id);
+    } catch (err) {
+      console.error('[race] startRace failed for', due.id, err);
+      const staleMs = now - due.startAt.getTime();
+      if (staleMs > 120_000) {
+        console.warn(`[race] Abandoning stale scheduled race ${due.id} (${Math.round(staleMs / 1000)}s overdue)`);
+        await prisma.race.update({
+          where: { id: due.id },
+          data: { status: 'finished', results: [] },
+        });
+        await ensureScheduledRace();
+      }
+    }
+  }
+
+  const nodes = await prisma.worldNode.findMany({
+    where: { deadUntil: { lte: new Date() } },
+  });
+  for (const n of nodes) {
+    await prisma.worldNode.update({ where: { id: n.id }, data: { deadUntil: null } });
+    io?.emit('node_respawned', { id: n.id });
+  }
+
+  const users = await prisma.user.findMany({ select: { id: true } });
+  for (const u of users) await completeBreed(u.id);
+}
+
+export function startRaceScheduler() {
+  void recoverRaceState().then((race) => {
+    io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
+  });
+
+  schedulerTimer = setInterval(() => {
+    void schedulerTick().catch((err) => console.error('[race] scheduler tick error', err));
   }, 1000);
 
   setInterval(() => {

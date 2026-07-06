@@ -82,6 +82,7 @@ export function useGameLoop() {
           } else {
             s.setMovePath(null);
             s.setMoveTarget(null);
+            s.setWalkDestination(null);
             if (s.pending) execPending(s.pending);
           }
         } else {
@@ -169,7 +170,9 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
   const s = useGameStore.getState();
   s.setPending(null);
   if (pending.type === 'gather' && pending.nodeId) {
-    const node = worldData.nodes.find((n) => nodeId(n.x, n.y, n.mat) === pending.nodeId);
+    const node = (s.worldNodes.length ? s.worldNodes : worldData.nodes.map((n) => ({
+      id: nodeId(n.x, n.y, n.mat), x: n.x, y: n.y, mat: n.mat,
+    }))).find((n) => n.id === pending.nodeId);
     s.setGather({
       nodeId: pending.nodeId,
       start: Date.now(),
@@ -219,6 +222,7 @@ function startMoveTo(
 
   s.setPending(pending);
   s.setMovePath(path);
+  s.setWalkDestination({ x: tx, y: ty });
 
   if (
     pending &&
@@ -252,13 +256,18 @@ export function handleWorldClick(wx: number, wy: number) {
   }
 
   const now = Date.now();
-  for (const n of worldData.nodes) {
-    const id = nodeId(n.x, n.y, n.mat);
-    if (s.nodeDead[id] && s.nodeDead[id] > now) continue;
+  const nodes = s.worldNodes.length ? s.worldNodes : worldData.nodes.map((n) => ({
+    id: nodeId(n.x, n.y, n.mat),
+    x: n.x,
+    y: n.y,
+    mat: n.mat,
+  }));
+  for (const n of nodes) {
+    if (s.nodeDead[n.id] && s.nodeDead[n.id] > now) continue;
     const d = Math.hypot(n.x - wx, n.y - wy);
     if (d < Math.min(bd, 1.2)) {
       bd = d;
-      best = { type: 'gather', nodeId: id, x: n.x, y: n.y };
+      best = { type: 'gather', nodeId: n.id, x: n.x, y: n.y };
     }
   }
 
@@ -269,4 +278,17 @@ export function handleWorldClick(wx: number, wy: number) {
     s.setPending(null);
     startMoveTo(wx, wy, null);
   }
+}
+
+export function navigateToBuilding(p: 'stable' | 'race' | 'bet' | 'market' | 'forge') {
+  const s = useGameStore.getState();
+  const me = s.me;
+  if (!me) return;
+  const it = worldData.interactables.find((i) => i.t === p);
+  if (!it) return;
+  if (isNearInteractable(me.position.x, me.position.y, p, worldData.interactables)) {
+    s.setPanel(p);
+    return;
+  }
+  startMoveTo(it.x, it.y, { type: p, x: it.x, y: it.y });
 }

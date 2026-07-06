@@ -102,9 +102,9 @@ export function rollPastureBull(seed: number): {
     name: CALF_NAMES[Math.floor(rng() * CALF_NAMES.length)],
     coat,
     trait,
-    speed: 4 + Math.floor(rng() * 5),
-    stamina: 4 + Math.floor(rng() * 5),
-    accel: 4 + Math.floor(rng() * 5),
+    speed: 45 + Math.floor(rng() * 35),
+    stamina: 45 + Math.floor(rng() * 35),
+    accel: 45 + Math.floor(rng() * 35),
     temper: 1 + Math.floor(rng() * 7),
   };
 }

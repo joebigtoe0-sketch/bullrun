@@ -1,7 +1,9 @@
 import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
 import { INTERACT_USE_RANGE } from './constants.js';
+import { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN } from './stats.js';
 
 export { isNearPasturePlot } from './pastures.js';
+export { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN } from './stats.js';
 
 export function shade(hex: string, amt: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -12,9 +14,11 @@ export function shade(hex: string, amt: number): string {
 }
 
 export function eff(bull: Bull, stat: StatType, items: GameItem[]): number {
-  let v = bull[stat];
+  let v = normalizeStat(bull[stat]);
   for (const it of items) {
-    if (it.equippedTo === bull.id && it.bonus?.stat === stat) v += it.bonus.amt;
+    if (it.equippedTo === bull.id && it.bonus?.stat === stat) {
+      v += normalizeStat(it.bonus.amt);
+    }
   }
   return v;
 }
@@ -22,10 +26,6 @@ export function eff(bull: Bull, stat: StatType, items: GameItem[]): number {
 export function coatOf(bull: Bull, items: GameItem[]): string {
   const c = items.find((it) => it.equippedTo === bull.id && it.slot === 'coat');
   return c ? c.color : bull.coat;
-}
-
-export function statCap(bull: Bull): number {
-  return 10 + bull.level * 2;
 }
 
 export function bullSlots(stableLevel: number): number {

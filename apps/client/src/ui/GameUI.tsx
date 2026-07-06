@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import {
-  NPC_CATALOG,
   MAT_SWATCHES,
   bullSlots,
   denCapacity,
@@ -10,17 +9,18 @@ import {
   coatOf,
   forgeChances,
   statCap,
+  maxBullLevel,
+  MARKET_LIST_QUANTITIES,
   stableGoldNeed,
   stableWoodNeed,
   fmtCountdown,
   RARITIES,
-  isNearInteractable,
   MAX_FOLLOWING_BULLS,
   PASTURE_PLOTS,
   PASTURE_WOOD_UPGRADE_COST,
 } from '@bullrun/shared';
 import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
-import { worldData } from '../store/gameStore';
+import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 import { RaceTrackBoard } from './RaceTrackBoard';
 
@@ -113,6 +113,7 @@ function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, on
   onFollow?: () => void; onDelete?: () => void;
 }) {
   const cap = statCap(bull);
+  const maxLv = maxBullLevel(bull.trait);
   const coat = coatOf(bull, items);
   const equipped = items.filter((it) => it.equippedTo === bull.id);
   const setMe = useGameStore((s) => s.setMe);
@@ -132,7 +133,7 @@ function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, on
         <div className="row gap">
           <span className="swatch" style={{ background: coat }} />
           <span className="bold lg">{bull.name}</span>
-          <span className="badge">Lv {bull.level}</span>
+          <span className="badge">Lv {bull.level}/{maxLv}</span>
         </div>
         <button className="small-btn" onClick={onRename}>Rename</button>
       </div>
@@ -141,12 +142,17 @@ function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, on
         <span>{Math.round(bull.energy)}</span>
         <span className="muted">XP {Math.round(bull.xp)}/{bull.level * 100}</span>
       </div>
-      {(['speed', 'stamina', 'accel'] as StatType[]).map((stat) => (
+      {(['speed', 'stamina', 'accel'] as StatType[]).map((stat) => {
+        const base = Math.round(bull[stat]);
+        const total = Math.round(eff(bull, stat, items));
+        const bonus = total - base;
+        return (
         <div key={stat} className="grid-train">
-          <span>{stat} <b className="gold">{bull[stat]}{eff(bull, stat, items) > bull[stat] ? `+${eff(bull, stat, items) - bull[stat]}` : ''} / {cap}</b></span>
+          <span>{stat} <b className="gold stat-num">{base}{bonus > 0 ? `+${bonus}` : ''} / {cap}</b></span>
           <button className="small-btn" onClick={() => onTrain(stat)}>Train · 6 hay</button>
         </div>
-      ))}
+        );
+      })}
       <div className="muted sm">Equipped: {equipped.length ? equipped.map((e) => e.name).join(', ') : 'nothing'}</div>
       <div className="row gap wrap">
         <button className={`${btn} blue sm`} onClick={onEquip}>Equip items</button>
@@ -342,7 +348,6 @@ function MarketPanel() {
   const me = useGameStore((s) => s.me)!;
   const setPanel = useGameStore((s) => s.setPanel);
   const setMe = useGameStore((s) => s.setMe);
-  const shopBulls = useGameStore((s) => s.shopBulls);
   const toast = useGameStore((s) => s.toastMsg);
 
   const mats: MatType[] = ['hay', 'ore', 'wood'];
@@ -351,38 +356,44 @@ function MarketPanel() {
     <div className={panel}>
       <PanelHeader title="Player Market" onClose={() => setPanel(null)} />
       <div className="panel-body">
-        <div className="muted sm">LIST MATERIALS · 5% FEE</div>
+        <div className="muted sm">LIST MATERIALS · 5% FEE · CHOOSE QUANTITY</div>
         {mats.map((m) => (
-          <div key={m} className="card row-between">
-            <div className="row gap"><span className="swatch" style={{ background: MAT_SWATCHES[m] }} /><span className="bold">{m}</span> ×{me.mats[m]}</div>
-            <div className="row gap">
-              <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: Math.max(1, me.listPrice[m] - 1) } }).then(setMe)}>−</button>
-              <span className="gold">{me.listPrice[m]}g</span>
-              <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: me.listPrice[m] + 1 } }).then(setMe)}>+</button>
-              <button className={`${btn} green sm`} onClick={() => api.listMaterial(m, me.listPrice[m]).then(setMe).catch((e) => toast(e.message))}>List 10</button>
+          <div key={m} className="card">
+            <div className="row-between">
+              <div className="row gap"><span className="swatch" style={{ background: MAT_SWATCHES[m] }} /><span className="bold">{m}</span> ×{me.mats[m]}</div>
+              <div className="row gap">
+                <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: Math.max(1, me.listPrice[m] - 1) } }).then(setMe)}>−</button>
+                <span className="gold stat-num">{me.listPrice[m]}g/u</span>
+                <button className="small-btn" onClick={() => api.settings({ listPrice: { ...me.listPrice, [m]: me.listPrice[m] + 1 } }).then(setMe)}>+</button>
+              </div>
+            </div>
+            <div className="row gap wrap" style={{ marginTop: 8 }}>
+              {MARKET_LIST_QUANTITIES.map((qty) => (
+                <button
+                  key={qty}
+                  className={`${btn} green sm`}
+                  disabled={me.mats[m] < qty}
+                  onClick={() => api.listMaterial(m, me.listPrice[m], qty).then(setMe).catch((e) => toast(e.message))}
+                >
+                  List {qty}
+                </button>
+              ))}
             </div>
           </div>
         ))}
-        {me.marketListings?.map((l) => (
-          <div key={l.id} className="card row-between">
-            <span>{l.qty} {l.mat} @ {l.price}g — {l.sellerName}</span>
-            <button className={`${btn} gold sm`} onClick={() => api.buyListing(l.id).then(setMe).catch((e) => toast(e.message))}>Buy {l.price}g</button>
-          </div>
-        ))}
-        <div className="muted sm">BULLS FOR SALE</div>
-        {shopBulls.map((sb, i) => (
-          <div key={i} className="card row-between">
-            <div><span className="bold">{sb.name}</span> <span className="muted sm">seller: {sb.seller}</span></div>
-            <button className={`${btn} gold sm`} onClick={() => api.buyShopBull(sb as unknown as Record<string, unknown>, sb.price).then(setMe).catch((e) => toast(e.message))}>{sb.price}g</button>
-          </div>
-        ))}
-        <div className="muted sm">NPC CATALOG</div>
-        {NPC_CATALOG.map((c) => (
-          <div key={c.name} className="card row-between">
-            <span className="bold">{c.name}</span>
-            <button className={`${btn} gold sm`} onClick={() => api.buyNpc(c.mat, c.price).then(setMe).catch((e) => toast(e.message))}>{c.price}g</button>
-          </div>
-        ))}
+        {me.marketListings?.length ? (
+          <>
+            <div className="muted sm">OPEN LISTINGS</div>
+            {me.marketListings.map((l) => (
+              <div key={l.id} className="card row-between">
+                <span>{l.qty} {l.mat} @ {l.price}g — {l.sellerName}</span>
+                <button className={`${btn} gold sm`} onClick={() => api.buyListing(l.id).then(setMe).catch((e) => toast(e.message))}>Buy {l.price}g</button>
+              </div>
+            ))}
+          </>
+        ) : (
+          <div className="muted sm">No open listings yet — be the first to sell.</div>
+        )}
       </div>
     </div>
   );
@@ -569,7 +580,6 @@ export function GameUI() {
   const raceLive = useGameStore((s) => s.raceLive);
   const setPanel = useGameStore((s) => s.setPanel);
   const setInvOpen = useGameStore((s) => s.setInvOpen);
-  const toastMsg = useGameStore((s) => s.toastMsg);
   const invCount = me?.items.filter((i) => !i.equippedTo).length ?? 0;
 
   if (!me) return null;
@@ -579,12 +589,7 @@ export function GameUI() {
       setPanel(null);
       return;
     }
-    const pos = me.position;
-    if (!isNearInteractable(pos.x, pos.y, p, worldData.interactables)) {
-      toastMsg('Get closer to use that');
-      return;
-    }
-    setPanel(p);
+    navigateToBuilding(p);
   };
 
   const cd = me.race ? fmtCountdown(new Date(me.race.startAt).getTime() - Date.now()) : '—';

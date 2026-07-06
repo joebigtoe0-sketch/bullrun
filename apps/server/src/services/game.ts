@@ -4,7 +4,6 @@ import {
   BREED_DURATION_MS,
   GATHER_DURATION_MS,
   MARKET_FEE,
-  MARKET_LIST_QTY,
   NODE_RESPAWN_MS,
   RACE_ENTRY_ENERGY,
   RACE_ENTRY_FEE,
@@ -16,8 +15,10 @@ import {
   energyRegen,
   makeItem,
   nodeId,
+  normalizeStat,
   rollRarityIndex,
   statCap,
+  TRAIN_STAT_GAIN,
   stableGoldNeed,
   stableWoodNeed,
   type MatType,
@@ -53,12 +54,13 @@ export async function trainBull(userId: string, bullId: number, stat: StatType) 
   ]);
   if (!bull) throw new Error('Bull not found');
   const cap = statCap(mapBull(bull));
-  if (bull[stat] >= cap) throw new Error(`${stat} capped at ${cap}`);
+  const cur = normalizeStat(bull[stat]);
+  if (cur >= cap) throw new Error(`${stat} capped at ${cap}`);
   if (profile.hay < TRAIN_HAY_COST) throw new Error('Need 6 hay');
 
   await prisma.$transaction([
     prisma.playerProfile.update({ where: { userId }, data: { hay: profile.hay - TRAIN_HAY_COST } }),
-    prisma.bull.update({ where: { id: bullId }, data: { [stat]: bull[stat] + 1 } }),
+    prisma.bull.update({ where: { id: bullId }, data: { [stat]: cur + TRAIN_STAT_GAIN } }),
   ]);
   return getMeResponse(userId);
 }
@@ -335,24 +337,27 @@ export async function placeBet(userId: string, targetBullId: string, targetName:
   return getMeResponse(userId);
 }
 
-export async function listMaterial(userId: string, mat: MatType, pricePerUnit: number) {
+export async function listMaterial(userId: string, mat: MatType, pricePerUnit: number, qty: number) {
   await requireNearInteractable(userId, 'market');
+  const allowed = [100, 500, 1000];
+  if (!allowed.includes(qty)) throw new Error('List 100, 500, or 1000 only');
+
   const p = await getProfile(userId);
   const field = mat;
-  if ((p[field] as number) < MARKET_LIST_QTY) throw new Error(`Need ${MARKET_LIST_QTY} ${mat}`);
+  if ((p[field] as number) < qty) throw new Error(`Need ${qty} ${mat}`);
 
   const listing = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.playerProfile.update({
       where: { userId },
-      data: { [field]: (p[field] as number) - MARKET_LIST_QTY },
+      data: { [field]: (p[field] as number) - qty },
     });
     return tx.marketListing.create({
       data: {
         sellerId: userId,
         type: 'material',
         mat,
-        qty: MARKET_LIST_QTY,
-        price: pricePerUnit * MARKET_LIST_QTY,
+        qty,
+        price: pricePerUnit * qty,
         status: 'open',
       },
       include: { seller: true },
@@ -365,7 +370,7 @@ export async function listMaterial(userId: string, mat: MatType, pricePerUnit: n
     sellerName: listing.seller.displayName,
     type: 'material' as const,
     mat,
-    qty: MARKET_LIST_QTY,
+    qty,
     price: listing.price,
     status: 'open' as const,
   };

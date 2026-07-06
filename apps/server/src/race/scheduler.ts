@@ -4,9 +4,11 @@ import {
   RACE_LAPS,
   buildRaceResults,
   liveStandings,
+  maxBullLevel,
   pickNpcField,
   simulateRace,
   type RaceBull,
+  type BullTrait,
 } from '@bullrun/shared';
 import type { Server as SocketServer } from 'socket.io';
 import type { RaceEntry, Item as PrismaItem } from '@prisma/client';
@@ -129,8 +131,13 @@ async function finishRace(raceId: string) {
         const xpGain = rb.pos === 1 ? 60 : Math.max(10, 40 - (rb.pos ?? 1) * 5);
         let xp = bull.xp + xpGain;
         let level = bull.level;
-        const need = level * 100;
-        if (xp >= need) { level++; xp -= need; }
+        const maxLv = maxBullLevel((bull.trait as BullTrait) || 'normal');
+        let need = level * 100;
+        while (xp >= need && level < maxLv) {
+          level++;
+          xp -= need;
+          need = level * 100;
+        }
         await prisma.bull.update({
           where: { id: bull.id },
           data: { xp, level, energy: Math.max(0, bull.energy - 10) },

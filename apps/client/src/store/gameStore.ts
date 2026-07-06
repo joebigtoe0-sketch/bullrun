@@ -1,8 +1,22 @@
 import { create } from 'zustand';
 import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait } from '@bullrun/shared';
-import { buildWorld } from '@bullrun/shared';
+import { buildWorld, nodeId } from '@bullrun/shared';
+import type { MatType } from '@bullrun/shared';
+
+export interface SyncedWorldNode {
+  id: string;
+  x: number;
+  y: number;
+  mat: MatType;
+}
 
 export const worldData = buildWorld();
+const seedNodes: SyncedWorldNode[] = worldData.nodes.map((n) => ({
+  id: nodeId(n.x, n.y, n.mat),
+  x: n.x,
+  y: n.y,
+  mat: n.mat,
+}));
 
 interface GameStore {
   token: string | null;
@@ -14,6 +28,8 @@ interface GameStore {
   toast: string;
   otherPlayers: OtherPlayer[];
   nodeDead: Record<string, number>;
+  worldNodes: SyncedWorldNode[];
+  walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
   raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startT: number; endT: number; laps?: number } | null;
   raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startAt: number; laps: number } | null;
@@ -45,6 +61,8 @@ interface GameStore {
   removeOtherPlayer: (id: string) => void;
   setNodeDead: (id: string, until: number) => void;
   clearNodeDead: (id: string) => void;
+  setWorldNodes: (nodes: SyncedWorldNode[]) => void;
+  setWalkDestination: (d: { x: number; y: number } | null) => void;
   setRaceLive: (r: GameStore['raceLive']) => void;
   setRaceAnim: (r: GameStore['raceAnim']) => void;
   setRaceGrid: (r: GameStore['raceGrid']) => void;
@@ -76,6 +94,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   toast: '',
   otherPlayers: [],
   nodeDead: {},
+  worldNodes: seedNodes,
+  walkDestination: null,
   raceLive: null,
   raceAnim: null,
   raceGrid: null,
@@ -145,6 +165,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     delete nd[id];
     set({ nodeDead: nd });
   },
+  setWorldNodes: (nodes) => set({ worldNodes: nodes }),
+  setWalkDestination: (d) => set({ walkDestination: d }),
   setRaceLive: (r) => set({ raceLive: r }),
   setRaceAnim: (r) => set({ raceAnim: r, ...(r ? { raceGrid: null } : {}) }),
   setRaceGrid: (r) => set({ raceGrid: r }),

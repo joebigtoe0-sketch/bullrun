@@ -43,7 +43,7 @@ export function makeItem(rarIdx: number, nextItemId: number): GameItem {
     tail: 'Tail Wrap',
     accessory: 'Harness',
   };
-  const bonusAmt = [0, 1, 1 + Math.round(Math.random()), 2 + Math.round(Math.random()), 3 + Math.round(Math.random())][rarIdx];
+  const bonusAmt = [0, 5, 8, 12, 18][rarIdx];
   const stats = ['speed', 'stamina', 'accel'] as const;
   return {
     id: nextItemId,

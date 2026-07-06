@@ -8,7 +8,14 @@ export function raceScore(bull: Bull, items: GameItem[]): number {
 }
 
 export function npcScore(bull: { speed: number; stamina: number; accel: number }): number {
-  return bull.speed * 1.0 + bull.stamina * 0.8 + bull.accel * 0.6;
+  const s = bull.speed < 50 ? bull.speed * 10 : bull.speed;
+  const st = bull.stamina < 50 ? bull.stamina * 10 : bull.stamina;
+  const a = bull.accel < 50 ? bull.accel * 10 : bull.accel;
+  return s * 0.12 + st * 0.1 + a * 0.08;
+}
+
+function raceLuckRoll(): number {
+  return ((Math.random() + Math.random() + Math.random()) / 3) * 50 - 25;
 }
 
 export function odds(field: RaceBull[]): number[] {
@@ -37,7 +44,10 @@ export function simulateRace(
   const field = [...mine, ...npcField].slice(0, 6);
   const scored: RaceBull[] = field.map((b) => ({
     ...b,
-    score: npcScore(b) + (Math.random() * 2 - 1) * b.temper * 0.9,
+    score:
+      npcScore(b) +
+      raceLuckRoll() * 1.4 +
+      (Math.random() * 2 - 1) * b.temper * 3,
   }));
   scored.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const base = 9000;

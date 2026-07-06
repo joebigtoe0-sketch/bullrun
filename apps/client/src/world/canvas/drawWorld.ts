@@ -12,6 +12,7 @@ import {
   coatOf,
   applyWorldCollision,
   trackClamp,
+  matNodeType,
   nodeId,
   RACE_LAPS,
   raceBullAt,
@@ -23,7 +24,7 @@ import {
   type WorldObject,
   type BullTrait,
 } from '@bullrun/shared';
-import { worldData } from '../../store/gameStore';
+import { worldData, type SyncedWorldNode } from '../../store/gameStore';
 
 const M = worldData.M;
 const CX = WORLD_CX;
@@ -74,7 +75,7 @@ function cube(
 
 function label(ctx: CanvasRenderingContext2D, wx: number, wy: number, txt: string, yOff: number, color: string) {
   const s = iso(wx, wy);
-  ctx.font = "600 11px 'Pixelify Sans', monospace";
+  ctx.font = "600 11px 'Nunito', system-ui, sans-serif";
   const w = ctx.measureText(txt).width + 10;
   ctx.fillStyle = 'rgba(23,16,10,.8)';
   ctx.fillRect(s.x - w / 2, s.y - yOff - 13, w, 16);
@@ -473,14 +474,14 @@ function drawRaceTrackBoard(
   ctx.strokeRect(x, y, w, h);
 
   ctx.textAlign = 'center';
-  ctx.font = "700 11px 'Pixelify Sans', monospace";
+  ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
 
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
     ctx.fillStyle = cd > 0 ? '#f2b23a' : '#7dc24f';
-    ctx.font = "700 36px 'Pixelify Sans', monospace";
+    ctx.font = "700 36px 'Nunito', system-ui, sans-serif";
     ctx.fillText(cd > 0 ? String(cd) : 'GO!', sx, y + 42);
-    ctx.font = "700 11px 'Pixelify Sans', monospace";
+    ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
     ctx.fillStyle = '#c9b896';
     ctx.fillText('STARTING GRID', sx, y + 58);
     ctx.fillStyle = '#f3e7cd';
@@ -504,9 +505,9 @@ function drawRaceTrackBoard(
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps);
     ctx.fillStyle = '#7dc24f';
-    ctx.font = "700 16px 'Pixelify Sans', monospace";
+    ctx.font = "700 16px 'Nunito', system-ui, sans-serif";
     ctx.fillText(`LAP ${lap}/${laps}`, sx, y + 22);
-    ctx.font = "700 11px 'Pixelify Sans', monospace";
+    ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
     ctx.fillStyle = '#f3e7cd';
     ctx.textAlign = 'left';
     const sorted = [...raceAnim.bulls].sort((a, b) => {
@@ -524,7 +525,7 @@ function drawRaceTrackBoard(
 
   if (me?.race) {
     ctx.fillStyle = '#f2b23a';
-    ctx.font = "700 13px 'Pixelify Sans', monospace";
+    ctx.font = "700 13px 'Nunito', system-ui, sans-serif";
     ctx.fillText('NEXT RACE', sx, y + 20);
     ctx.fillStyle = '#f3e7cd';
     ctx.fillText(fmtCountdown(new Date(me.race.startAt).getTime() - now), sx, y + 38);
@@ -537,7 +538,8 @@ export interface DrawState {
   me: MeResponse | null;
   otherPlayers: OtherPlayer[];
   nodeDead: Record<string, number>;
-  moveTarget: { x: number; y: number } | null;
+  walkDestination: { x: number; y: number } | null;
+  worldNodes: SyncedWorldNode[];
   raceAnim: {
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>;
     startT: number;
@@ -559,7 +561,7 @@ export interface DrawState {
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceGrid, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, walkDestination, worldNodes, raceAnim, raceGrid, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -615,13 +617,26 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   const list: { d: number; o: DrawObj }[] = [];
 
   for (const o of worldData.objs) {
+    if (o.t === 'tree' || o.t === 'rock' || o.t === 'hay') continue;
     const obj: DrawObj = { ...o };
-    if ((o.t === 'tree' || o.t === 'rock' || o.t === 'hay') && o.mat) {
-      const id = nodeId(o.x, o.y, o.mat);
-      const dead = nodeDead[id];
-      if (dead) obj.dead = dead;
-    }
     list.push({ d: o.x + o.y, o: obj });
+  }
+
+  for (const n of worldNodes) {
+    const dead = nodeDead[n.id];
+    if (dead && dead > now) continue;
+    const local = worldData.nodes.find((w) => nodeId(w.x, w.y, w.mat) === n.id);
+    const t = matNodeType(n.mat);
+    list.push({
+      d: n.x + n.y,
+      o: {
+        t,
+        x: n.x,
+        y: n.y,
+        mat: n.mat,
+        big: local?.big,
+      },
+    });
   }
 
   for (const p of otherPlayers) {
@@ -743,8 +758,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
-  if (moveTarget) {
-    const s = iso(moveTarget.x, moveTarget.y);
+  if (walkDestination) {
+    const s = iso(walkDestination.x, walkDestination.y);
     ctx.strokeStyle = 'rgba(255,255,255,.7)';
     ctx.lineWidth = 2;
     ctx.beginPath();

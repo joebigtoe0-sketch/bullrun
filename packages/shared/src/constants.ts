@@ -25,14 +25,14 @@ export const RARITIES: { k: RarityKey; c: string }[] = [
 ];
 
 export const NPC_POOL: Omit<NpcBull, 'id' | 'isNpc'>[] = [
-  { name: 'Thunder', owner: 'jigglz', coat: '#1d1a17', speed: 8, stamina: 6, accel: 5, temper: 3 },
-  { name: 'Brisket', owner: 'ac1978', coat: '#6e4526', speed: 6, stamina: 8, accel: 5, temper: 2 },
-  { name: 'Maximus', owner: 'DoRiiToS', coat: '#8e2f2f', speed: 7, stamina: 5, accel: 8, temper: 5 },
-  { name: 'Clover', owner: 'Xhrbes', coat: '#e8e4da', speed: 5, stamina: 7, accel: 6, temper: 1 },
-  { name: 'Diesel', owner: 'moover22', coat: '#3d3d45', speed: 7, stamina: 7, accel: 4, temper: 6 },
-  { name: 'Peanut', owner: 'hankk', coat: '#c99a5b', speed: 6, stamina: 6, accel: 6, temper: 8 },
-  { name: 'Rampage', owner: 'bullzeye', coat: '#472222', speed: 9, stamina: 4, accel: 6, temper: 7 },
-  { name: 'Duchess', owner: 'mlk_2', coat: '#d9cbb8', speed: 5, stamina: 9, accel: 5, temper: 2 },
+  { name: 'Thunder', owner: 'jigglz', coat: '#1d1a17', speed: 82, stamina: 68, accel: 58, temper: 3 },
+  { name: 'Brisket', owner: 'ac1978', coat: '#6e4526', speed: 62, stamina: 85, accel: 58, temper: 2 },
+  { name: 'Maximus', owner: 'DoRiiToS', coat: '#8e2f2f', speed: 72, stamina: 58, accel: 82, temper: 5 },
+  { name: 'Clover', owner: 'Xhrbes', coat: '#e8e4da', speed: 55, stamina: 78, accel: 65, temper: 1 },
+  { name: 'Diesel', owner: 'moover22', coat: '#3d3d45', speed: 70, stamina: 72, accel: 52, temper: 6 },
+  { name: 'Peanut', owner: 'hankk', coat: '#c99a5b', speed: 65, stamina: 65, accel: 65, temper: 8 },
+  { name: 'Rampage', owner: 'bullzeye', coat: '#472222', speed: 88, stamina: 52, accel: 68, temper: 7 },
+  { name: 'Duchess', owner: 'mlk_2', coat: '#d9cbb8', speed: 58, stamina: 88, accel: 58, temper: 2 },
 ];
 
 export const PURSE = [300, 150, 80, 40];
@@ -45,7 +45,7 @@ export const REST_ENERGY = 40;
 export const TRAIN_HAY_COST = 6;
 export const GATHER_DURATION_MS = 1500;
 export const NODE_RESPAWN_MS = 25000;
-export const MARKET_LIST_QTY = 10;
+export const MARKET_LIST_QUANTITIES = [100, 500, 1000] as const;
 export const MARKET_FEE = 0.05;
 export const DEFAULT_RACE_INTERVAL_SEC = 120;
 export const DEFAULT_STARTING_GOLD = 500;

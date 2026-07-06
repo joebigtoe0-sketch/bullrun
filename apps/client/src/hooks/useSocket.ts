@@ -27,12 +27,15 @@ export function useSocket() {
 
     socket.on('world_snapshot', (data: {
       players: import('@bullrun/shared').OtherPlayer[];
-      nodes: { id: string; deadUntil: number | null }[];
+      nodes: { id: string; x: number; y: number; mat: import('@bullrun/shared').MatType; deadUntil: number | null }[];
       pastures: import('@bullrun/shared').PasturePlotState[];
       race: unknown;
     }) => {
       useGameStore.getState().setOtherPlayers(data.players);
       useGameStore.getState().setPastures(data.pastures ?? []);
+      useGameStore.getState().setWorldNodes(
+        data.nodes.map((n) => ({ id: n.id, x: n.x, y: n.y, mat: n.mat })),
+      );
       for (const n of data.nodes) {
         if (n.deadUntil) useGameStore.getState().setNodeDead(n.id, n.deadUntil);
       }

@@ -86,3 +86,4 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .world-label.white { color: #fff; }
 .world-label.cyan { color: #7ec8e3; }
 .world-label.orange { color: #e07840; }
+.world-label.green { color: #bfe3a4; }

@@ -97,9 +97,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
         <IsoCube x={x - 1.35} y={y - 1.15} w={2.7} d={2.3} h={10} elev={24} top="#8e3b2e" left="#5e2119" right="#762e23" />
         <IsoCube x={x - 0.18} y={y + 0.85} w={0.36} d={0.12} h={22} top="#41291a" left="#2a1a10" right="#352015" />
         {label && (
-          <ProjectedLabel gx={x} gy={y} yOff={46} className="gold">
-            {label} · Lv {stableLvl}
-          </ProjectedLabel>
+          <ProjectedLabel gx={x} gy={y} yOff={46} className="gold" text={`${label} · Lv ${stableLvl}`} />
         )}
       </group>
     );
@@ -109,7 +107,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
       <group>
         <IsoCube x={x - 0.8} y={y - 0.6} w={1.6} d={1.2} h={18} top="#3b6ea5" left="#22436a" right="#2d5787" />
         <IsoCube x={x - 0.95} y={y - 0.75} w={1.9} d={1.5} h={6} elev={18} top="#e8e0cc" left="#b0a88f" right="#ccc4ab" />
-        {label && <ProjectedLabel gx={x} gy={y} yOff={36} className="cyan">{label}</ProjectedLabel>}
+        {label && <ProjectedLabel gx={x} gy={y} yOff={36} className="cyan" text={label} />}
       </group>
     );
   }
@@ -118,7 +116,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
       <group>
         <IsoCube x={x - 0.9} y={y - 0.6} w={1.8} d={1.2} h={16} top="#a5522f" left="#6e321a" right="#8a4224" />
         <IsoCube x={x - 1.05} y={y - 0.75} w={2.1} d={1.5} h={6} elev={16} top="#e0c96a" left="#a8913c" right="#c4ad50" />
-        {label && <ProjectedLabel gx={x} gy={y} yOff={34} className="gold">{label}</ProjectedLabel>}
+        {label && <ProjectedLabel gx={x} gy={y} yOff={34} className="gold" text={label} />}
       </group>
     );
   }
@@ -128,7 +126,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
         <IsoCube x={x - 0.9} y={y - 0.7} w={1.8} d={1.4} h={20} top="#6a6a66" left="#44443f" right="#57574f" />
         <IsoCube x={x + 0.25} y={y - 0.35} w={0.4} d={0.4} h={10} elev={20} top="#4a4a45" left="#2e2e2a" right="#3c3c37" />
         <ForgeFire x={x} y={y} />
-        {label && <ProjectedLabel gx={x} gy={y} yOff={40} className="orange">{label}</ProjectedLabel>}
+        {label && <ProjectedLabel gx={x} gy={y} yOff={40} className="orange" text={label} />}
       </group>
     );
   }
@@ -136,7 +134,7 @@ function Building({ o }: { o: { t: string; x: number; y: number; label?: string 
     return (
       <group>
         <IsoCube x={x - 0.06} y={y - 0.06} w={0.12} d={0.12} h={16} top="#8a6a44" left="#5e4527" right="#6f5432" />
-        {label && <ProjectedLabel gx={x} gy={y} yOff={20} className="gold">{label}</ProjectedLabel>}
+        {label && <ProjectedLabel gx={x} gy={y} yOff={20} className="gold" text={label} />}
       </group>
     );
   }
@@ -159,7 +157,7 @@ function Avatar({ x, y, shirt, label, isMe }: { x: number; y: number; shirt: str
       <IsoCube x={x - 0.18} y={y - 0.13} w={0.36} d={0.26} h={13} elev={3} top={c} left={shade(c, -40)} right={shade(c, -20)} />
       <IsoCube x={x - 0.14} y={y - 0.11} w={0.28} d={0.22} h={9} elev={16} top="#e8c49a" left="#b08d64" right="#cca87d" />
       <IsoCube x={x - 0.14} y={y - 0.11} w={0.28} d={0.22} h={3} elev={25} top="#3a2a1a" left="#241608" right="#2f2012" />
-      <ProjectedLabel gx={x} gy={y} yOff={40} className={isMe ? 'gold' : 'white'}>{label}</ProjectedLabel>
+      <ProjectedLabel gx={x} gy={y} yOff={40} className={isMe ? 'gold' : 'white'} text={label} />
     </group>
   );
 }
@@ -175,7 +173,7 @@ function BullAvatar({ x, y, coat, label }: { x: number; y: number; coat: string;
       <IsoCube x={x + 0.3} y={y + 0.22} w={0.1} d={0.1} h={5} elev={19} top="#e8e4da" left="#b0ac9f" right="#ccc8bb" />
       <IsoCube x={x - 0.38} y={y - 0.16} w={0.14} d={0.12} h={5} top={shade(c, -25)} left={shade(c, -50)} right={shade(c, -35)} />
       <IsoCube x={x + 0.24} y={y - 0.16} w={0.14} d={0.12} h={5} top={shade(c, -25)} left={shade(c, -50)} right={shade(c, -35)} />
-      {label && <ProjectedLabel gx={x} gy={y} yOff={34} className="white">{label}</ProjectedLabel>}
+      {label && <ProjectedLabel gx={x} gy={y} yOff={34} className="white" text={label} />}
     </group>
   );
 }
@@ -216,9 +214,13 @@ function InfieldBoard() {
   return (
     <group>
       <IsoCube x={WORLD_CX - 0.08} y={WORLD_CY - 0.08} w={0.16} d={0.16} h={20} top="#8a6a44" left="#5e4527" right="#6f5432" />
-      <ProjectedLabel gx={WORLD_CX} gy={WORLD_CY} yOff={44} className={raceLive ? 'green' : 'gold'}>
-        {text}
-      </ProjectedLabel>
+      <ProjectedLabel
+        gx={WORLD_CX}
+        gy={WORLD_CY}
+        yOff={44}
+        className={raceLive ? 'green' : 'gold'}
+        text={text}
+      />
     </group>
   );
 }

@@ -4,6 +4,7 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import bs58 from 'bs58';
 import { api, saveToken } from '../api/client';
 import { useGameStore } from '../store/gameStore';
+import { Logo } from './Logo';
 
 type Step = 'connect' | 'sign' | 'displayName';
 
@@ -94,7 +95,8 @@ export function AuthScreen() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <h1>🐂 Bull Run</h1>
+        <Logo className="auth-logo" />
+        <h1>Bull Run</h1>
         <p>Token-gated bull racing MMO</p>
 
         {step === 'displayName' ? (

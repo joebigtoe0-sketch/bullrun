@@ -10,7 +10,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:deploy": "prisma migrate deploy"
+    "db:deploy": "prisma migrate deploy",
+    "grant:resources": "tsx scripts/grant-resources.ts"
   },
   "dependencies": {
     "@bullrun/shared": "workspace:*",

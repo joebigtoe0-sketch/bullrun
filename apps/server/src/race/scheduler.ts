@@ -1,11 +1,10 @@
 import {
-  NPC_POOL,
   RACE_LAPS,
   DEFAULT_RACE_INTERVAL_SEC,
+  ENERGY_REGEN_TICK_MS,
   buildRaceResults,
   liveStandings,
   maxBullLevel,
-  pickNpcField,
   racePrizeForPosition,
   serializeRaceBulls,
   simulateRace,
@@ -82,11 +81,10 @@ async function simulateOnce(raceId: string): Promise<RaceBullWire[]> {
   }
 
   const race = await prisma.race.findUnique({ where: { id: raceId } });
-  const npcField = (race?.field as typeof NPC_POOL) || NPC_POOL;
-  const npcs = npcField.map((n, i) => ({ ...n, id: `npc${i}`, isNpc: true as const }));
+  if (!race) throw new Error(`Race ${raceId} not found`);
 
   const allItems = entries.flatMap((e: RaceEntry & { user?: { items: PrismaItem[] } | null }) => e.user?.items ?? []);
-  const { bulls } = simulateRace(playerBulls, npcs, allItems.map((it: PrismaItem) => ({
+  const { bulls } = simulateRace(playerBulls, [], allItems.map((it: PrismaItem) => ({
     id: it.id,
     slot: it.slot as 'coat',
     rarity: it.rarity as 'Common',
@@ -137,12 +135,11 @@ export async function ensureScheduledRace() {
   if (running) return running;
 
   const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
-  const field = pickNpcField(5);
   return prisma.race.create({
     data: {
       status: 'scheduled',
       startAt: new Date(Date.now() + intervalSec * 1000),
-      field: field as object,
+      field: [],
     },
   });
 }
@@ -277,15 +274,14 @@ async function finishRace(raceId: string) {
   io?.emit('race_finished', { id: raceId, results, betResults, bulls: active.bulls });
 
   const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
-  const field = pickNpcField(5);
   const next = await prisma.race.create({
     data: {
       status: 'scheduled',
       startAt: new Date(Date.now() + intervalSec * 1000),
-      field: field as object,
+      field: [],
     },
   });
-  io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field });
+  io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field: [] });
 }
 
 async function salvageRunningRace(raceId: string) {
@@ -418,7 +414,7 @@ export function startRaceScheduler() {
 
   setInterval(() => {
     void tickAllEnergy().catch((err) => console.error('Energy tick error', err));
-  }, 60_000);
+  }, ENERGY_REGEN_TICK_MS);
 }
 
 export function stopRaceScheduler() {

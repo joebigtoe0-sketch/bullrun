@@ -39,7 +39,9 @@ export const PURSE = [420, 280, 180, 120, 0, 0];
 export const RACE_ENTRY_FEE = 0;
 export const RACE_ENTRY_ENERGY = 100;
 export const BULL_MAX_ENERGY = 100;
-export const ENERGY_REGEN_BASE_PER_MIN = 1;
+export const ENERGY_REGEN_BASE_PER_MIN = 3;
+/** Server ticks energy this often — 1 energy per tick at stable level 1 (3/min). */
+export const ENERGY_REGEN_TICK_MS = 20_000;
 export const BREED_COST = 500;
 export const BREED_DURATION_MS = 120_000;
 export const REST_COST = 80;

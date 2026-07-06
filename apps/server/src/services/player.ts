@@ -61,9 +61,9 @@ export async function createStarterUser(userId: string) {
     data: {
       userId,
       gold: 0,
-      hay: 6,
-      ore: 20,
-      wood: 4,
+      hay: 0,
+      ore: 0,
+      wood: 0,
     },
   });
   const bull = await prisma.bull.create({
@@ -220,7 +220,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
           id: currentRace.id,
           status: currentRace.status,
           startAt: currentRace.startAt.toISOString(),
-          field: currentRace.field as unknown as import('@bullrun/shared').NpcBull[],
+          field: [],
           entered: currentRace.entries.filter((e: RaceEntry) => !e.isNpc).map((e: RaceEntry) => String(e.bullId)),
         }
       : null,

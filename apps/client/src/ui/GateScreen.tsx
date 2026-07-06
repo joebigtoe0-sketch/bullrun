@@ -1,4 +1,5 @@
 import { useGameStore } from '../store/gameStore';
+import { Logo } from './Logo';
 
 export function GateScreen() {
   const {
@@ -15,7 +16,8 @@ export function GateScreen() {
   return (
     <div className="auth-screen gate-screen">
       <div className="auth-card">
-        <h1>🐂 Bull Run</h1>
+        <Logo className="auth-logo" />
+        <h1>Bull Run</h1>
         <p>Hold <strong>{accessRequired.toLocaleString()}</strong> tokens to play</p>
 
         <div className="gate-stats">

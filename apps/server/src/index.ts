@@ -11,6 +11,7 @@ import { prisma } from './db.js';
 import { setIo as setGameIo } from './services/game.js';
 import { setRaceIo, startRaceScheduler } from './race/scheduler.js';
 import { startGoldMarketSweeper } from './routes/tokenMarket.js';
+import { grantFromEnvIfSet } from './lib/grantResources.js';
 
 const PORT = Number(process.env.PORT || 3001);
 const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
@@ -44,6 +45,7 @@ async function main() {
 
   await initWorldNodes();
   await initPasturePlots();
+  await grantFromEnvIfSet();
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 

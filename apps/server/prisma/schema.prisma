@@ -31,9 +31,9 @@ model PlayerProfile {
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   gold        Float    @default(0)
-  hay         Int      @default(6)
-  ore         Int      @default(20)
-  wood        Int      @default(4)
+  hay         Int      @default(0)
+  ore         Int      @default(0)
+  wood        Int      @default(0)
   stableLevel Int      @default(1)
   stableWood  Int      @default(0)
   posX        Float    @default(33)

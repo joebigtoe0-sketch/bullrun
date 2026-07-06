@@ -387,7 +387,7 @@ function RacePanel() {
         <div className="card center">
           <div className="muted">NEXT RACE IN</div>
           <div className="countdown">{raceLive ? 'LIVE' : cd}</div>
-          <div className="muted">Entry: {BULL_MAX_ENERGY} energy · Free · Purse 1000g · One bull per player</div>
+          <div className="muted">Entry: {BULL_MAX_ENERGY} energy · Free · Purse 1000g · Player bulls only</div>
         </div>
         {followingBulls.length === 0 ? (
           <div className="card muted">Bring a bull with you first — use &quot;Follow me&quot; in your stable or den.</div>
@@ -468,7 +468,7 @@ function MarketPanel() {
   const toast = useGameStore((s) => s.toastMsg);
   const { signMessage } = useWallet();
   const { phase: buyPhase, message: buyMsg, error: buyErr, buyGoldListing } = useGoldTokenBuy();
-  const [bullPrice, setBullPrice] = useState(500);
+  const [bullPrice, setBullPrice] = useState(5);
   const [tokenPrice, setTokenPrice] = useState('10');
   const [listLoading, setListLoading] = useState(false);
 
@@ -550,9 +550,9 @@ function MarketPanel() {
             <div className="card row-between">
               <span className="muted">Sale price</span>
               <div className="row gap">
-                <button className="small-btn" onClick={() => setBullPrice((p) => Math.max(1, p - 25))}>−</button>
+                <button className="small-btn" onClick={() => setBullPrice((p) => Math.max(1, p - 1))}>−</button>
                 <span className="gold stat-num">{bullPrice}g</span>
-                <button className="small-btn" onClick={() => setBullPrice((p) => p + 25)}>+</button>
+                <button className="small-btn" onClick={() => setBullPrice((p) => p + 1)}>+</button>
               </div>
             </div>
             {stableBulls.length === 0 ? (

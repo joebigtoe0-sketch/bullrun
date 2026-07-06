@@ -10,6 +10,7 @@ import * as bulls from '../services/bulls.js';
 import { computeRaceOdds } from '../services/raceOdds.js';
 import { walletAuthRoutes } from './walletAuth.js';
 import { tokenMarketRoutes, startGoldMarketSweeper } from './tokenMarket.js';
+import { adminRoutes } from './admin.js';
 
 export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: { username: string; password: string; displayName?: string } }>('/auth/register', async (req, reply) => {
@@ -46,8 +47,9 @@ export async function authRoutes(app: FastifyInstance) {
 export async function gameRoutes(app: FastifyInstance) {
   await walletAuthRoutes(app);
   await tokenMarketRoutes(app);
+  await adminRoutes(app);
 
-  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/auth/nonce', '/auth/verify']);
+  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/auth/nonce', '/auth/verify', '/admin/grant']);
 
   app.addHook('preHandler', async (request, reply) => {
     const path = request.url.split('?')[0];

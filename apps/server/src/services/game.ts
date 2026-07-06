@@ -12,7 +12,7 @@ import {
   buildWorld,
   bullSlots,
   clampForgeOre,
-  energyPerMinute,
+  energyPerTick,
   inferBullRarity,
   makeItem,
   nodeId,
@@ -702,7 +702,7 @@ export async function tickAllEnergy() {
     include: { user: { include: { bulls: true } } },
   });
   for (const p of profiles) {
-    const rate = energyPerMinute(p.stableLevel);
+    const rate = energyPerTick(p.stableLevel);
     for (const b of p.user.bulls) {
       if (b.energy < BULL_MAX_ENERGY) {
         await prisma.bull.update({

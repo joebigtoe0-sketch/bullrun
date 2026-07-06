@@ -1,4 +1,4 @@
-import { odds, type GameItem, type NpcBull, type RaceBull } from '@bullrun/shared';
+import { odds, type GameItem, type RaceBull } from '@bullrun/shared';
 import type { Item as PrismaItem } from '@prisma/client';
 import { prisma } from '../db.js';
 
@@ -37,16 +37,9 @@ export async function buildBettingField(raceId: string): Promise<{
     } as RaceBull);
   }
 
-  const npcs = (race.field as unknown as NpcBull[]).map((n, i) => ({
-    ...n,
-    id: `npc${i}`,
-    isNpc: true as const,
-  }));
-
   const items = race.entries.flatMap((e) => e.user?.items ?? []).map(mapItem);
-  const field = [...playerBulls, ...npcs].slice(0, 6) as RaceBull[];
 
-  return { field, items };
+  return { field: playerBulls, items };
 }
 
 export async function computeRaceOdds(raceId: string) {

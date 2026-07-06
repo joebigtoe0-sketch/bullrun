@@ -1,5 +1,5 @@
 import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
-import { ENERGY_REGEN_BASE_PER_MIN, INTERACT_USE_RANGE } from './constants.js';
+import { ENERGY_REGEN_BASE_PER_MIN, ENERGY_REGEN_TICK_MS, INTERACT_USE_RANGE } from './constants.js';
 import {
   normalizeStat,
   statCap,
@@ -61,6 +61,12 @@ export function stableWoodNeed(level: number): number {
 /** Energy restored per minute (all bulls). Higher stable level = faster recovery. */
 export function energyPerMinute(stableLevel: number): number {
   return ENERGY_REGEN_BASE_PER_MIN * (1 + 0.5 * Math.max(0, stableLevel - 1));
+}
+
+/** Energy restored each server tick (default: 1 at level 1 every 20s). */
+export function energyPerTick(stableLevel: number): number {
+  const perMin = energyPerMinute(stableLevel);
+  return Math.max(1, Math.round((perMin * ENERGY_REGEN_TICK_MS) / 60_000));
 }
 
 /** @deprecated use energyPerMinute — kept for callers dividing per tick */

@@ -147,7 +147,7 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .welcome-banner { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 25; max-width: min(640px, 92vw); background: rgba(46,35,24,.94); border: 3px solid #17100a; border-radius: 12px; padding: 12px 16px; color: #f3e7cd; display: flex; align-items: center; gap: 12px; box-shadow: 0 6px 0 rgba(0,0,0,.35); animation: br-in .2s ease-out; pointer-events: auto; }
 .welcome-banner p { margin: 0; flex: 1; font-size: 14px; line-height: 1.35; }
 .game-hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
-.game-hud .hud-tl, .game-hud .hud-tc, .game-hud .hud-tr, .game-hud .bottom-bar, .game-hud .gather-bar, .game-hud .br-panel, .game-hud .inv-popup, .game-hud .modal-overlay, .game-hud .race-track-board-overlay, .game-hud .toast, .game-hud .welcome-banner, .game-hud .chat-panel { pointer-events: auto; }
+.game-hud .hud-tl, .game-hud .hud-tc, .game-hud .hud-tr, .game-hud .bottom-bar, .game-hud .gather-bar, .game-hud .br-panel, .game-hud .inv-popup, .game-hud .modal-overlay, .game-hud .guide-overlay, .game-hud .race-track-board-overlay, .game-hud .toast, .game-hud .chat-panel { pointer-events: auto; }
 .hud-tl { position: absolute; top: 14px; left: 14px; display: flex; flex-direction: column; gap: 8px; }
 .hud-tc { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .hud-tr { position: absolute; top: 14px; right: 14px; background: #2e2318; border: 3px solid #17100a; border-radius: 10px; padding: 6px 12px; color: #f3e7cd; font-size: 14px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,.35); }

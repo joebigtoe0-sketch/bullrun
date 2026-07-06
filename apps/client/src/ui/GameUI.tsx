@@ -879,31 +879,25 @@ function InventoryPopup() {
   );
 }
 
-function WelcomeBanner() {
-  const setPanel = useGameStore((s) => s.setPanel);
-
-  return (
-    <div className="welcome-banner">
-      <p><b className="gold">Welcome!</b> New to Bull Run? Open the guide for a full walkthrough.</p>
-      <button type="button" className={`${btn} gold`} onClick={() => setPanel('help')}>
-        Open guide
-      </button>
-    </div>
-  );
-}
-
 function HelpModal() {
+  const me = useGameStore((s) => s.me)!;
   const setPanel = useGameStore((s) => s.setPanel);
   const setMe = useGameStore((s) => s.setMe);
 
+  const close = () => setPanel(null);
+
+  if (me.helpSeen) {
+    return <GameGuide onClose={close} dismissLabel="Close" />;
+  }
+
   return (
     <GameGuide
-      onClose={() => setPanel(null)}
+      onClose={close}
       onDismiss={() => {
         api.settings({ helpSeen: true }).then((m) => {
           setMe(m);
-          setPanel(null);
-        }).catch(() => setPanel(null));
+          close();
+        }).catch(close);
       }}
       dismissLabel="Got it"
     />
@@ -1034,7 +1028,6 @@ export function GameUI() {
       {panel === 'market' && <MarketPanel />}
       {panel === 'forge' && <ForgePanel />}
       {panel === 'help' && <HelpModal />}
-      {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
       <ProfilePopup />
       <BuyDenModal />

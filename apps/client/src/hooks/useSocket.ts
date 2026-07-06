@@ -114,7 +114,10 @@ export function useSocket() {
       betResults: Record<string, string>;
     }) => {
       const userId = useGameStore.getState().user?.id;
-      useGameStore.getState().setRaceAnim(null);
+      const anim = useGameStore.getState().raceAnim;
+      if (anim) {
+        useGameStore.getState().setRaceAnim({ ...anim, frozen: true });
+      }
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceLive(null);
       useGameStore.getState().setResults(

@@ -163,7 +163,7 @@ export function useGameLoop(active = true) {
       const dt = Math.min(0.05, (t - lastT) / 1000);
       lastT = t;
       step(dt, Date.now());
-      if (t - lastTick > 1000) {
+      if (t - lastTick > 30_000) {
         lastTick = t;
         api.me().then((m) => {
           if (m) useGameStore.getState().setMe(m);

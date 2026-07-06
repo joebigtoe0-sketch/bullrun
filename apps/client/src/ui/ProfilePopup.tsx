@@ -7,7 +7,6 @@ export function ProfilePopup() {
   const me = useGameStore((s) => s.me);
   const walletAddress = useGameStore((s) => s.walletAddress);
   const tokenBalance = useGameStore((s) => s.tokenBalance);
-  const accessRequired = useGameStore((s) => s.accessRequired);
   const logout = useGameStore((s) => s.logout);
   const { disconnect } = useWallet();
 
@@ -41,7 +40,7 @@ export function ProfilePopup() {
           </div>
           <div className="profile-row">
             <span className="profile-label">Token balance</span>
-            <span className="profile-val">{tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} / {accessRequired.toLocaleString()}</span>
+            <span className="profile-val">{tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           <button type="button" className="br-btn red profile-disconnect" onClick={handleDisconnect}>
             Disconnect wallet

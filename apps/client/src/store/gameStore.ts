@@ -39,7 +39,7 @@ interface GameStore {
   worldNodes: SyncedWorldNode[];
   walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string; finished: boolean }[] } | null;
-  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number } | null;
+  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number; frozen?: boolean } | null;
   raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;
@@ -239,7 +239,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       betResult: betResult ?? null,
       resultsUntil: r ? (until ?? Date.now() + RACE_RESULTS_DISPLAY_MS) : null,
     }),
-  clearResults: () => set({ results: null, resultsUntil: null, betResult: null }),
+  clearResults: () => set({ results: null, resultsUntil: null, betResult: null, raceAnim: null }),
   setForgeResult: (s) => set({ forgeResult: s }),
   setMoveTarget: (t) => set({ moveTarget: t }),
   setMovePath: (path) =>

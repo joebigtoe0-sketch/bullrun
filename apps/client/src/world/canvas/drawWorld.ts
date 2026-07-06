@@ -646,7 +646,7 @@ function drawRaceTrackBoard(
     return;
   }
 
-  if (raceAnim) {
+  if (raceAnim && !raceAnim.frozen) {
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
@@ -697,6 +697,7 @@ export interface DrawState {
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startT: number;
     laps?: number;
+    frozen?: boolean;
   } | null;
   raceGrid: {
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
@@ -909,7 +910,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   }
 
   if (raceAnim) {
-    const el = now - raceAnim.startT;
+    const el = raceAnim.frozen ? Number.MAX_SAFE_INTEGER : now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     const fieldSize = raceAnim.bulls.length;
     for (let i = 0; i < raceAnim.bulls.length; i++) {

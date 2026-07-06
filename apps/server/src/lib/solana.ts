@@ -27,10 +27,13 @@ interface ParsedTokenAmount {
   decimals?: number;
 }
 
+interface TokenAccountEntry {
+  pubkey: string;
+  account?: { data?: { parsed?: { info?: { tokenAmount?: ParsedTokenAmount; mint?: string } } } };
+}
+
 interface TokenAccountsResponse {
-  value?: Array<{
-    account?: { data?: { parsed?: { info?: { tokenAmount?: ParsedTokenAmount } } } };
-  }>;
+  value?: TokenAccountEntry[];
 }
 
 function parseTokenAmount(ta?: ParsedTokenAmount): number {
@@ -46,13 +49,31 @@ function parseTokenAmount(ta?: ParsedTokenAmount): number {
   return 0;
 }
 
-async function tokenAccountsForProgram(walletAddress: string, programId: string): Promise<NonNullable<TokenAccountsResponse['value']>> {
+async function tokenAccountsForProgram(walletAddress: string, programId: string): Promise<TokenAccountEntry[]> {
   const result = await rpc<TokenAccountsResponse>('getTokenAccountsByOwner', [
     walletAddress,
-    { mint: TOKEN_ADDRESS },
-    { encoding: 'jsonParsed', programId },
+    { programId },
+    { encoding: 'jsonParsed' },
   ]);
-  return result?.value ?? [];
+  return (result?.value ?? []).filter(
+    (a) => a.account?.data?.parsed?.info?.mint === TOKEN_ADDRESS,
+  );
+}
+
+export async function getTokenBalance(walletAddress: string): Promise<number> {
+  if (!walletAddress || !TOKEN_ADDRESS) return 0;
+
+  // Standard SPL first; only query Token-2022 if none found (avoids double-counting).
+  let accounts = await tokenAccountsForProgram(walletAddress, TOKEN_PROGRAM_ID);
+  if (!accounts.length) {
+    accounts = await tokenAccountsForProgram(walletAddress, TOKEN_2022_PROGRAM_ID);
+  }
+
+  let total = 0;
+  for (const acc of accounts) {
+    total += parseTokenAmount(acc.account?.data?.parsed?.info?.tokenAmount);
+  }
+  return total;
 }
 
 async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
@@ -79,19 +100,6 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
     console.warn(`[solana] rpc(${method}) failed:`, err instanceof Error ? err.message : err);
     return null;
   }
-}
-
-export async function getTokenBalance(walletAddress: string): Promise<number> {
-  if (!walletAddress || !TOKEN_ADDRESS) return 0;
-  const accounts = [
-    ...(await tokenAccountsForProgram(walletAddress, TOKEN_PROGRAM_ID)),
-    ...(await tokenAccountsForProgram(walletAddress, TOKEN_2022_PROGRAM_ID)),
-  ];
-  let total = 0;
-  for (const acc of accounts) {
-    total += parseTokenAmount(acc.account?.data?.parsed?.info?.tokenAmount);
-  }
-  return total;
 }
 
 export async function walletHasAccess(walletAddress: string): Promise<boolean> {

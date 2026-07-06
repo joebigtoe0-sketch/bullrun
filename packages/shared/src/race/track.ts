@@ -52,6 +52,22 @@ export function raceProgressAt(elapsed: number, lapTimes: number[]): number {
 /** Hold grid formation briefly after the flag, then blend onto the racing line. */
 const GRID_HOLD_MS = 2000;
 
+/** Finish-line layout — same geometry as the starting grid (white line on the straight). */
+export function raceFinishPosition(
+  slot: number,
+  fieldSize: number,
+): { x: number; y: number; facingLeft: boolean } {
+  const gridAngleOffset = (slot - 1) * 0.035;
+  const spread = (slot - (fieldSize + 1) / 2) * 0.28;
+  const laneEr = raceStartLane(slot);
+  const a = Math.PI / 2 - gridAngleOffset;
+  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * laneEr + spread;
+  const by = WORLD_CY + Math.sin(a) * WORLD_RY * laneEr + spread * 0.35;
+  const tx = -Math.sin(a) * WORLD_RX * laneEr;
+  const ty = Math.cos(a) * WORLD_RY * laneEr;
+  return { x: bx, y: by, facingLeft: (tx - ty) * 32 < 0 };
+}
+
 export function raceBullAt(
   elapsed: number,
   finishT: number,
@@ -61,10 +77,14 @@ export function raceBullAt(
   fieldSize = 6,
 ): { x: number; y: number; facingLeft: boolean } {
   const t = Math.max(0, elapsed);
+  if (finishT > 0 && t >= finishT) {
+    return raceFinishPosition(slot, fieldSize);
+  }
+
   const totalProg = lapTimes?.length
     ? raceProgressAt(t, lapTimes)
     : Math.min(1, Math.max(0, finishT > 0 ? t / finishT : 0));
-  const prog = Math.max(0, totalProg);
+  const prog = Math.min(1, Math.max(0, totalProg));
 
   const gridAngleOffset = (slot - 1) * 0.035;
   const spread = (slot - (fieldSize + 1) / 2) * 0.28;
@@ -90,7 +110,7 @@ export function raceGridPosition(
   slot: number,
   total: number,
 ): { x: number; y: number; facingLeft: boolean } {
-  return raceBullAt(0, 1, slot, RACE_LAPS, undefined, total);
+  return raceFinishPosition(slot, total);
 }
 
 export function currentLap(elapsed: number, finishT: number, laps = RACE_LAPS, lapTimes?: number[]): number {

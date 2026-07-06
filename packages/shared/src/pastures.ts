@@ -4,6 +4,7 @@ import {
   traitForRarity,
   statRangeForRarity,
 } from './bullRarity.js';
+import { BULL_NAMES } from './bullNames.js';
 
 export interface PasturePlotDef {
   id: number;
@@ -81,17 +82,7 @@ export function pastureUpgradeGoldCost(level: number): number {
   return 150 * level * level;
 }
 
-const CALF_NAMES = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder', 'Rusty', 'Nova', 'Bandit', 'Ember', 'Chief', 'Juniper', 'Rocco', 'Sage', 'Nitro', 'Poppy', 'Dusty', 'Marble'];
 const COATS = ['#8e2f2f', '#e8e4da', '#14141a', '#3b6ea5', '#c99a5b', '#7a5296', '#1d1a17', '#6e4526'];
-
-export function pickStarterBullName(seed = Date.now()): string {
-  let s = seed;
-  const rng = () => {
-    s = (s * 16807) % 2147483647;
-    return s / 2147483647;
-  };
-  return CALF_NAMES[Math.floor(rng() * CALF_NAMES.length)];
-}
 
 export function rollPastureBull(seed: number): {
   name: string;
@@ -114,7 +105,7 @@ export function rollPastureBull(seed: number): {
   const rollStat = () => range.min + Math.floor(rng() * (range.max - range.min + 1));
 
   return {
-    name: CALF_NAMES[Math.floor(rng() * CALF_NAMES.length)],
+    name: BULL_NAMES[Math.floor(rng() * BULL_NAMES.length)]!,
     coat: COATS[Math.floor(rng() * COATS.length)],
     trait,
     rarity,

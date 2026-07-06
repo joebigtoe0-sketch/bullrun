@@ -91,13 +91,14 @@ export interface MarketListing {
   id: string;
   sellerId: string;
   sellerName: string;
-  type: 'material' | 'item' | 'bull';
+  type: 'material' | 'item' | 'bull' | 'gold';
   mat?: MatType;
   qty?: number;
   item?: GameItem;
   bull?: Partial<Bull>;
   price: number;
-  status: 'open' | 'sold';
+  tokenPrice?: number;
+  status: 'open' | 'reserved' | 'cancelling' | 'sold' | 'cancelled';
   soldAt?: number;
 }
 
@@ -294,6 +295,8 @@ export interface UserProfile {
   id: string;
   username: string;
   displayName: string;
+  walletAddress?: string | null;
+  hasDisplayName?: boolean;
   gold: number;
   mats: Materials;
   stable: Stable;
@@ -313,7 +316,13 @@ export interface UserProfile {
 
 export interface AuthResponse {
   token: string;
-  user: { id: string; username: string; displayName: string };
+  user: {
+    id: string;
+    username: string;
+    displayName: string;
+    walletAddress?: string | null;
+    hasDisplayName?: boolean;
+  };
 }
 
 export interface MeResponse extends UserProfile {

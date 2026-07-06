@@ -12,6 +12,24 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .auth-card p { margin: 0 0 20px; color: #c9b896; }
 .auth-card input { width: 100%; margin-bottom: 10px; padding: 10px 12px; border: 3px solid #17100a; border-radius: 8px; background: #221a11; color: #f3e7cd; font-family: inherit; font-size: 15px; }
 .auth-card button[type=submit] { width: 100%; margin-top: 6px; }
+.auth-hint { margin: 0 0 14px; color: #c9b896; font-size: 14px; line-height: 1.45; }
+.wallet-chip { color: #7dc24f; font-weight: 700; }
+.gate-screen .auth-card { width: 400px; }
+.gate-stats { display: flex; gap: 10px; margin-bottom: 16px; }
+.gate-stat { flex: 1; padding: 12px; border-radius: 10px; background: #221a11; border: 2px solid #17100a; text-align: center; }
+.gate-stat-label { display: block; font-size: 11px; color: #9a8b72; text-transform: uppercase; letter-spacing: .4px; }
+.gate-stat-val { display: block; margin-top: 6px; font-size: 20px; font-weight: 800; }
+.gate-stat-val.blue { color: #5fb4d8; }
+.gate-stat-val.orange { color: #f2b23a; }
+.profile-panel { width: min(360px, 92vw); }
+.profile-body { padding: 4px 2px 8px; }
+.profile-row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.profile-label { color: #9a8b72; font-size: 13px; }
+.profile-val { color: #f3e7cd; font-weight: 700; font-size: 14px; text-align: right; }
+.profile-val.mono { font-family: ui-monospace, monospace; }
+.profile-disconnect { width: 100%; margin-top: 16px; }
+.btn.red { background: #8e2f2f; color: #fff; border-color: #5a1a1a; }
+.market-token-input { width: 100px; padding: 6px 8px; border: 2px solid #17100a; border-radius: 8px; background: #221a11; color: #f3e7cd; font-family: inherit; font-size: 14px; text-align: right; }
 .link-btn { background: none; border: none; color: #c9b896; cursor: pointer; font-family: inherit; margin-top: 12px; width: 100%; }
 .error { color: #e07840; font-size: 13px; margin-bottom: 8px; }
 

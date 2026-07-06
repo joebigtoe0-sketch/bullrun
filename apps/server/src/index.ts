@@ -10,6 +10,7 @@ import { initPasturePlots, setPastureIo, startPastureSpawner } from './services/
 import { prisma } from './db.js';
 import { setIo as setGameIo } from './services/game.js';
 import { setRaceIo, startRaceScheduler } from './race/scheduler.js';
+import { startGoldMarketSweeper } from './routes/tokenMarket.js';
 
 const PORT = Number(process.env.PORT || 3001);
 const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
@@ -55,6 +56,7 @@ async function main() {
   setRaceIo(io);
   setPastureIo(io);
   startRaceScheduler();
+  startGoldMarketSweeper();
   startPastureSpawner();
 
   console.log(`Bull Run server on :${PORT}`);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS } from '@bullrun/shared';
 import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrun/shared';
+import { api } from '../api/client';
 
 export interface SyncedWorldNode {
   id: string;
@@ -19,7 +20,14 @@ const seedNodes: SyncedWorldNode[] = worldData.nodes.map((n) => ({
 
 interface GameStore {
   token: string | null;
-  user: { id: string; username: string; displayName: string } | null;
+  user: { id: string; username: string; displayName: string; walletAddress?: string | null; hasDisplayName?: boolean } | null;
+  walletAddress: string | null;
+  hasDisplayName: boolean;
+  hasAccess: boolean | null;
+  tokenBalance: number;
+  accessRequired: number;
+  accessChecking: boolean;
+  profileOpen: boolean;
   me: MeResponse | null;
   panel: PanelType;
   invOpen: boolean;
@@ -52,7 +60,10 @@ interface GameStore {
   chatLog: ChatMessage[];
   speechBubbles: Record<string, { text: string; until: number }>;
 
-  setAuth: (token: string, user: { id: string; username: string; displayName: string }) => void;
+  setAuth: (token: string, user: { id: string; username: string; displayName: string; walletAddress?: string | null; hasDisplayName?: boolean }) => void;
+  setWallet: (address: string | null) => void;
+  checkAccess: () => Promise<void>;
+  setProfileOpen: (open: boolean) => void;
   setMe: (me: MeResponse) => void;
   setPosition: (x: number, y: number) => void;
   setPanel: (p: PanelType) => void;
@@ -95,6 +106,13 @@ let toastTimer: ReturnType<typeof setTimeout>;
 export const useGameStore = create<GameStore>((set, get) => ({
   token: localStorage.getItem('bullrun.token'),
   user: null,
+  walletAddress: null,
+  hasDisplayName: false,
+  hasAccess: null,
+  tokenBalance: 0,
+  accessRequired: 1000,
+  accessChecking: false,
+  profileOpen: false,
   me: null,
   panel: null,
   invOpen: false,
@@ -129,7 +147,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setAuth: (token, user) => {
     localStorage.setItem('bullrun.token', token);
-    set({ token, user });
+    set({
+      token,
+      user,
+      walletAddress: user.walletAddress ?? null,
+      hasDisplayName: user.hasDisplayName ?? true,
+    });
+  },
+  setWallet: (walletAddress) => set({ walletAddress }),
+  setProfileOpen: (profileOpen) => set({ profileOpen }),
+  checkAccess: async () => {
+    const token = get().token;
+    if (!token) {
+      set({ hasAccess: null });
+      return;
+    }
+    set({ accessChecking: true });
+    try {
+      const data = await api.checkAccess();
+      set({
+        hasAccess: data.hasAccess,
+        tokenBalance: data.balance,
+        accessRequired: data.required,
+        accessChecking: false,
+      });
+    } catch {
+      set({ accessChecking: false });
+    }
   },
   setMe: (me) => {
     const prev = get().me;
@@ -137,6 +181,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         me,
         panel: null,
+        walletAddress: me.walletAddress ?? get().walletAddress,
+        hasDisplayName: me.hasDisplayName ?? get().hasDisplayName,
         shopBulls: me.shopBulls,
         cam: { x: me.position.x, y: me.position.y },
       });
@@ -237,6 +283,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       token: null,
       user: null,
+      walletAddress: null,
+      hasDisplayName: false,
+      hasAccess: null,
+      tokenBalance: 0,
+      profileOpen: false,
       me: null,
       otherPlayers: [],
       pastures: [],

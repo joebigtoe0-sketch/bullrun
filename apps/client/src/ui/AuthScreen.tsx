@@ -1,25 +1,77 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import bs58 from 'bs58';
 import { api, saveToken } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 
+type Step = 'connect' | 'sign' | 'displayName';
+
 export function AuthScreen() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const { publicKey, signMessage, connected, disconnect } = useWallet();
+  const { setVisible } = useWalletModal();
+  const setAuth = useGameStore((s) => s.setAuth);
+  const setMe = useGameStore((s) => s.setMe);
+  const setWallet = useGameStore((s) => s.setWallet);
+  const token = useGameStore((s) => s.token);
+  const hasDisplayName = useGameStore((s) => s.hasDisplayName);
+
+  const [step, setStep] = useState<Step>('connect');
+  const [pendingToken, setPendingToken] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const setAuth = useGameStore((s) => s.setAuth);
-  const setMe = useGameStore((s) => s.setMe);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const wallet = publicKey?.toBase58() ?? null;
+
+  useEffect(() => {
+    if (token && !hasDisplayName) setStep('displayName');
+  }, [token, hasDisplayName]);
+
+  useEffect(() => {
+    if (connected && wallet && step === 'connect' && !token) setStep('sign');
+  }, [connected, wallet, step, token]);
+
+  const signIn = useCallback(async () => {
+    if (!wallet || !signMessage) {
+      setError("Your wallet doesn't support message signing.");
+      return;
+    }
     setError('');
     setLoading(true);
     try {
-      const res = mode === 'login'
-        ? await api.login(username, password)
-        : await api.register(username, password, displayName || username);
+      const { message } = await api.authNonce(wallet);
+      const sigBytes = await signMessage(new TextEncoder().encode(message));
+      const signature = bs58.encode(sigBytes);
+      const res = await api.authVerify(wallet, signature);
+      setWallet(wallet);
+      saveToken(res.token);
+      if (res.user.hasDisplayName) {
+        setAuth(res.token, res.user);
+        const me = await api.me();
+        setMe(me);
+      } else {
+        setPendingToken(res.token);
+        setDisplayName('');
+        setStep('displayName');
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [wallet, signMessage, setAuth, setMe, setWallet]);
+
+  const submitDisplayName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = displayName.trim();
+    if (name.length < 2) return;
+    setError('');
+    setLoading(true);
+    try {
+      const tok = pendingToken ?? token;
+      if (tok && !token) saveToken(tok);
+      const res = await api.setDisplayName(name);
       saveToken(res.token);
       setAuth(res.token, res.user);
       const me = await api.me();
@@ -31,23 +83,52 @@ export function AuthScreen() {
     }
   };
 
+  const reset = () => {
+    setError('');
+    setPendingToken(null);
+    localStorage.removeItem('bullrun.token');
+    disconnect().catch(() => {});
+    setStep('connect');
+  };
+
   return (
     <div className="auth-screen">
       <div className="auth-card">
         <h1>🐂 Bull Run</h1>
-        <p>Multiplayer bull racing MMO</p>
-        <form onSubmit={submit}>
-          <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-          {mode === 'register' && (
-            <input placeholder="Display name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-          )}
-          <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          {error && <div className="error">{error}</div>}
-          <button type="submit" disabled={loading}>{loading ? '...' : mode === 'login' ? 'Login' : 'Register'}</button>
-        </form>
-        <button className="link-btn" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-          {mode === 'login' ? 'Create account' : 'Already have an account?'}
-        </button>
+        <p>Token-gated bull racing MMO</p>
+
+        {step === 'displayName' ? (
+          <form onSubmit={submitDisplayName}>
+            <p className="auth-hint">Wallet connected. Pick a display name for the ranch.</p>
+            <input
+              autoFocus
+              placeholder="Display name"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              maxLength={24}
+              required
+            />
+            {error && <div className="error">{error}</div>}
+            <button type="submit" className="btn gold" disabled={loading || displayName.trim().length < 2}>
+              {loading ? '...' : 'Enter game'}
+            </button>
+          </form>
+        ) : step === 'sign' ? (
+          <>
+            <p className="auth-hint">Connected as <span className="wallet-chip">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : ''}</span></p>
+            <p className="auth-hint">Sign a free message to prove you own this wallet.</p>
+            {error && <div className="error">{error}</div>}
+            <button className="btn gold" onClick={signIn} disabled={loading}>
+              {loading ? 'Waiting for signature…' : 'Sign & continue'}
+            </button>
+            <button type="button" className="link-btn" onClick={reset}>Use a different wallet</button>
+          </>
+        ) : (
+          <>
+            <p className="auth-hint">Connect your Solana wallet to play. Hold 1,000 tokens to enter.</p>
+            <button className="btn gold" onClick={() => setVisible(true)}>Connect wallet</button>
+          </>
+        )}
       </div>
     </div>
   );

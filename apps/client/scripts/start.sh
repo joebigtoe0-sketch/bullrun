@@ -7,20 +7,22 @@ DIST="$CLIENT_DIR/dist"
 
 API="${API_URL:-${VITE_API_URL:-http://localhost:3001}}"
 WS="${WS_URL:-${VITE_WS_URL:-$API}}"
+SOLANA="${SOLANA_RPC:-${VITE_SOLANA_RPC:-https://api.mainnet-beta.solana.com}}"
 
 API=$(echo "$API" | sed 's:/*$::')
 WS=$(echo "$WS" | sed 's:/*$::')
+SOLANA=$(echo "$SOLANA" | sed 's:/*$::')
 
 mkdir -p "$DIST"
 
-printf '{"apiUrl":"%s","wsUrl":"%s"}\n' "$API" "$WS" > "$DIST/config.json"
+printf '{"apiUrl":"%s","wsUrl":"%s","solanaRpc":"%s"}\n' "$API" "$WS" "$SOLANA" > "$DIST/config.json"
 
 # Inline config survives SPA fallback when /config.json is not served as a static file
 if [ -f "$DIST/index.html" ]; then
-  node "$SCRIPT_DIR/inject-config.mjs" "$DIST/index.html" "$API" "$WS"
+  node "$SCRIPT_DIR/inject-config.mjs" "$DIST/index.html" "$API" "$WS" "$SOLANA"
 fi
 
-echo "Bull Run client config: api=$API ws=$WS"
+echo "Bull Run client config: api=$API ws=$WS solana=$SOLANA"
 
 cd "$CLIENT_DIR"
 PORT="${PORT:-4173}"

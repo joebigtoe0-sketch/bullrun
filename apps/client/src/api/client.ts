@@ -42,6 +42,49 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+  authNonce: (walletAddress: string) =>
+    request<{ message: string }>('/auth/nonce', { method: 'POST', body: JSON.stringify({ walletAddress }) }),
+  authVerify: (walletAddress: string, signature: string) =>
+    request<import('@bullrun/shared').AuthResponse>('/auth/verify', {
+      method: 'POST',
+      body: JSON.stringify({ walletAddress, signature }),
+    }),
+  setDisplayName: (displayName: string) =>
+    request<import('@bullrun/shared').AuthResponse>('/auth/display-name', {
+      method: 'POST',
+      body: JSON.stringify({ displayName }),
+    }),
+  checkAccess: () =>
+    request<{ balance: number; required: number; hasAccess: boolean }>('/auth/access'),
+  goldMarket: () =>
+    request<Array<{ id: string; sellerId: string; sellerName: string; type: 'gold'; qty: number; tokenPrice: number; status: string }>>('/market/gold'),
+  listGold: (goldQty: number, tokenPrice: number, signature: string, message: string) =>
+    request<{ listing: unknown; me: MeResponse }>('/market/list-gold', {
+      method: 'POST',
+      body: JSON.stringify({ goldQty, tokenPrice, signature, message }),
+    }),
+  cancelGoldListing: (listingId: string) =>
+    request<{ status: string; cooldownUntil?: number }>('/market/gold/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ listingId }),
+    }),
+  reserveGoldListing: (listingId: string) =>
+    request<{
+      listingId: string;
+      goldQty: number;
+      sellerWallet: string;
+      treasuryWallet: string;
+      mint: string;
+      decimals: number;
+      sellerAmount: number;
+      feeAmount: number;
+      total: number;
+    }>('/market/gold/reserve', { method: 'POST', body: JSON.stringify({ listingId }) }),
+  confirmGoldListing: (listingId: string, signature: string) =>
+    request<{ status: string; me?: MeResponse }>('/market/gold/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ listingId, signature }),
+    }),
   register: (username: string, password: string, displayName?: string) =>
     request<{ token: string; user: { id: string; username: string; displayName: string } }>('/auth/register', {
       method: 'POST',

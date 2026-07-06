@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { ChatPanel } from './ChatPanel';
+import { ProfilePopup } from './ProfilePopup';
 import {
   MAT_SWATCHES,
   bullSlots,
@@ -12,6 +13,10 @@ import {
   statCap,
   maxBullLevel,
   MARKET_LIST_QUANTITIES,
+  MARKET_GOLD_QUANTITIES,
+  MARKET_FEE,
+  buildGoldListingMessage,
+  buyerPaysTokens,
   stableWoodNeed,
   energyPerMinute,
   fmtCountdown,
@@ -38,6 +43,9 @@ import {
 import type { Bull, BullRarity, ItemSlot, MatType, MeResponse, PastureDisplayBull, StatType } from '@bullrun/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
+import { useWallet } from '@solana/wallet-adapter-react';
+import bs58 from 'bs58';
+import { useGoldTokenBuy } from '../hooks/useGoldTokenBuy';
 
 const btn = 'br-btn';
 
@@ -454,20 +462,65 @@ function BetPanel() {
 
 function MarketPanel() {
   const me = useGameStore((s) => s.me)!;
+  const walletAddress = useGameStore((s) => s.walletAddress);
   const setPanel = useGameStore((s) => s.setPanel);
   const setMe = useGameStore((s) => s.setMe);
   const toast = useGameStore((s) => s.toastMsg);
+  const { signMessage } = useWallet();
+  const { phase: buyPhase, message: buyMsg, error: buyErr, buyGoldListing } = useGoldTokenBuy();
   const [bullPrice, setBullPrice] = useState(500);
+  const [tokenPrice, setTokenPrice] = useState('10');
+  const [listLoading, setListLoading] = useState(false);
 
   const mats: MatType[] = ['hay', 'ore', 'wood'];
   const stableBulls = me.bulls.filter((b) => (b.location ?? 'stable') === 'stable');
   const myBullListing = me.marketListings?.find((l) => l.sellerId === me.id && l.type === 'bull' && l.status === 'open');
+  const myGoldListing = me.marketListings?.find((l) => l.sellerId === me.id && l.type === 'gold' && (l.status === 'open' || l.status === 'reserved' || l.status === 'cancelling'));
 
   const listingLabel = (l: (typeof me.marketListings)[0]) => {
+    if (l.type === 'gold') {
+      return `${l.qty?.toLocaleString()} gold — ${l.sellerName}`;
+    }
     if (l.type === 'bull' && l.bull) {
       return `${l.bull.name} Lv${l.bull.level ?? 1} — ${l.sellerName}`;
     }
     return `${l.qty} ${l.mat} — ${l.sellerName}`;
+  };
+
+  const listGold = async (goldQty: number) => {
+    const price = Number(tokenPrice);
+    if (!price || price <= 0) {
+      toast('Enter a valid token price');
+      return;
+    }
+    if (!walletAddress || !signMessage) {
+      toast('Connect wallet to list gold for tokens');
+      return;
+    }
+    setListLoading(true);
+    try {
+      const rounded = Math.round(price * 1e6) / 1e6;
+      const message = buildGoldListingMessage({ wallet: walletAddress, goldQty, tokenPrice: rounded });
+      const sigBytes = await signMessage(new TextEncoder().encode(message));
+      const signature = bs58.encode(sigBytes);
+      const res = await api.listGold(goldQty, rounded, signature, message);
+      setMe(res.me);
+      toast(`Listed ${goldQty}g for ${rounded} tokens`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  const buyGold = async (listingId: string) => {
+    const res = await buyGoldListing(listingId);
+    if (res.success && res.me) {
+      setMe(res.me);
+      toast('Gold purchased with tokens!');
+    } else if (!res.success) {
+      toast(res.error);
+    }
   };
 
   return (
@@ -531,6 +584,58 @@ function MarketPanel() {
           </>
         )}
 
+        <div className="muted sm" style={{ marginTop: 12 }}>SELL GOLD FOR TOKENS · 5% FEE PAID BY BUYER</div>
+        {myGoldListing ? (
+          <div className="card">
+            <div className="row-between">
+              <div>
+                <span className="bold">Your gold listing</span>
+                <div className="muted sm">
+                  {myGoldListing.qty?.toLocaleString()}g · {myGoldListing.tokenPrice} tokens
+                  {myGoldListing.status !== 'open' ? ` · ${myGoldListing.status}` : ''}
+                </div>
+              </div>
+              <button
+                className={`${btn} sm`}
+                disabled={myGoldListing.status === 'cancelling'}
+                onClick={() => api.cancelGoldListing(myGoldListing.id).then(() => api.me().then(setMe)).catch((e) => toast(e.message))}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="row-between" style={{ marginBottom: 8 }}>
+              <span className="muted">Token price (you receive)</span>
+              <input
+                className="market-token-input"
+                type="number"
+                min={0}
+                step="0.01"
+                value={tokenPrice}
+                onChange={(e) => setTokenPrice(e.target.value)}
+                placeholder="10"
+              />
+            </div>
+            <div className="muted sm" style={{ marginBottom: 8 }}>
+              Buyer pays {Number(tokenPrice) > 0 ? buyerPaysTokens(Number(tokenPrice)).toLocaleString() : '—'} tokens (incl. {Math.round(MARKET_FEE * 100)}% fee)
+            </div>
+            <div className="row gap wrap">
+              {MARKET_GOLD_QUANTITIES.map((qty) => (
+                <button
+                  key={qty}
+                  className={`${btn} gold sm`}
+                  disabled={me.gold < qty || listLoading}
+                  onClick={() => listGold(qty)}
+                >
+                  List {qty}g
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="muted sm" style={{ marginTop: 12 }}>LIST MATERIALS · CHOOSE QUANTITY</div>
         {mats.map((m) => (
           <div key={m} className="card">
@@ -561,14 +666,28 @@ function MarketPanel() {
             <div className="muted sm">OPEN LISTINGS</div>
             {me.marketListings.map((l) => (
               <div key={l.id} className="card row-between">
-                <span>{listingLabel(l)} @ {l.price}g</span>
+                <span>
+                  {listingLabel(l)}
+                  {l.type === 'gold'
+                    ? ` @ ${l.tokenPrice} tokens`
+                    : ` @ ${l.price}g`}
+                </span>
                 {l.sellerId === me.id ? (
                   <span className="muted sm">Yours</span>
+                ) : l.type === 'gold' ? (
+                  <button
+                    className={`${btn} gold sm`}
+                    disabled={buyPhase !== 'idle' && buyPhase !== 'error'}
+                    onClick={() => buyGold(l.id)}
+                  >
+                    {buyPhase !== 'idle' && buyPhase !== 'error' ? buyMsg || '…' : `Buy ${buyerPaysTokens(l.tokenPrice ?? 0)} tok`}
+                  </button>
                 ) : (
                   <button className={`${btn} gold sm`} onClick={() => api.buyListing(l.id).then(setMe).catch((e) => toast(e.message))}>Buy {l.price}g</button>
                 )}
               </div>
             ))}
+            {buyErr && <div className="error sm">{buyErr}</div>}
           </>
         ) : (
           <div className="muted sm">No open listings yet — be the first to sell.</div>
@@ -765,6 +884,7 @@ export function GameUI() {
   const setPanel = useGameStore((s) => s.setPanel);
   const setInvOpen = useGameStore((s) => s.setInvOpen);
   const invCount = me?.items.filter((i) => !i.equippedTo).length ?? 0;
+  const setProfileOpen = useGameStore((s) => s.setProfileOpen);
 
   if (!me) return null;
 
@@ -816,6 +936,7 @@ export function GameUI() {
           <button key={p} className={`${btn} gold`} onClick={() => openBuilding(p)}>{p[0].toUpperCase() + p.slice(1)}</button>
         ))}
         <button className={`${btn} blue`} onClick={() => setInvOpen(true)}>Items ({invCount})</button>
+        <button className={btn} onClick={() => setProfileOpen(true)}>Profile</button>
         <button className={btn} onClick={() => setPanel('help')}>?</button>
       </div>
 
@@ -828,6 +949,7 @@ export function GameUI() {
       {panel === 'help' && <HelpModal />}
       {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
+      <ProfilePopup />
       <BuyDenModal />
       {toast && <div className="toast">{toast}</div>}
     </div>

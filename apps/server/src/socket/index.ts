@@ -5,6 +5,7 @@ import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
 import { CHAT_MAX_LEN, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
+import { walletHasAccess } from '../lib/solana.js';
 
 type OnlinePlayer = {
   socketId: string;
@@ -69,6 +70,11 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
       include: { profile: true },
     });
     if (!user?.profile) {
+      socket.disconnect();
+      return;
+    }
+
+    if (user.walletAddress && !(await walletHasAccess(user.walletAddress))) {
       socket.disconnect();
       return;
     }

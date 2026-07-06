@@ -77,7 +77,6 @@ export const MAT_SWATCHES: Record<MatType, string> = { hay: '#d9c65a', ore: '#9a
 
 export const NPC_SHIRT_COLORS = ['#4a72c4', '#c4574a', '#4ac47e', '#c4a94a', '#8a4ac4', '#4ac4bb'];
 export const COAT_COLORS = ['#8e2f2f', '#e8e4da', '#14141a', '#3b6ea5', '#c99a5b', '#7a5296'];
-export const CALF_NAMES = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder'];
 export const SHOP_BULL_NAMES = ['Bandit', 'Ember', 'Chief', 'Juniper', 'Rocco', 'Sage', 'Nitro', 'Poppy'];
 export const SHOP_COATS = ['#1d1a17', '#6e4526', '#8e2f2f', '#c99a5b', '#3d3d45', '#d9cbb8'];
 export const SHOP_SELLERS = ['hankk', 'bullzeye', 'mlk_2', 'ac1978'];

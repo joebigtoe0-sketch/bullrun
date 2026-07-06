@@ -20,6 +20,7 @@ import {
   traitForRarity,
   statRangeForRarity,
   rollRarityIndex,
+  pickRandomBullName,
   statCap,
   TRAIN_STAT_GAIN,
   trainHayCost,
@@ -40,7 +41,7 @@ export function setIo(server: SocketServer) {
   io = server;
 }
 
-function broadcast(event: string, data: unknown) {
+export function broadcast(event: string, data: unknown) {
   io?.emit(event, data);
 }
 
@@ -174,13 +175,12 @@ export async function completeBreed(userId: string) {
   const range = statRangeForRarity(rarity as 'common' | 'uncommon' | 'rare' | 'legendary');
   const mix = (k: 'speed' | 'stamina' | 'accel' | 'temper') =>
     Math.max(range.min, Math.min(range.max, Math.round((a[k] + b[k]) / 2 + (Math.random() * 6 - 3))));
-  const names = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder'];
 
   await prisma.$transaction([
     prisma.bull.create({
       data: {
         ownerId: userId,
-        name: names[Math.floor(Math.random() * names.length)],
+        name: pickRandomBullName(),
         speed: mix('speed'),
         stamina: mix('stamina'),
         accel: mix('accel'),
@@ -577,6 +577,7 @@ export async function buyListing(userId: string, listingId: string) {
     include: { seller: { include: { profile: true } } },
   });
   if (!listing || listing.status !== 'open') throw new Error('Listing not available');
+  if (listing.type === 'gold') throw new Error('Use token payment for gold listings');
   if (listing.sellerId === userId) throw new Error('Cannot buy own listing');
 
   const buyer = await getProfile(userId);

@@ -1,6 +1,7 @@
 export interface RuntimeConfig {
   apiUrl: string;
   wsUrl: string;
+  solanaRpc: string;
 }
 
 declare global {
@@ -20,6 +21,7 @@ function fromPartial(data: Partial<RuntimeConfig> | undefined): RuntimeConfig | 
   return {
     apiUrl: normalizeUrl(data.apiUrl),
     wsUrl: normalizeUrl(data.wsUrl || data.apiUrl),
+    solanaRpc: normalizeUrl(data.solanaRpc || 'https://api.mainnet-beta.solana.com'),
   };
 }
 
@@ -51,6 +53,7 @@ export async function loadConfig(): Promise<RuntimeConfig> {
   config = {
     apiUrl: normalizeUrl(import.meta.env.VITE_API_URL || 'http://localhost:3001'),
     wsUrl: normalizeUrl(import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || 'http://localhost:3001'),
+    solanaRpc: normalizeUrl(import.meta.env.VITE_SOLANA_RPC || 'https://api.mainnet-beta.solana.com'),
   };
   return config;
 }

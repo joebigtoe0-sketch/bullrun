@@ -6,6 +6,8 @@ export * from './stats.js';
 export * from './navigation.js';
 export * from './world/buildWorld.js';
 export * from './pastures.js';
+export * from './bullNames.js';
+export * from './market.js';
 export * from './race/engine.js';
 export * from './race/prizes.js';
 export * from './race/track.js';

@@ -8,6 +8,8 @@ import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
 import * as bulls from '../services/bulls.js';
 import { computeRaceOdds } from '../services/raceOdds.js';
+import { walletAuthRoutes } from './walletAuth.js';
+import { tokenMarketRoutes, startGoldMarketSweeper } from './tokenMarket.js';
 
 export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: { username: string; password: string; displayName?: string } }>('/auth/register', async (req, reply) => {
@@ -33,7 +35,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: { username: string; password: string } }>('/auth/login', async (req, reply) => {
     const { username, password } = req.body;
     const user = await prisma.user.findUnique({ where: { username: username.toLowerCase() } });
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
       return reply.status(401).send({ error: 'Invalid credentials' });
     }
     const token = app.jwt.sign({ sub: user.id });
@@ -42,7 +44,10 @@ export async function authRoutes(app: FastifyInstance) {
 }
 
 export async function gameRoutes(app: FastifyInstance) {
-  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login']);
+  await walletAuthRoutes(app);
+  await tokenMarketRoutes(app);
+
+  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/auth/nonce', '/auth/verify']);
 
   app.addHook('preHandler', async (request, reply) => {
     const path = request.url.split('?')[0];
@@ -273,6 +278,7 @@ export async function gameRoutes(app: FastifyInstance) {
       item: l.itemData,
       bull: l.bullData,
       price: l.price,
+      tokenPrice: l.tokenPrice ? Number(l.tokenPrice.toString()) : undefined,
       status: l.status,
     }));
   });

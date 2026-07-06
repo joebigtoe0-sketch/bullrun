@@ -164,6 +164,8 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     id: user.id,
     username: user.username,
     displayName: user.displayName,
+    walletAddress: user.walletAddress,
+    hasDisplayName: user.hasDisplayName,
     gold: p.gold,
     mats: { hay: p.hay, ore: p.ore, wood: p.wood },
     stable: { level: p.stableLevel, wood: p.stableWood },
@@ -193,7 +195,12 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
   });
 
   const listings = await prisma.marketListing.findMany({
-    where: { status: 'open' },
+    where: {
+      OR: [
+        { status: 'open' },
+        { sellerId: userId, type: 'gold', status: { in: ['reserved', 'cancelling'] } },
+      ],
+    },
     include: { seller: true },
     orderBy: { createdAt: 'desc' },
     take: 50,
@@ -221,13 +228,14 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
       id: l.id,
       sellerId: l.sellerId,
       sellerName: l.seller.displayName,
-      type: l.type as 'material' | 'item' | 'bull',
+      type: l.type as 'material' | 'item' | 'bull' | 'gold',
       mat: (l.mat ?? undefined) as 'hay' | 'ore' | 'wood' | undefined,
       qty: l.qty ?? undefined,
       item: l.itemData as unknown as GameItem | undefined,
       bull: l.bullData as unknown as Partial<Bull> | undefined,
       price: l.price,
-      status: l.status as 'open' | 'sold',
+      tokenPrice: l.tokenPrice ? Number(l.tokenPrice.toString()) : undefined,
+      status: l.status as import('@bullrun/shared').MarketListing['status'],
       soldAt: l.soldAt?.getTime(),
     })),
     shopBulls: makeShopBulls(),

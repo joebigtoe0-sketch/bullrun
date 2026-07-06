@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String         @id @default(cuid())
-  username     String         @unique
-  passwordHash String
-  displayName  String
-  createdAt    DateTime       @default(now())
+  id             String         @id @default(cuid())
+  walletAddress  String?        @unique
+  authNonce      String?
+  username       String         @unique
+  passwordHash   String?
+  displayName    String
+  hasDisplayName Boolean        @default(false)
+  createdAt      DateTime       @default(now())
   profile      PlayerProfile?
   bulls        Bull[]
   items        Item[]
@@ -135,20 +138,26 @@ model Bet {
 }
 
 model MarketListing {
-  id         String   @id @default(cuid())
-  sellerId   String
-  seller     User     @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
-  buyerId    String?
-  buyer      User?    @relation("BuyerListings", fields: [buyerId], references: [id])
-  type       String
-  mat        String?
-  qty        Int?
-  itemData   Json?
-  bullData   Json?
-  price      Int
-  status     String   @default("open")
-  createdAt  DateTime @default(now())
-  soldAt     DateTime?
+  id            String    @id @default(cuid())
+  sellerId      String
+  seller        User      @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
+  buyerId       String?
+  buyer         User?     @relation("BuyerListings", fields: [buyerId], references: [id])
+  reservedById  String?
+  type          String
+  mat           String?
+  qty           Int?
+  itemData      Json?
+  bullData      Json?
+  price         Int
+  tokenPrice    Decimal?  @db.Decimal(20, 6)
+  status        String    @default("open")
+  reservedUntil DateTime?
+  cooldownUntil DateTime?
+  txSignature   String?   @unique
+  createdAt     DateTime  @default(now())
+  soldAt        DateTime?
+  cancelledAt   DateTime?
 }
 
 model PasturePlot {

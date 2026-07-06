@@ -1,13 +1,14 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
-const [indexPath, apiUrl, wsUrl] = process.argv.slice(2);
+const [indexPath, apiUrl, wsUrl, solanaRpc] = process.argv.slice(2);
 if (!indexPath || !apiUrl) {
-  console.error('Usage: inject-config.mjs <index.html> <apiUrl> [wsUrl]');
+  console.error('Usage: inject-config.mjs <index.html> <apiUrl> [wsUrl] [solanaRpc]');
   process.exit(1);
 }
 
 const ws = wsUrl || apiUrl;
-const payload = JSON.stringify({ apiUrl, wsUrl: ws });
+const solana = solanaRpc || 'https://api.mainnet-beta.solana.com';
+const payload = JSON.stringify({ apiUrl, wsUrl: ws, solanaRpc: solana });
 const tag = `<script>window.__BULLRUN_CONFIG__=${payload}</script>`;
 
 let html = readFileSync(indexPath, 'utf8');

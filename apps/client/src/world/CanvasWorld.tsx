@@ -38,7 +38,12 @@ export function CanvasWorld() {
       const dt = Math.min(0.05, (t - lastT) / 1000);
       lastT = t;
 
-      const state = useGameStore.getState();
+      let state = useGameStore.getState();
+      if (state.resultsUntil && Date.now() > state.resultsUntil) {
+        useGameStore.getState().clearResults();
+        state = useGameStore.getState();
+      }
+
       if (state.me) {
         const racingIds = state.raceAnim || state.raceGrid
           ? new Set((state.raceAnim ?? state.raceGrid)!.bulls.map((b) => b.id))
@@ -57,6 +62,9 @@ export function CanvasWorld() {
         raceAnim: state.raceAnim,
         raceGrid: state.raceGrid,
         raceLive: !!state.raceLive,
+        results: state.results,
+        resultsUntil: state.resultsUntil,
+        betResult: state.betResult,
         pastures: state.pastures,
         gather: state.gather,
         walking: !!(

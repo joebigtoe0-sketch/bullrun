@@ -81,7 +81,7 @@ async function buildRaceField(raceId: string): Promise<RaceBull[]> {
 async function startRace(raceId: string) {
   const bulls = await buildRaceField(raceId);
   const now = Date.now();
-  const endT = bulls[bulls.length - 1]?.finishT ?? 9000;
+  const endT = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
 
   await prisma.race.update({
     where: { id: raceId },

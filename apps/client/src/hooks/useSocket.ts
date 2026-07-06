@@ -107,7 +107,30 @@ export function useSocket() {
       useGameStore.getState().setRaceAnim(null);
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceLive(null);
-      useGameStore.getState().setResults(data.results, userId ? data.betResults[userId] ?? null : null);
+      useGameStore.getState().setResults(
+        data.results,
+        userId ? data.betResults[userId] ?? null : null,
+      );
+      api.me().then((m) => { if (m) useGameStore.getState().setMe(m); }).catch(() => {});
+    });
+    socket.on('race_scheduled', (data: {
+      id: string;
+      startAt: number;
+      field: import('@bullrun/shared').NpcBull[];
+    }) => {
+      const me = useGameStore.getState().me;
+      if (!me) return;
+      useGameStore.getState().setMe({
+        ...me,
+        entered: [],
+        race: {
+          id: data.id,
+          status: 'scheduled',
+          startAt: new Date(data.startAt).toISOString(),
+          field: data.field,
+          entered: [],
+        },
+      });
     });
 
     return () => {

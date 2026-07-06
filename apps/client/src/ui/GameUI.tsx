@@ -22,7 +22,6 @@ import {
 import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
-import { RaceTrackBoard } from './RaceTrackBoard';
 
 const btn = 'br-btn';
 const panel = 'br-panel';
@@ -71,12 +70,11 @@ function StablePanel() {
           </div>
         </div>
         {stableBulls.map((b) => (
-          <BullCard key={b.id} bull={b} items={me.items} entered={me.entered.includes(b.id)}
+          <BullCard key={b.id} bull={b} items={me.items}
             onTrain={(stat) => act(() => api.train(b.id, stat))}
             onRest={() => act(() => api.rest(b.id))}
             onRename={() => { const n = prompt('Rename ' + b.name, b.name); if (n?.trim()) act(() => api.rename(b.id, n.trim())); }}
             onEquip={() => { setEquipTarget(b.id); setInvOpen(true); }}
-            onEnter={() => act(() => api.enterRace(b.id), `${b.name} entered!`)}
             onFollow={followingBulls.length < followSlots ? () => act(() => api.followBull(b.id), `${b.name} is following you`) : undefined}
             onDelete={() => { if (confirm(`Release ${b.name}?`)) act(() => api.deleteBull(b.id)); }}
           />
@@ -107,9 +105,9 @@ function StablePanel() {
   );
 }
 
-function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, onEnter, onFollow, onDelete }: {
-  bull: Bull; items: import('@bullrun/shared').GameItem[]; entered: boolean;
-  onTrain: (s: StatType) => void; onRest: () => void; onRename: () => void; onEquip: () => void; onEnter: () => void;
+function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, onDelete }: {
+  bull: Bull; items: import('@bullrun/shared').GameItem[];
+  onTrain: (s: StatType) => void; onRest: () => void; onRename: () => void; onEquip: () => void;
   onFollow?: () => void; onDelete?: () => void;
 }) {
   const cap = statCap(bull);
@@ -160,7 +158,6 @@ function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, on
         <button className={`${btn} sm`} onClick={toggleBreed}>Select to breed</button>
         {onFollow && <button className={`${btn} green sm`} onClick={onFollow}>Follow me</button>}
         {onDelete && <button className={`${btn} sm`} style={{ color: '#e55' }} onClick={onDelete}>Release</button>}
-        {entered ? <span className="entered">Entered ✓</span> : <button className={`${btn} gold sm`} onClick={onEnter}>Enter race</button>}
       </div>
     </div>
   );
@@ -272,7 +269,9 @@ function RacePanel() {
   const setMe = useGameStore((s) => s.setMe);
   const toast = useGameStore((s) => s.toastMsg);
   const raceLive = useGameStore((s) => s.raceLive);
+  const followingBulls = me.bulls.filter((b) => me.followingBullIds?.includes(b.id));
   const cd = me.race ? fmtCountdown(new Date(me.race.startAt).getTime() - Date.now()) : '—';
+  const alreadyEntered = me.entered.length > 0;
 
   return (
     <div className={panel}>
@@ -281,19 +280,29 @@ function RacePanel() {
         <div className="card center">
           <div className="muted">NEXT RACE IN</div>
           <div className="countdown">{raceLive ? 'LIVE' : cd}</div>
-          <div className="muted">Entry: 50g + 30⚡ · Purse 300/150/80/40</div>
+          <div className="muted">Entry: 30⚡ · Free · One bull per player · Following bulls only</div>
         </div>
-        {me.bulls.map((b) => (
-          <div key={b.id} className="card row-between">
-            <div>
-              <span className="bold">{b.name}</span>
-              <div className="muted sm">SPD {eff(b, 'speed', me.items)} · ⚡{Math.round(b.energy)}</div>
+        {followingBulls.length === 0 ? (
+          <div className="card muted">Bring a bull with you first — use &quot;Follow me&quot; in your stable or den.</div>
+        ) : (
+          followingBulls.map((b) => (
+            <div key={b.id} className="card row-between">
+              <div>
+                <span className="bold">{b.name}</span>
+                <div className="muted sm">SPD {eff(b, 'speed', me.items)} · STA {eff(b, 'stamina', me.items)} · ACC {eff(b, 'accel', me.items)} · ⚡{Math.round(b.energy)}</div>
+              </div>
+              {me.entered.includes(b.id) ? (
+                <span className="entered">Entered ✓</span>
+              ) : alreadyEntered ? (
+                <span className="muted sm">Already entered another bull</span>
+              ) : b.energy < 30 ? (
+                <span className="muted sm">Need 30⚡</span>
+              ) : (
+                <button className={`${btn} gold`} onClick={() => api.enterRace(b.id).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
+              )}
             </div>
-            {me.entered.includes(b.id) ? <span className="entered">Entered ✓</span> : (
-              <button className={`${btn} gold`} onClick={() => api.enterRace(b.id).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
-            )}
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -638,7 +647,6 @@ export function GameUI() {
       {panel === 'help' && <HelpModal />}
       {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
-      <RaceTrackBoard />
       <BuyDenModal />
       {toast && <div className="toast">{toast}</div>}
     </div>

@@ -17,6 +17,7 @@ import {
   RACE_LAPS,
   raceBullAt,
   raceGridPosition,
+  raceProgressAt,
   currentLap,
   type MeResponse,
   type OtherPlayer,
@@ -449,36 +450,6 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
   }
 }
 
-function drawGroundPanel(
-  ctx: CanvasRenderingContext2D,
-  wx: number,
-  wy: number,
-  wWorld: number,
-  hWorld: number,
-  fill: string,
-  stroke?: string,
-) {
-  const hw = wWorld / 2;
-  const hh = hWorld / 2;
-  const c1 = iso(wx - hw, wy - hh);
-  const c2 = iso(wx + hw, wy - hh);
-  const c3 = iso(wx + hw, wy + hh);
-  const c4 = iso(wx - hw, wy + hh);
-  ctx.fillStyle = fill;
-  ctx.beginPath();
-  ctx.moveTo(c1.x, c1.y);
-  ctx.lineTo(c2.x, c2.y);
-  ctx.lineTo(c3.x, c3.y);
-  ctx.lineTo(c4.x, c4.y);
-  ctx.closePath();
-  ctx.fill();
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }
-}
-
 /** Text painted flat on isometric ground tiles (world x/y axes). */
 function drawGroundText(
   ctx: CanvasRenderingContext2D,
@@ -513,25 +484,24 @@ function drawRaceTrackBoard(
   raceGrid: DrawState['raceGrid'],
   raceAnim: DrawState['raceAnim'],
   me: MeResponse | null,
+  results: DrawState['results'],
+  resultsUntil: number | null,
+  betResult: string | null,
 ) {
-  const show = raceGrid || raceAnim || (me?.race && !raceLive);
-  if (!show) return;
-
   const wx = CX;
   const wy = CY;
 
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
-    drawGroundPanel(ctx, wx, wy, 5.2, 3.6, 'rgba(23,16,10,.82)', '#17100a');
-    drawGroundText(ctx, wx, wy - 0.55, [
+    drawGroundText(ctx, wx, wy - 0.75, [
       { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 52 : 44, color: cd > 0 ? '#f2b23a' : '#7dc24f', y: 0 },
-      { text: 'STARTING GRID', size: 16, color: '#c9b896', y: 38 },
-    ], 0.026);
+      { text: 'STARTING GRID', size: 16, color: '#ffffff', y: 38 },
+    ], 0.028);
     raceGrid.bulls.slice(0, 6).forEach((b, i) => {
       const row = Math.floor(i / 2);
       const col = i % 2;
       const tx = wx - 1.6 + col * 3.2;
-      const ty = wy + 0.55 + row * 0.42;
+      const ty = wy + 0.65 + row * 0.42;
       drawGroundText(ctx, tx, ty, [
         { text: `${b.pos}. ${b.name}`, size: 14, color: '#f3e7cd', y: 0 },
       ], 0.024);
@@ -542,25 +512,57 @@ function drawRaceTrackBoard(
   if (raceAnim) {
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
-    const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps);
-    drawGroundPanel(ctx, wx, wy, 4.8, 3.2, 'rgba(23,16,10,.82)', '#17100a');
-    drawGroundText(ctx, wx, wy - 0.7, [
-      { text: `LAP ${lap}/${laps}`, size: 22, color: '#7dc24f', y: 0 },
-    ], 0.026);
+    const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
+    drawGroundText(ctx, wx, wy - 0.85, [
+      { text: `LAP ${lap}/${laps}`, size: 24, color: '#7dc24f', y: 0 },
+    ], 0.028);
     const sorted = [...raceAnim.bulls].sort((a, b) => {
-      const pa = Math.min(1, el / a.finishT);
-      const pb = Math.min(1, el / b.finishT);
+      const pa = a.lapTimes?.length
+        ? raceProgressAt(el, a.lapTimes)
+        : Math.min(1, el / (a.finishT ?? 1));
+      const pb = b.lapTimes?.length
+        ? raceProgressAt(el, b.lapTimes)
+        : Math.min(1, el / (b.finishT ?? 1));
       return pb - pa;
     });
-    sorted.slice(0, 4).forEach((b, i) => {
-      drawGroundText(ctx, wx, wy + 0.15 + i * 0.38, [
-        { text: `${i + 1}. ${b.name}`, size: 15, color: '#f3e7cd', y: 0 },
+    sorted.slice(0, 5).forEach((b, i) => {
+      drawGroundText(ctx, wx, wy + 0.05 + i * 0.36, [
+        { text: `${i + 1}. ${b.name}`, size: 15, color: '#ffffff', y: 0 },
       ], 0.024);
     });
     return;
   }
 
-  if (me?.race) {
+  if (results?.length && resultsUntil && now < resultsUntil) {
+    const labels = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
+    drawGroundText(ctx, wx, wy - 1.15, [
+      { text: 'RACE RESULTS', size: 18, color: '#ffffff', y: 0 },
+    ], 0.028);
+    results.slice(0, 5).forEach((r, i) => {
+      const label = labels[r.pos - 1] ?? `${r.pos}th`;
+      const prize = r.prize ? `+${r.prize}g` : '—';
+      drawGroundText(ctx, wx - 0.8, wy - 0.55 + i * 0.36, [
+        {
+          text: `${label} ${r.name}`,
+          size: r.mine ? 15 : 14,
+          color: r.mine ? '#f2b23a' : '#ffffff',
+          y: 0,
+        },
+      ], 0.024);
+      drawGroundText(ctx, wx + 2.2, wy - 0.55 + i * 0.36, [
+        { text: prize, size: 14, color: r.prize ? '#7dc24f' : '#c9b896', y: 0 },
+      ], 0.022);
+    });
+    if (betResult) {
+      const short = betResult.length > 36 ? `${betResult.slice(0, 34)}…` : betResult;
+      drawGroundText(ctx, wx, wy + 1.05, [
+        { text: short, size: 12, color: '#7dc24f', y: 0 },
+      ], 0.02);
+    }
+    return;
+  }
+
+  if (me?.race && !raceLive) {
     const cd = fmtCountdown(new Date(me.race.startAt).getTime() - now);
     drawGroundText(ctx, wx, wy - 0.35, [
       { text: 'NEXT RACE', size: 18, color: '#ffffff', y: -10 },
@@ -577,16 +579,19 @@ export interface DrawState {
   walkDestination: { x: number; y: number } | null;
   worldNodes: SyncedWorldNode[];
   raceAnim: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startT: number;
     laps?: number;
   } | null;
   raceGrid: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startAt: number;
     laps: number;
   } | null;
   raceLive: boolean;
+  results: import('@bullrun/shared').RaceResult[] | null;
+  resultsUntil: number | null;
+  betResult: string | null;
   pastures: PasturePlotState[];
   gather: { mat?: string; start: number } | null;
   walking: boolean;
@@ -597,7 +602,7 @@ export interface DrawState {
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, walkDestination, worldNodes, raceAnim, raceGrid, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, walkDestination, worldNodes, raceAnim, raceGrid, raceLive, results, resultsUntil, betResult, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -630,7 +635,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
-  drawRaceTrackBoard(ctx, now, raceLive, raceGrid, raceAnim, me);
+  drawRaceTrackBoard(ctx, now, raceLive, raceGrid, raceAnim, me, results, resultsUntil, betResult);
 
   drawFenceRails(ctx);
   drawPasturePlots(ctx, pastures, me?.id);
@@ -777,7 +782,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     for (const b of raceAnim.bulls) {
-      const pos = raceBullAt(el, b.finishT, b.pos ?? 1, laps);
+      const pos = raceBullAt(el, b.finishT, b.pos ?? 1, laps, b.lapTimes);
       list.push({
         d: pos.x + pos.y,
         o: {

@@ -27,7 +27,7 @@ model PlayerProfile {
   id          String   @id @default(cuid())
   userId      String   @unique
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  gold        Float    @default(500)
+  gold        Float    @default(0)
   hay         Int      @default(6)
   ore         Int      @default(20)
   wood        Int      @default(4)

@@ -6,7 +6,6 @@ import {
   MARKET_FEE,
   NODE_RESPAWN_MS,
   RACE_ENTRY_ENERGY,
-  RACE_ENTRY_FEE,
   REST_COST,
   REST_ENERGY,
   TRAIN_HAY_COST,
@@ -305,12 +304,14 @@ export async function enterRace(userId: string, bullId: number) {
     prisma.raceEntry.count({ where: { raceId: race.id, userId } }),
   ]);
   if (!bull) throw new Error('Bull not found');
+  const following = profile.followingBullIds ?? [];
+  if (!following.includes(bullId) || bull.location !== 'following') {
+    throw new Error('Only a bull following you can enter');
+  }
   if (userEntries > 0) throw new Error('One bull per race');
   if (bull.energy < RACE_ENTRY_ENERGY) throw new Error('Need 30 energy');
-  if (profile.gold < RACE_ENTRY_FEE) throw new Error('Need 50g');
 
   await prisma.$transaction([
-    prisma.playerProfile.update({ where: { userId }, data: { gold: profile.gold - RACE_ENTRY_FEE } }),
     prisma.bull.update({ where: { id: bullId }, data: { energy: bull.energy - RACE_ENTRY_ENERGY } }),
     prisma.raceEntry.create({
       data: { raceId: race.id, userId, bullId, isNpc: false, bullData: bull },

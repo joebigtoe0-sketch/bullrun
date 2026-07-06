@@ -59,7 +59,7 @@ export async function createStarterUser(userId: string) {
   const profile = await prisma.playerProfile.create({
     data: {
       userId,
-      gold: 500,
+      gold: 0,
       hay: 6,
       ore: 20,
       wood: 4,

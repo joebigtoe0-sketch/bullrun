@@ -35,7 +35,6 @@ export function buildWorld(npcWanderers = 0): WorldData {
       const e = ell(x + 0.5, y + 0.5);
       let t: TileType = rng() < 0.5 ? 'g1' : 'g2';
       if (e >= 0.82 && e <= 1.18) t = (Math.floor(x + y) % 2 === 0) ? 'trk1' : 'trk2';
-      else if (e < 0.24) t = 'stone';
       tiles[x][y] = t;
     }
   }
@@ -78,36 +77,36 @@ export function buildWorld(npcWanderers = 0): WorldData {
     return !occupied(x, y, 2.4);
   };
 
-  let tries = 0;
-  while (nodes.filter((n) => n.mat === 'wood').length < 34 && tries++ < 1400) {
-    const x = 2 + rng() * (M - 4);
-    const y = 2 + rng() * (M - 4);
-    if (free(x, y)) {
-      const n: WorldNode = { t: 'tree', mat: 'wood', x, y, dead: 0, big: rng() < 0.4 };
+  const spawnNodes = (
+    mat: 'wood' | 'ore' | 'hay',
+    t: 'tree' | 'rock' | 'hay',
+    count: number,
+    topRightBias = 0,
+    bigChance = 0,
+  ) => {
+    let placed = 0;
+    let tries = 0;
+    while (placed < count && tries++ < 2200) {
+      let x: number;
+      let y: number;
+      if (topRightBias > 0 && rng() < topRightBias) {
+        x = 27 + rng() * (M - 31);
+        y = 2 + rng() * 22;
+      } else {
+        x = 2 + rng() * (M - 4);
+        y = 2 + rng() * (M - 4);
+      }
+      if (!free(x, y)) continue;
+      const n: WorldNode = { t, mat, x, y, dead: 0, ...(bigChance > 0 && mat === 'wood' ? { big: rng() < bigChance } : {}) };
       nodes.push(n);
       objs.push(n);
+      placed++;
     }
-  }
-  tries = 0;
-  while (nodes.filter((n) => n.mat === 'ore').length < 14 && tries++ < 900) {
-    const x = 2 + rng() * (M - 4);
-    const y = 2 + rng() * (M - 4);
-    if (free(x, y)) {
-      const n: WorldNode = { t: 'rock', mat: 'ore', x, y, dead: 0 };
-      nodes.push(n);
-      objs.push(n);
-    }
-  }
-  tries = 0;
-  while (nodes.filter((n) => n.mat === 'hay').length < 14 && tries++ < 900) {
-    const x = 2 + rng() * (M - 4);
-    const y = 2 + rng() * (M - 4);
-    if (free(x, y)) {
-      const n: WorldNode = { t: 'hay', mat: 'hay', x, y, dead: 0 };
-      nodes.push(n);
-      objs.push(n);
-    }
-  }
+  };
+
+  spawnNodes('wood', 'tree', 34, 0, 0.4);
+  spawnNodes('ore', 'rock', 26, 0.78);
+  spawnNodes('hay', 'hay', 26, 0.78);
 
   const interactables: Interactable[] = [
     { t: 'stable', x: 36, y: 36.8, label: 'Stable' },

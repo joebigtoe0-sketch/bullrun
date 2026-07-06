@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait } from '@bullrun/shared';
-import { buildWorld, nodeId } from '@bullrun/shared';
-import type { MatType } from '@bullrun/shared';
+import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS } from '@bullrun/shared';
+import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType } from '@bullrun/shared';
 
 export interface SyncedWorldNode {
   id: string;
@@ -31,11 +30,12 @@ interface GameStore {
   worldNodes: SyncedWorldNode[];
   walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
-  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startT: number; endT: number; laps?: number } | null;
-  raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startAt: number; laps: number } | null;
+  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number } | null;
+  raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;
   results: RaceResult[] | null;
+  resultsUntil: number | null;
   betResult: string | null;
   forgeResult: string;
   moveTarget: { x: number; y: number } | null;
@@ -66,7 +66,8 @@ interface GameStore {
   setRaceLive: (r: GameStore['raceLive']) => void;
   setRaceAnim: (r: GameStore['raceAnim']) => void;
   setRaceGrid: (r: GameStore['raceGrid']) => void;
-  setResults: (r: RaceResult[] | null, betResult?: string | null) => void;
+  setResults: (r: RaceResult[] | null, betResult?: string | null, until?: number) => void;
+  clearResults: () => void;
   setForgeResult: (s: string) => void;
   setMoveTarget: (t: { x: number; y: number } | null) => void;
   setMovePath: (path: { x: number; y: number }[] | null) => void;
@@ -100,6 +101,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   raceAnim: null,
   raceGrid: null,
   results: null,
+  resultsUntil: null,
   betResult: null,
   forgeResult: '',
   moveTarget: null,
@@ -170,7 +172,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setRaceLive: (r) => set({ raceLive: r }),
   setRaceAnim: (r) => set({ raceAnim: r, ...(r ? { raceGrid: null } : {}) }),
   setRaceGrid: (r) => set({ raceGrid: r }),
-  setResults: (r, betResult = null) => set({ results: r, betResult: betResult ?? null, panel: r ? 'results' : get().panel }),
+  setResults: (r, betResult = null, until) =>
+    set({
+      results: r,
+      betResult: betResult ?? null,
+      resultsUntil: r ? (until ?? Date.now() + RACE_RESULTS_DISPLAY_MS) : null,
+    }),
+  clearResults: () => set({ results: null, resultsUntil: null, betResult: null }),
   setForgeResult: (s) => set({ forgeResult: s }),
   setMoveTarget: (t) => set({ moveTarget: t }),
   setMovePath: (path) =>

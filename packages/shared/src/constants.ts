@@ -25,18 +25,18 @@ export const RARITIES: { k: RarityKey; c: string }[] = [
 ];
 
 export const NPC_POOL: Omit<NpcBull, 'id' | 'isNpc'>[] = [
-  { name: 'Thunder', owner: 'jigglz', coat: '#1d1a17', speed: 82, stamina: 68, accel: 58, temper: 3 },
-  { name: 'Brisket', owner: 'ac1978', coat: '#6e4526', speed: 62, stamina: 85, accel: 58, temper: 2 },
-  { name: 'Maximus', owner: 'DoRiiToS', coat: '#8e2f2f', speed: 72, stamina: 58, accel: 82, temper: 5 },
-  { name: 'Clover', owner: 'Xhrbes', coat: '#e8e4da', speed: 55, stamina: 78, accel: 65, temper: 1 },
-  { name: 'Diesel', owner: 'moover22', coat: '#3d3d45', speed: 70, stamina: 72, accel: 52, temper: 6 },
-  { name: 'Peanut', owner: 'hankk', coat: '#c99a5b', speed: 65, stamina: 65, accel: 65, temper: 8 },
-  { name: 'Rampage', owner: 'bullzeye', coat: '#472222', speed: 88, stamina: 52, accel: 68, temper: 7 },
-  { name: 'Duchess', owner: 'mlk_2', coat: '#d9cbb8', speed: 58, stamina: 88, accel: 58, temper: 2 },
+  { name: 'Thunder', owner: 'jigglz', coat: '#1d1a17', speed: 76, stamina: 72, accel: 64, temper: 3 },
+  { name: 'Brisket', owner: 'ac1978', coat: '#6e4526', speed: 66, stamina: 80, accel: 62, temper: 2 },
+  { name: 'Maximus', owner: 'DoRiiToS', coat: '#8e2f2f', speed: 70, stamina: 66, accel: 78, temper: 5 },
+  { name: 'Clover', owner: 'Xhrbes', coat: '#e8e4da', speed: 62, stamina: 76, accel: 66, temper: 1 },
+  { name: 'Diesel', owner: 'moover22', coat: '#3d3d45', speed: 68, stamina: 74, accel: 60, temper: 6 },
+  { name: 'Peanut', owner: 'hankk', coat: '#c99a5b', speed: 67, stamina: 68, accel: 67, temper: 8 },
+  { name: 'Rampage', owner: 'bullzeye', coat: '#472222', speed: 80, stamina: 62, accel: 70, temper: 7 },
+  { name: 'Duchess', owner: 'mlk_2', coat: '#d9cbb8', speed: 64, stamina: 82, accel: 62, temper: 2 },
 ];
 
 export const PURSE = [300, 150, 80, 40];
-export const RACE_ENTRY_FEE = 50;
+export const RACE_ENTRY_FEE = 0;
 export const RACE_ENTRY_ENERGY = 30;
 export const BREED_COST = 200;
 export const BREED_DURATION_MS = 8000;
@@ -44,11 +44,13 @@ export const REST_COST = 40;
 export const REST_ENERGY = 40;
 export const TRAIN_HAY_COST = 6;
 export const GATHER_DURATION_MS = 1500;
-export const NODE_RESPAWN_MS = 25000;
+export const NODE_RESPAWN_MS = 15_000;
 export const MARKET_LIST_QUANTITIES = [100, 500, 1000] as const;
 export const MARKET_FEE = 0.05;
 export const DEFAULT_RACE_INTERVAL_SEC = 120;
-export const DEFAULT_STARTING_GOLD = 500;
+/** How long finished-race results stay painted on the track center (ms). */
+export const RACE_RESULTS_DISPLAY_MS = 60_000;
+export const DEFAULT_STARTING_GOLD = 0;
 export const INTERACT_USE_RANGE = 2.5;
 export const INTERACT_CLICK_RANGE = 1.6;
 

@@ -75,6 +75,8 @@ export interface RaceBull {
   score?: number;
   pos?: number;
   finishT?: number;
+  /** Per-lap durations (ms); cumulative sum equals finishT. */
+  lapTimes?: number[];
   userId?: string;
 }
 

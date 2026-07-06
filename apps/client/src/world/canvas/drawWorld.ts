@@ -449,10 +449,65 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
   }
 }
 
+function drawGroundPanel(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  wWorld: number,
+  hWorld: number,
+  fill: string,
+  stroke?: string,
+) {
+  const hw = wWorld / 2;
+  const hh = hWorld / 2;
+  const c1 = iso(wx - hw, wy - hh);
+  const c2 = iso(wx + hw, wy - hh);
+  const c3 = iso(wx + hw, wy + hh);
+  const c4 = iso(wx - hw, wy + hh);
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.moveTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y);
+  ctx.lineTo(c3.x, c3.y);
+  ctx.lineTo(c4.x, c4.y);
+  ctx.closePath();
+  ctx.fill();
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+/** Text painted flat on isometric ground tiles (world x/y axes). */
+function drawGroundText(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  lines: { text: string; size: number; color: string; y: number }[],
+  scale = 0.028,
+) {
+  const s = iso(wx, wy);
+  const paint = (ox: number, oy: number, alpha: number) => {
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.transform(32 * scale, 16 * scale, -32 * scale, 16 * scale, 0, 0);
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const line of lines) {
+      ctx.font = `700 ${line.size}px 'Nunito', system-ui, sans-serif`;
+      ctx.fillStyle = line.color;
+      ctx.fillText(line.text, ox, line.y + oy);
+    }
+    ctx.restore();
+  };
+  paint(2, 2, 0.35);
+  paint(0, 0, 1);
+}
+
 function drawRaceTrackBoard(
   ctx: CanvasRenderingContext2D,
-  sx: number,
-  sy: number,
   now: number,
   raceLive: boolean,
   raceGrid: DrawState['raceGrid'],
@@ -462,41 +517,25 @@ function drawRaceTrackBoard(
   const show = raceGrid || raceAnim || (me?.race && !raceLive);
   if (!show) return;
 
-  const w = 200;
-  const h = raceGrid ? 118 : raceAnim ? 96 : 52;
-  const x = sx - w / 2;
-  const y = sy - h / 2 - 8;
-
-  ctx.fillStyle = 'rgba(23,16,10,.88)';
-  ctx.strokeStyle = '#17100a';
-  ctx.lineWidth = 3;
-  ctx.fillRect(x, y, w, h);
-  ctx.strokeRect(x, y, w, h);
-
-  ctx.textAlign = 'center';
-  ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
+  const wx = CX;
+  const wy = CY;
 
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
-    ctx.fillStyle = cd > 0 ? '#f2b23a' : '#7dc24f';
-    ctx.font = "700 36px 'Nunito', system-ui, sans-serif";
-    ctx.fillText(cd > 0 ? String(cd) : 'GO!', sx, y + 42);
-    ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
-    ctx.fillStyle = '#c9b896';
-    ctx.fillText('STARTING GRID', sx, y + 58);
-    ctx.fillStyle = '#f3e7cd';
-    ctx.textAlign = 'left';
+    drawGroundPanel(ctx, wx, wy, 5.2, 3.6, 'rgba(23,16,10,.82)', '#17100a');
+    drawGroundText(ctx, wx, wy - 0.55, [
+      { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 52 : 44, color: cd > 0 ? '#f2b23a' : '#7dc24f', y: 0 },
+      { text: 'STARTING GRID', size: 16, color: '#c9b896', y: 38 },
+    ], 0.026);
     raceGrid.bulls.slice(0, 6).forEach((b, i) => {
       const row = Math.floor(i / 2);
       const col = i % 2;
-      const tx = x + 12 + col * 94;
-      const ty = y + 72 + row * 14;
-      ctx.fillStyle = b.coat || '#888';
-      ctx.fillRect(tx, ty - 8, 8, 8);
-      ctx.fillStyle = '#f3e7cd';
-      ctx.fillText(`${b.pos}. ${b.name}`, tx + 12, ty);
+      const tx = wx - 1.6 + col * 3.2;
+      const ty = wy + 0.55 + row * 0.42;
+      drawGroundText(ctx, tx, ty, [
+        { text: `${b.pos}. ${b.name}`, size: 14, color: '#f3e7cd', y: 0 },
+      ], 0.024);
     });
-    ctx.textAlign = 'center';
     return;
   }
 
@@ -504,33 +543,30 @@ function drawRaceTrackBoard(
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps);
-    ctx.fillStyle = '#7dc24f';
-    ctx.font = "700 16px 'Nunito', system-ui, sans-serif";
-    ctx.fillText(`LAP ${lap}/${laps}`, sx, y + 22);
-    ctx.font = "700 11px 'Nunito', system-ui, sans-serif";
-    ctx.fillStyle = '#f3e7cd';
-    ctx.textAlign = 'left';
+    drawGroundPanel(ctx, wx, wy, 4.8, 3.2, 'rgba(23,16,10,.82)', '#17100a');
+    drawGroundText(ctx, wx, wy - 0.7, [
+      { text: `LAP ${lap}/${laps}`, size: 22, color: '#7dc24f', y: 0 },
+    ], 0.026);
     const sorted = [...raceAnim.bulls].sort((a, b) => {
       const pa = Math.min(1, el / a.finishT);
       const pb = Math.min(1, el / b.finishT);
       return pb - pa;
     });
     sorted.slice(0, 4).forEach((b, i) => {
-      ctx.fillStyle = '#f3e7cd';
-      ctx.fillText(`${i + 1}. ${b.name}`, x + 12, y + 40 + i * 14);
+      drawGroundText(ctx, wx, wy + 0.15 + i * 0.38, [
+        { text: `${i + 1}. ${b.name}`, size: 15, color: '#f3e7cd', y: 0 },
+      ], 0.024);
     });
-    ctx.textAlign = 'center';
     return;
   }
 
   if (me?.race) {
-    ctx.fillStyle = '#f2b23a';
-    ctx.font = "700 13px 'Nunito', system-ui, sans-serif";
-    ctx.fillText('NEXT RACE', sx, y + 20);
-    ctx.fillStyle = '#f3e7cd';
-    ctx.fillText(fmtCountdown(new Date(me.race.startAt).getTime() - now), sx, y + 38);
+    const cd = fmtCountdown(new Date(me.race.startAt).getTime() - now);
+    drawGroundText(ctx, wx, wy - 0.35, [
+      { text: 'NEXT RACE', size: 18, color: '#ffffff', y: -10 },
+      { text: cd, size: 46, color: '#f2b23a', y: 22 },
+    ], 0.028);
   }
-  ctx.textAlign = 'left';
 }
 
 export interface DrawState {
@@ -594,6 +630,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
+  drawRaceTrackBoard(ctx, now, raceLive, raceGrid, raceAnim, me);
+
   drawFenceRails(ctx);
   drawPasturePlots(ctx, pastures, me?.id);
 
@@ -610,9 +648,6 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   ctx.lineTo(p2.x, p2.y);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  const c = iso(CX, CY);
-  drawRaceTrackBoard(ctx, c.x, c.y, now, raceLive, raceGrid, raceAnim, me);
 
   const list: { d: number; o: DrawObj }[] = [];
 

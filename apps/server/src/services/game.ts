@@ -24,6 +24,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
+import { requireNearInteractable } from './proximity.js';
 
 type Io = SocketServer | null;
 let io: Io = null;
@@ -43,6 +44,7 @@ async function getProfile(userId: string) {
 }
 
 export async function trainBull(userId: string, bullId: number, stat: StatType) {
+  await requireNearInteractable(userId, 'stable');
   const [bull, profile] = await Promise.all([
     prisma.bull.findFirst({ where: { id: bullId, ownerId: userId } }),
     getProfile(userId),
@@ -60,6 +62,7 @@ export async function trainBull(userId: string, bullId: number, stat: StatType) 
 }
 
 export async function restBull(userId: string, bullId: number) {
+  await requireNearInteractable(userId, 'stable');
   const [bull, profile] = await Promise.all([
     prisma.bull.findFirst({ where: { id: bullId, ownerId: userId } }),
     getProfile(userId),
@@ -76,6 +79,7 @@ export async function restBull(userId: string, bullId: number) {
 }
 
 export async function upgradeStable(userId: string) {
+  await requireNearInteractable(userId, 'stable');
   const p = await getProfile(userId);
   if (p.wood < 5) throw new Error('Need 5 wood');
   let wood = p.stableWood + 5;
@@ -100,6 +104,7 @@ export async function upgradeStable(userId: string) {
 }
 
 export async function renameBull(userId: string, bullId: number, name: string) {
+  await requireNearInteractable(userId, 'stable');
   await prisma.bull.updateMany({
     where: { id: bullId, ownerId: userId },
     data: { name: name.trim().slice(0, 14) },
@@ -108,6 +113,7 @@ export async function renameBull(userId: string, bullId: number, name: string) {
 }
 
 export async function breedBulls(userId: string, bullAId: number, bullBId: number) {
+  await requireNearInteractable(userId, 'stable');
   const p = await getProfile(userId);
   const bulls = await prisma.bull.findMany({ where: { ownerId: userId } });
   if (bulls.length >= bullSlots(p.stableLevel)) throw new Error('No free bull slots');
@@ -163,6 +169,7 @@ export async function completeBreed(userId: string) {
 }
 
 export async function forgeItem(userId: string, oreAmount: number) {
+  await requireNearInteractable(userId, 'forge');
   const p = await getProfile(userId);
   if (p.ore < oreAmount || oreAmount < 50) throw new Error('Not enough ore');
 
@@ -239,6 +246,7 @@ export async function completeGather(userId: string, nodeIdStr: string) {
 }
 
 export async function enterRace(userId: string, bullId: number) {
+  await requireNearInteractable(userId, 'race');
   const race = await prisma.race.findFirst({ where: { status: 'scheduled' }, orderBy: { startAt: 'asc' } });
   if (!race) throw new Error('No scheduled race');
   if (race.startAt.getTime() <= Date.now()) throw new Error('Race locked');
@@ -267,6 +275,7 @@ export async function enterRace(userId: string, bullId: number) {
 }
 
 export async function placeBet(userId: string, targetBullId: string, targetName: string, amount: number, odds: number) {
+  await requireNearInteractable(userId, 'bet');
   const race = await prisma.race.findFirst({ where: { status: 'scheduled' }, orderBy: { startAt: 'asc' } });
   if (!race) throw new Error('No scheduled race');
 
@@ -284,6 +293,7 @@ export async function placeBet(userId: string, targetBullId: string, targetName:
 }
 
 export async function listMaterial(userId: string, mat: MatType, pricePerUnit: number) {
+  await requireNearInteractable(userId, 'market');
   const p = await getProfile(userId);
   const field = mat;
   if ((p[field] as number) < MARKET_LIST_QTY) throw new Error(`Need ${MARKET_LIST_QTY} ${mat}`);
@@ -321,6 +331,7 @@ export async function listMaterial(userId: string, mat: MatType, pricePerUnit: n
 }
 
 export async function buyListing(userId: string, listingId: string) {
+  await requireNearInteractable(userId, 'market');
   const listing = await prisma.marketListing.findUnique({
     where: { id: listingId },
     include: { seller: { include: { profile: true } } },
@@ -395,6 +406,7 @@ export async function buyListing(userId: string, listingId: string) {
 }
 
 export async function buyNpcCatalog(userId: string, mat: MatType, price: number) {
+  await requireNearInteractable(userId, 'market');
   const p = await getProfile(userId);
   if (p.gold < price) throw new Error('Not enough gold');
   await prisma.playerProfile.update({
@@ -405,6 +417,7 @@ export async function buyNpcCatalog(userId: string, mat: MatType, price: number)
 }
 
 export async function buyShopBull(userId: string, bullData: Record<string, unknown>, price: number) {
+  await requireNearInteractable(userId, 'market');
   const p = await getProfile(userId);
   const count = await prisma.bull.count({ where: { ownerId: userId } });
   if (count >= bullSlots(p.stableLevel)) throw new Error('No free bull slots');

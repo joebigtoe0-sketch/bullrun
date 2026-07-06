@@ -4,13 +4,13 @@ import {
   WORLD_RX,
   WORLD_RY,
   TILE_COLORS,
+  FENCE_RINGS,
   fmtCountdown,
   coatOf,
   trackClamp,
   nodeId,
   type MeResponse,
   type OtherPlayer,
-  type NpcWanderer,
   type WorldObject,
 } from '@bullrun/shared';
 import { worldData } from '../../store/gameStore';
@@ -79,6 +79,45 @@ function drawRing(ctx: CanvasRenderingContext2D, er: number, color: string) {
   }
   ctx.stroke();
   ctx.setLineDash([]);
+}
+
+/** Horizontal rails connecting fence posts into a continuous fence. */
+function drawFenceRails(ctx: CanvasRenderingContext2D) {
+  const railHeights = [9, 17];
+
+  for (const { er, n } of FENCE_RINGS) {
+    const posts: { wx: number; wy: number }[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      posts.push({ wx: CX + Math.cos(a) * RX * er, wy: CY + Math.sin(a) * RY * er });
+    }
+
+    for (const rh of railHeights) {
+      ctx.strokeStyle = '#8a6a2e';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const p = posts[i % n];
+        const s = iso(p.wx, p.wy);
+        if (i === 0) ctx.moveTo(s.x, s.y - rh);
+        else ctx.lineTo(s.x, s.y - rh);
+      }
+      ctx.stroke();
+
+      ctx.strokeStyle = '#e0c96a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const p = posts[i % n];
+        const s = iso(p.wx, p.wy);
+        if (i === 0) ctx.moveTo(s.x, s.y - rh - 1);
+        else ctx.lineTo(s.x, s.y - rh - 1);
+      }
+      ctx.stroke();
+    }
+  }
 }
 
 type DrawObj = WorldObject & {
@@ -162,7 +201,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
   } else if (o.t === 'post') {
     cube(ctx, o.x - 0.08, o.y - 0.08, 0.16, 0.16, 13, 0, '#e0c96a', '#a8913c', '#c4ad50');
     cube(ctx, o.x - 0.05, o.y - 0.05, 0.1, 0.1, 2, 13, '#f2b23a', '#b57f1d', '#d0991f');
-  } else if (o.t === 'player' || o.t === 'npc' || o.t === 'other') {
+  } else if (o.t === 'player' || o.t === 'other') {
     const isMe = o.t === 'player';
     const shirt = isMe ? '#e8a33d' : (o.shirt || '#e8a33d');
     const s = iso(o.x, o.y);
@@ -173,7 +212,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
     cube(ctx, o.x - 0.18, o.y - 0.13, 0.36, 0.26, 13, 3, shirt, shade(shirt, -40), shade(shirt, -20));
     cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 9, 16, '#e8c49a', '#b08d64', '#cca87d');
     cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 3, 25, '#3a2a1a', '#241608', '#2f2012');
-    const lbl = isMe ? 'You' : o.t === 'other' ? (o.name || 'Player') : `Lvl ${o.lvl} ${o.name}`;
+    const lbl = isMe ? 'You' : (o.name || 'Player');
     label(ctx, o.x, o.y, lbl, 40, isMe ? '#f2b23a' : '#fff');
   } else if (o.t === 'bull') {
     const c = o.coat || '#33261d';
@@ -203,14 +242,13 @@ export interface DrawState {
     startT: number;
   } | null;
   raceLive: boolean;
-  npcs: NpcWanderer[];
   folPos: Record<number, { x: number; y: number }>;
   camOff: { x: number; y: number };
   dpr: number;
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, npcs, folPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, folPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -242,6 +280,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       ctx.fill();
     }
   }
+
+  drawFenceRails(ctx);
 
   drawRing(ctx, 0.82, '#f5f0e4');
   drawRing(ctx, 1.18, '#f5f0e4');
@@ -283,10 +323,6 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       if (dead) obj.dead = dead;
     }
     list.push({ d: o.x + o.y, o: obj });
-  }
-
-  for (const n of npcs) {
-    list.push({ d: n.x + n.y, o: { t: 'npc', x: n.x, y: n.y, shirt: n.shirt, name: n.name, lvl: n.lvl } });
   }
 
   for (const p of otherPlayers) {
@@ -338,29 +374,6 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   for (const it of list) drawObj(ctx, it.o, stableLevel, now);
 
   ctx.restore();
-}
-
-export function stepNpcs(npcs: NpcWanderer[], dt: number) {
-  for (const n of npcs) {
-    if (n.wait > 0) {
-      n.wait -= dt;
-      continue;
-    }
-    const d = Math.hypot(n.tx - n.x, n.ty - n.y);
-    if (d < 0.2) {
-      n.tx = 4 + Math.random() * (M - 8);
-      n.ty = 4 + Math.random() * (M - 10);
-      n.wait = 1 + Math.random() * 4;
-    } else {
-      n.x += ((n.tx - n.x) / d) * 1.6 * dt;
-      n.y += ((n.ty - n.y) / d) * 1.6 * dt;
-    }
-    if (trackClamp(n, CX, CY, RX, RY)) {
-      n.tx = n.x;
-      n.ty = n.y;
-      n.wait = 0.5;
-    }
-  }
 }
 
 export function stepFollowers(

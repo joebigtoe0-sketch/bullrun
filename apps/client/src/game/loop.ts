@@ -8,8 +8,11 @@ import {
   WORLD_CY,
   WORLD_RX,
   WORLD_RY,
+  INTERACT_USE_RANGE,
   nodeId,
   trackClamp,
+  isNearInteractable,
+  isBuildingPanel,
 } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
 
@@ -83,6 +86,13 @@ export function useGameLoop() {
       p.y = Math.max(1, Math.min(M - 1, p.y));
       if (trackClamp(p, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY)) s.setMoveTarget(null);
 
+      if (s.me && s.panel && isBuildingPanel(s.panel)) {
+        const pos = s.me.position;
+        if (!isNearInteractable(pos.x, pos.y, s.panel, worldData.interactables)) {
+          s.setPanel(null);
+        }
+      }
+
       if (now > s.freeCamUntil) {
         const f = Math.min(1, 4 * dt);
         s.setCam(s.cam.x + (p.x - s.cam.x) * f, s.cam.y + (p.y - s.cam.y) * f);
@@ -135,6 +145,11 @@ function execPending(pending: { type: string; nodeId?: string; x: number; y: num
   if (pending.type === 'gather' && pending.nodeId) {
     s.setGather({ nodeId: pending.nodeId, start: Date.now(), dur: GATHER_DURATION_MS });
   } else if (['stable', 'bet', 'market', 'forge', 'race'].includes(pending.type)) {
+    const pos = s.me?.position;
+    if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race', worldData.interactables)) {
+      s.toastMsg('Get closer to use that');
+      return;
+    }
     s.setPanel(pending.type as import('@bullrun/shared').PanelType);
   }
 }
@@ -166,7 +181,7 @@ export function handleWorldClick(wx: number, wy: number) {
   const p = s.me?.position ?? { x: 0, y: 0 };
   if (best) {
     s.setPending(best);
-    if (Math.hypot(p.x - best.x, p.y - best.y) < 2) {
+    if (Math.hypot(p.x - best.x, p.y - best.y) < INTERACT_USE_RANGE) {
       s.setMoveTarget(null);
       execPending(best);
     } else {

@@ -4,7 +4,6 @@ import { handleWorldClick } from '../game/loop';
 import {
   drawWorld,
   stepFollowers,
-  stepNpcs,
   screenToGrid,
 } from './canvas/drawWorld';
 
@@ -12,7 +11,6 @@ import {
 export function CanvasWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const camOffRef = useRef({ x: 0, y: 0 });
-  const npcsRef = useRef(worldData.npcs.map((n) => ({ ...n })));
   const folPosRef = useRef<Record<number, { x: number; y: number }>>({});
 
   useEffect(() => {
@@ -38,8 +36,6 @@ export function CanvasWorld() {
       const dt = Math.min(0.05, (t - lastT) / 1000);
       lastT = t;
 
-      stepNpcs(npcsRef.current, dt);
-
       const state = useGameStore.getState();
       if (state.me) {
         const racingIds = state.raceAnim
@@ -56,7 +52,6 @@ export function CanvasWorld() {
         moveTarget: state.moveTarget,
         raceAnim: state.raceAnim,
         raceLive: !!state.raceLive,
-        npcs: npcsRef.current,
         folPos: folPosRef.current,
         camOff: camOffRef.current,
         dpr: window.devicePixelRatio || 1,

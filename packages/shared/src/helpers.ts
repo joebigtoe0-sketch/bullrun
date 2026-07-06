@@ -1,4 +1,5 @@
-import type { Bull, GameItem, StatType } from './types.js';
+import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
+import { INTERACT_USE_RANGE } from './constants.js';
 
 export function shade(hex: string, amt: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -79,4 +80,22 @@ export function fmtCountdown(ms: number): string {
 
 export function nodeId(x: number, y: number, mat: string): string {
   return `${mat}:${x.toFixed(2)}:${y.toFixed(2)}`;
+}
+
+const BUILDING_PANELS = new Set<PanelType>(['stable', 'bet', 'market', 'forge', 'race']);
+
+export function isBuildingPanel(panel: PanelType | null): panel is 'stable' | 'bet' | 'market' | 'forge' | 'race' {
+  return panel !== null && BUILDING_PANELS.has(panel);
+}
+
+export function isNearInteractable(
+  px: number,
+  py: number,
+  type: 'stable' | 'bet' | 'market' | 'forge' | 'race',
+  interactables: Interactable[],
+  range = INTERACT_USE_RANGE,
+): boolean {
+  const it = interactables.find((i) => i.t === type);
+  if (!it) return false;
+  return Math.hypot(px - it.x, py - it.y) < range;
 }

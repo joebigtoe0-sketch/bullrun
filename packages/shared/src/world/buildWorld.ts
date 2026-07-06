@@ -6,6 +6,7 @@ import {
   WORLD_SEED,
   WORLD_SIZE,
   NPC_SHIRT_COLORS,
+  FENCE_RINGS,
 } from '../constants.js';
 import type { Interactable, NpcWanderer, TileType, WorldData, WorldNode, WorldObject } from '../types.js';
 
@@ -17,7 +18,7 @@ function makeRng(seed: number) {
   };
 }
 
-export function buildWorld(npcWanderers = 4): WorldData {
+export function buildWorld(npcWanderers = 0): WorldData {
   const M = WORLD_SIZE;
   const CX = WORLD_CX;
   const CY = WORLD_CY;
@@ -54,8 +55,7 @@ export function buildWorld(npcWanderers = 4): WorldData {
       objs.push({ t: 'post', x: CX + Math.cos(a) * RX * er, y: CY + Math.sin(a) * RY * er });
     }
   };
-  fence(0.78, 40);
-  fence(1.235, 60);
+  for (const { er, n } of FENCE_RINGS) fence(er, n);
 
   [[9, 43], [15, 46], [22, 46], [31, 46], [38, 44], [46, 41], [47, 9], [5, 10]].forEach(([x, y]) =>
     objs.push({ t: 'house', x, y })

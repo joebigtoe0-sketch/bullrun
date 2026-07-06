@@ -13,8 +13,10 @@ import {
   stableWoodNeed,
   fmtCountdown,
   RARITIES,
+  isNearInteractable,
 } from '@bullrun/shared';
-import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
+import type { Bull, MatType, MeResponse, PanelType, StatType } from '@bullrun/shared';
+import { worldData } from '../store/gameStore';
 
 const btn = 'br-btn';
 const panel = 'br-panel';
@@ -408,9 +410,23 @@ export function GameUI() {
   const raceLive = useGameStore((s) => s.raceLive);
   const setPanel = useGameStore((s) => s.setPanel);
   const setInvOpen = useGameStore((s) => s.setInvOpen);
+  const toastMsg = useGameStore((s) => s.toastMsg);
   const invCount = me?.items.filter((i) => !i.equippedTo).length ?? 0;
 
   if (!me) return null;
+
+  const openBuilding = (p: 'stable' | 'race' | 'bet' | 'market' | 'forge') => {
+    if (panel === p) {
+      setPanel(null);
+      return;
+    }
+    const pos = me.position;
+    if (!isNearInteractable(pos.x, pos.y, p, worldData.interactables)) {
+      toastMsg('Get closer to use that');
+      return;
+    }
+    setPanel(p);
+  };
 
   const cd = me.race ? fmtCountdown(new Date(me.race.startAt).getTime() - Date.now()) : '—';
   const slots = bullSlots(me.stable.level);
@@ -437,7 +453,7 @@ export function GameUI() {
 
       <div className="bottom-bar">
         {(['stable', 'race', 'bet', 'market', 'forge'] as const).map((p) => (
-          <button key={p} className={`${btn} gold`} onClick={() => setPanel(panel === p ? null : p)}>{p[0].toUpperCase() + p.slice(1)}</button>
+          <button key={p} className={`${btn} gold`} onClick={() => openBuilding(p)}>{p[0].toUpperCase() + p.slice(1)}</button>
         ))}
         <button className={`${btn} blue`} onClick={() => setInvOpen(true)}>Items ({invCount})</button>
         <button className={btn} onClick={() => setPanel('help')}>?</button>

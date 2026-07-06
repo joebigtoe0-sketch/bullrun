@@ -49,6 +49,14 @@ export const MARKET_LIST_QTY = 10;
 export const MARKET_FEE = 0.05;
 export const DEFAULT_RACE_INTERVAL_SEC = 120;
 export const DEFAULT_STARTING_GOLD = 500;
+export const INTERACT_USE_RANGE = 2.5;
+export const INTERACT_CLICK_RANGE = 1.6;
+
+/** Fence rings around the race track (er = ellipse ratio, n = post count). */
+export const FENCE_RINGS = [
+  { er: 0.78, n: 40 },
+  { er: 1.235, n: 60 },
+] as const;
 
 export const MAT_RATES: Record<MatType, number> = { hay: 3, ore: 8, wood: 5 };
 export const MAT_SWATCHES: Record<MatType, string> = { hay: '#d9c65a', ore: '#9aa0a6', wood: '#8a5a2b' };

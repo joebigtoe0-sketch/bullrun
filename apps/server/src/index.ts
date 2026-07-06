@@ -15,16 +15,33 @@ import { grantFromEnvIfSet } from './lib/grantResources.js';
 import { getOnlineCount } from './socket/index.js';
 
 const PORT = Number(process.env.PORT || 3001);
-const CORS_ORIGIN = (process.env.CORS_ORIGIN || 'http://localhost:5173').replace(/\/+$/, '');
+
+function parseCorsOrigins(raw: string | undefined): string[] {
+  const fallback = 'http://localhost:5173';
+  const list = (raw || fallback)
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+  return list.length ? list : [fallback];
+}
+
+const CORS_ORIGINS = parseCorsOrigins(process.env.CORS_ORIGIN);
 
 async function main() {
+  console.log(`CORS allowed origins: ${CORS_ORIGINS.join(', ')}`);
   const app = Fastify({ logger: true });
 
   await app.register(cors, {
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
       const normalized = origin.replace(/\/+$/, '');
-      if (normalized === CORS_ORIGIN) return cb(null, true);
+      if (CORS_ORIGINS.includes(normalized)) {
+        cb(null, normalized);
+        return;
+      }
       cb(null, false);
     },
     credentials: true,
@@ -53,7 +70,7 @@ async function main() {
   await app.listen({ port: PORT, host: '0.0.0.0' });
 
   const io = new SocketServer(app.server, {
-    cors: { origin: CORS_ORIGIN, credentials: true },
+    cors: { origin: CORS_ORIGINS, credentials: true },
   });
 
   setupSocket(io, app);

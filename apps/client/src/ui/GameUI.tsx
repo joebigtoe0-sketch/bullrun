@@ -93,7 +93,7 @@ function StablePanel() {
         <div className="card">
           <div className="row-between">
             <span className="bold">Stable Level {me.stable.level}</span>
-            <span className="muted">{energyPerMinute(me.stable.level).toFixed(1)}⚡/min regen</span>
+            <span className="muted">{energyPerMinute(me.stable.level).toFixed(1)} energy/min regen</span>
           </div>
           <div className="bar"><div className="bar-fill wood" style={{ width: `${Math.min(100, me.stable.wood / woodNeed * 100)}%` }} /></div>
           <div className="row-between">
@@ -175,7 +175,7 @@ function BullCard({ bull, items, onTrain, onRename, onEquip, onFollow, onDelete 
       </div>
       <div className="bar-row">
         <div className="bar flex1"><div className="bar-fill energy" style={{ width: `${bull.energy}%` }} /></div>
-        <span>{Math.round(bull.energy)}/{BULL_MAX_ENERGY}</span>
+        <span>{Math.round(bull.energy)}/{BULL_MAX_ENERGY} energy</span>
         <span className="muted">XP {Math.round(bull.xp)}/{bull.level * 100}</span>
       </div>
       {(['speed', 'stamina', 'accel'] as StatType[]).map((stat) => {
@@ -379,7 +379,7 @@ function RacePanel() {
         <div className="card center">
           <div className="muted">NEXT RACE IN</div>
           <div className="countdown">{raceLive ? 'LIVE' : cd}</div>
-          <div className="muted">Entry: {BULL_MAX_ENERGY}⚡ · Free · Purse 1000g · One bull per player</div>
+          <div className="muted">Entry: {BULL_MAX_ENERGY} energy · Free · Purse 1000g · One bull per player</div>
         </div>
         {followingBulls.length === 0 ? (
           <div className="card muted">Bring a bull with you first — use &quot;Follow me&quot; in your stable or den.</div>
@@ -388,14 +388,14 @@ function RacePanel() {
             <div key={b.id} className="card row-between">
               <div>
                 <span className="bold">{b.name}</span>
-                <div className="muted sm">SPD {eff(b, 'speed', me.items)} · STA {eff(b, 'stamina', me.items)} · ACC {eff(b, 'accel', me.items)} · ⚡{Math.round(b.energy)}</div>
+                <div className="muted sm">SPD {eff(b, 'speed', me.items)} · STA {eff(b, 'stamina', me.items)} · ACC {eff(b, 'accel', me.items)} · {Math.round(b.energy)} energy</div>
               </div>
               {me.entered.includes(b.id) ? (
                 <span className="entered">Entered ✓</span>
               ) : alreadyEntered ? (
                 <span className="muted sm">Already entered another bull</span>
               ) : b.energy < BULL_MAX_ENERGY ? (
-                <span className="muted sm">Need {BULL_MAX_ENERGY}⚡</span>
+                <span className="muted sm">Need {BULL_MAX_ENERGY} energy</span>
               ) : (
                 <button className={`${btn} gold`} onClick={() => api.enterRace(b.id, me.position.x, me.position.y).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
               )}

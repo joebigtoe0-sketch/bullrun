@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { TILE_COLORS, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY, nodeId, shade } from '@bullrun/shared';
+import { TILE_COLORS, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY, nodeId, shade, worldToGrid } from '@bullrun/shared';
 import { useGameStore, worldData } from '../store/gameStore';
 import { VoxelBox, Tile, gridPos } from './Voxel';
 import { handleWorldClick } from '../game/loop';
@@ -134,19 +134,18 @@ function RaceTrack() {
 }
 
 function GroundClick() {
+  const [cx, , cz] = gridPos(WORLD_CX, WORLD_CY);
   return (
     <mesh
-      rotation={[-Math.PI / 2, 0, Math.PI / 4]}
-      position={[0, 0, 26]}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[cx, 0, cz]}
       onClick={(e) => {
         e.stopPropagation();
-        const p = e.point;
-        const wx = (p.z / 1 + p.x / 2) / 2;
-        const wy = (p.z / 1 - p.x / 2) / 2;
-        handleWorldClick(wx, wy);
+        const { x, y } = worldToGrid(e.point.x, e.point.z);
+        handleWorldClick(x, y);
       }}
     >
-      <planeGeometry args={[120, 120]} />
+      <planeGeometry args={[220, 220]} />
       <meshBasicMaterial visible={false} />
     </mesh>
   );

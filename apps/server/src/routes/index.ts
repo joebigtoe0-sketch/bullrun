@@ -7,7 +7,7 @@ import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
 import * as bulls from '../services/bulls.js';
-import { odds, raceScore, type Bull, type GameItem } from '@bullrun/shared';
+import { computeRaceOdds } from '../services/raceOdds.js';
 
 export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: { username: string; password: string; displayName?: string } }>('/auth/register', async (req, reply) => {
@@ -213,49 +213,44 @@ export async function gameRoutes(app: FastifyInstance) {
     const me = await getMeResponse(userId);
     if (!me?.race) return { field: [], odds: [] };
 
-    const race = await prisma.race.findUnique({
-      where: { id: me.race.id },
-      include: { entries: { include: { user: true } } },
-    });
-    if (!race) return { field: [], odds: [] };
-
-    const field: Bull[] = [];
-    for (const e of race.entries) {
-      if (e.bullId) {
-        const b = await prisma.bull.findUnique({ where: { id: e.bullId } });
-        if (b) field.push({ ...b, owner: e.user?.displayName || 'Player' } as Bull & { owner: string });
-      }
-    }
-    const npcs = (race.field as Array<Record<string, unknown>>).map((n, i) => ({
-      ...n,
-      id: `npc${i}`,
-      isNpc: true,
-    }));
-    const all = [...field, ...npcs].slice(0, 6) as Array<Bull & { isNpc?: boolean; owner?: string }>;
-    const items = await prisma.item.findMany({ where: { ownerId: userId } });
-    const mappedItems = items.map((it: PrismaItem) => ({
-      id: it.id,
-      slot: it.slot as GameItem['slot'],
-      rarity: it.rarity as GameItem['rarity'],
-      rarityColor: it.rarityColor,
-      name: it.name,
-      color: it.color,
-      bonus: it.bonusStat ? { stat: it.bonusStat as 'speed', amt: it.bonusAmt ?? 0 } : null,
-      equippedTo: it.equippedTo,
-    }));
-    const raceField = all.map((b) => ({
-      ...b,
-      speed: b.isNpc ? b.speed : undefined,
-    }));
-    void raceScore;
-    const oddsArr = odds(all as Parameters<typeof odds>[0]);
-    return { field: all, odds: oddsArr };
+    const { field, odds: oddsArr } = await computeRaceOdds(me.race.id);
+    return {
+      field: field.map((b) => ({
+        id: b.id,
+        name: b.name,
+        owner: b.owner,
+        coat: b.coat,
+        speed: b.isNpc ? b.speed : undefined,
+        stamina: b.isNpc ? b.stamina : undefined,
+        accel: b.isNpc ? b.accel : undefined,
+        isNpc: b.isNpc,
+      })),
+      odds: oddsArr,
+    };
   });
 
   app.post<{ Body: { mat: string; pricePerUnit: number; qty: number } }>('/market/list', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
       return await game.listMaterial(userId, req.body.mat as 'hay', req.body.pricePerUnit, req.body.qty);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { bullId: number; price: number } }>('/market/list-bull', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await game.listBull(userId, req.body.bullId, req.body.price);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { listingId: string } }>('/market/cancel-bull', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await game.cancelBullListing(userId, req.body.listingId);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

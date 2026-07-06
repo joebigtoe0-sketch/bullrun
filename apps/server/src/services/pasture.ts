@@ -39,6 +39,30 @@ async function denCountForPlot(plotId: number): Promise<number> {
   return prisma.bull.count({ where: { location: 'den', denPlotId: plotId } });
 }
 
+function mapBull(b: {
+  id: number;
+  name: string;
+  coat: string;
+  trait: string;
+  rarity: string;
+  level: number;
+  speed: number;
+  stamina: number;
+  accel: number;
+}): import('@bullrun/shared').PastureDisplayBull {
+  return {
+    id: b.id,
+    name: b.name,
+    coat: b.coat,
+    trait: b.trait as import('@bullrun/shared').BullTrait,
+    rarity: b.rarity as import('@bullrun/shared').BullRarity,
+    level: b.level,
+    speed: b.speed,
+    stamina: b.stamina,
+    accel: b.accel,
+  };
+}
+
 function mapPlot(
   row: {
     id: number;
@@ -49,6 +73,7 @@ function mapPlot(
     owner?: { displayName: string } | null;
   },
   denCount: number,
+  denBulls: import('@bullrun/shared').PastureDisplayBull[],
 ): PasturePlotState {
   return {
     id: row.id,
@@ -56,7 +81,8 @@ function mapPlot(
     ownerName: row.owner?.displayName ?? null,
     level: row.level,
     woodInvested: row.woodInvested,
-    displayBull: null,
+    displayBull: denBulls[0] ?? null,
+    denBulls,
     denCount,
     denCapacity: denCapacity(row.level),
     nextSpawnAt: row.nextSpawnAt?.getTime() ?? null,
@@ -73,8 +99,31 @@ export async function listPastures(): Promise<PasturePlotState[]> {
     where: { location: 'den', denPlotId: { not: null } },
     _count: { _all: true },
   });
+  const denBullRows = await prisma.bull.findMany({
+    where: { location: 'den', denPlotId: { not: null } },
+    orderBy: { id: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      coat: true,
+      trait: true,
+      rarity: true,
+      level: true,
+      speed: true,
+      stamina: true,
+      accel: true,
+      denPlotId: true,
+    },
+  });
   const countMap = new Map(counts.map((c) => [c.denPlotId!, c._count._all]));
-  return rows.map((r) => mapPlot(r, countMap.get(r.id) ?? 0));
+  const bullsByPlot = new Map<number, import('@bullrun/shared').PastureDisplayBull[]>();
+  for (const b of denBullRows) {
+    if (b.denPlotId == null) continue;
+    const list = bullsByPlot.get(b.denPlotId) ?? [];
+    list.push(mapBull(b));
+    bullsByPlot.set(b.denPlotId, list);
+  }
+  return rows.map((r) => mapPlot(r, countMap.get(r.id) ?? 0, bullsByPlot.get(r.id) ?? []));
 }
 
 export async function buyPasture(userId: string, plotId: number) {

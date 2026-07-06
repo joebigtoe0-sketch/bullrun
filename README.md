@@ -66,7 +66,7 @@ Add the PostgreSQL plugin. Railway sets `DATABASE_URL` automatically.
 - `DATABASE_URL` — from Postgres plugin (reference in Railway)
 - `JWT_SECRET` — random secret string
 - `CORS_ORIGIN` — your client Railway URL (e.g. `https://bullrun-client.up.railway.app`)
-- `RACE_INTERVAL_SEC` — `120`
+- `RACE_INTERVAL_SEC` — seconds between races (default `360` = 6 min)
 
 ### 3. Client (use `Dockerfile.client` at repo root)
 

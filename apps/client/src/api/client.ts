@@ -87,6 +87,10 @@ export const api = {
   raceOdds: () => request<{ field: unknown[]; odds: number[] }>('/race/odds'),
   listMaterial: (mat: string, pricePerUnit: number, qty: number) =>
     request<MeResponse>('/market/list', { method: 'POST', body: JSON.stringify({ mat, pricePerUnit, qty }) }),
+  listBull: (bullId: number, price: number) =>
+    request<MeResponse>('/market/list-bull', { method: 'POST', body: JSON.stringify({ bullId, price }) }),
+  cancelBullListing: (listingId: string) =>
+    request<MeResponse>('/market/cancel-bull', { method: 'POST', body: JSON.stringify({ listingId }) }),
   market: () => request<unknown[]>('/market'),
   buyListing: (listingId: string) =>
     request<MeResponse>('/market/buy', { method: 'POST', body: JSON.stringify({ listingId }) }),

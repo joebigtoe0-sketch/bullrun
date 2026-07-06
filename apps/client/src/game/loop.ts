@@ -214,11 +214,9 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
         return;
       }
       s.setBuyDenConfirm({ plotId: plot.id, label: def.label, price: def.price });
-    } else if (plot.ownerId === s.me?.id) {
+    } else if (plot.ownerId) {
       s.setDenPlotId(plot.id);
       s.setPanel('den');
-    } else {
-      s.toastMsg(`Owned by ${plot.ownerName}`);
     }
   } else if (['stable', 'bet', 'market', 'forge', 'race'].includes(pending.type)) {
     const pos = s.me?.position;

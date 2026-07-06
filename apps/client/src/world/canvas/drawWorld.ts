@@ -18,6 +18,7 @@ import {
   raceBullAt,
   raceGridPosition,
   raceProgressAt,
+  formatRaceLapLabel,
   currentLap,
   CHAT_SPEECH_FADE_MS,
   type MeResponse,
@@ -436,6 +437,8 @@ function drawPasturePlots(
     label(ctx, c.x, c.y, lbl, 22, col);
     if (state?.ownerId === meId) {
       label(ctx, c.x, c.y, 'click to manage', 38, '#bfe3a4');
+    } else if (state?.ownerId) {
+      label(ctx, c.x, c.y, 'click to view bulls', 38, '#c9b896');
     }
   }
 }
@@ -656,7 +659,7 @@ function drawRaceTrackBoard(
       return pb - pa;
     });
     drawGroundTextList(ctx, wx, listWy, {
-      header: [{ text: `LAP ${lap}/${laps}`, size: 24 }],
+      header: [{ text: formatRaceLapLabel(lap, laps), size: 24 }],
       entries: sorted.map((b, i) => `${i + 1}. ${b.name}`),
     });
     return;
@@ -872,23 +875,25 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
-  for (const b of me?.bulls ?? []) {
-    if (b.location !== 'den' || b.denPlotId == null) continue;
-    const def = PASTURE_PLOTS.find((p) => p.id === b.denPlotId);
+  for (const plot of pastures) {
+    if (!plot.ownerId || !plot.denBulls?.length) continue;
+    const def = PASTURE_PLOTS.find((p) => p.id === plot.id);
     if (!def) continue;
-    const pos = denBullPos(b.id, def);
-    list.push({
-      d: pos.x + pos.y,
-      o: {
-        t: 'bull',
-        x: pos.x,
-        y: pos.y,
-        coat: coatOf(b, me!.items),
-        trait: b.trait,
-        label: b.name,
-        facingLeft: false,
-      },
-    });
+    for (const b of plot.denBulls) {
+      const pos = denBullPos(b.id, def);
+      list.push({
+        d: pos.x + pos.y,
+        o: {
+          t: 'bull',
+          x: pos.x,
+          y: pos.y,
+          coat: b.coat,
+          trait: b.trait,
+          label: b.name,
+          facingLeft: false,
+        },
+      });
+    }
   }
 
   if (raceGrid && !raceAnim) {
@@ -913,8 +918,11 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   if (raceAnim) {
     const el = now - raceAnim.startT;
     const laps = raceAnim.laps ?? RACE_LAPS;
-    for (const b of raceAnim.bulls) {
-      const pos = raceBullAt(el, b.finishT, b.pos ?? 1, laps, b.lapTimes);
+    const fieldSize = raceAnim.bulls.length;
+    for (let i = 0; i < raceAnim.bulls.length; i++) {
+      const b = raceAnim.bulls[i]!;
+      const slot = b.pos ?? i + 1;
+      const pos = raceBullAt(el, b.finishT, slot, laps, b.lapTimes, fieldSize);
       list.push({
         d: pos.x + pos.y,
         o: {

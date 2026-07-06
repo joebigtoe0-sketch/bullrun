@@ -1,6 +1,7 @@
 import {
   NPC_POOL,
   RACE_LAPS,
+  DEFAULT_RACE_INTERVAL_SEC,
   buildRaceResults,
   liveStandings,
   maxBullLevel,
@@ -28,7 +29,7 @@ export async function ensureScheduledRace() {
   const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
   if (running) return running;
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 600);
+  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
   const field = pickNpcField(5);
   return prisma.race.create({
     data: {
@@ -182,7 +183,7 @@ async function finishRace(raceId: string) {
 
   io?.emit('race_finished', { id: raceId, results, betResults });
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 600);
+  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
   const field = pickNpcField(5);
   const next = await prisma.race.create({
     data: {

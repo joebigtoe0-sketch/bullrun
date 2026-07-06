@@ -51,7 +51,11 @@ export const GATHER_DURATION_MS = 1500;
 export const NODE_RESPAWN_MS = 15_000;
 export const MARKET_LIST_QUANTITIES = [100, 500, 1000] as const;
 export const MARKET_FEE = 0.05;
-export const DEFAULT_RACE_INTERVAL_SEC = 600;
+/** Fair win payout multiplier after 5% house rake (odds = (1 / win%) × this). */
+export const BET_HOUSE_EDGE = 1 - MARKET_FEE;
+/** Monte Carlo trials when estimating bet odds from the race simulator. */
+export const ODDS_SIM_TRIALS = 1500;
+export const DEFAULT_RACE_INTERVAL_SEC = 360;
 /** How long finished-race results stay painted on the track center (ms). */
 export const RACE_RESULTS_DISPLAY_MS = 60_000;
 export const CHAT_MAX_LEN = 120;

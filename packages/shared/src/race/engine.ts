@@ -2,6 +2,7 @@ import type { Bull, GameItem, NpcBull, RaceBull, RaceResult } from '../types.js'
 import { eff, coatOf } from '../helpers.js';
 import { normalizeStat } from '../stats.js';
 import { NPC_POOL } from '../constants.js';
+import { BET_HOUSE_EDGE, ODDS_SIM_TRIALS } from '../constants.js';
 import { racePrizeForPosition } from './prizes.js';
 import {
   RACE_BASE_LAP_MS,
@@ -77,13 +78,61 @@ function overallPower(stats: ResolvedStats): number {
   return stats.speed * 0.38 + stats.stamina * 0.34 + stats.accel * 0.28;
 }
 
-export function odds(field: RaceBull[]): number[] {
-  const bases = field.map((b) => {
-    const score = b.isNpc ? npcScore(b) : (b.score ?? npcScore(b));
-    return Math.pow(score, 1.35);
+function splitRaceField(field: RaceBull[]): { players: RaceBull[]; npcs: NpcBull[] } {
+  const players: RaceBull[] = [];
+  const npcs: NpcBull[] = [];
+  for (const b of field.slice(0, 6)) {
+    if (b.isNpc) npcs.push(b as NpcBull);
+    else players.push(b);
+  }
+  return { players, npcs };
+}
+
+/** Win probability per field slot via Monte Carlo using the real race simulator. */
+export function winProbabilities(
+  field: RaceBull[],
+  items: GameItem[] = [],
+  trials = ODDS_SIM_TRIALS,
+): number[] {
+  const { players, npcs } = splitRaceField(field);
+  const ordered = [...players, ...npcs].slice(0, 6);
+  const n = ordered.length;
+  if (n === 0) return [];
+
+  const wins = new Array<number>(n).fill(0);
+  for (let t = 0; t < trials; t++) {
+    const { bulls } = simulateRace(players, npcs, items);
+    const winner = bulls.find((b) => b.pos === 1);
+    if (!winner) continue;
+    const winIdx = ordered.findIndex((b) => String(b.id) === String(winner.id));
+    if (winIdx >= 0) wins[winIdx]++;
+  }
+
+  const total = wins.reduce((a, c) => a + c, 0) || 1;
+  return wins.map((w) => w / total);
+}
+
+export function oddsFromProbabilities(
+  probs: number[],
+  houseEdge = BET_HOUSE_EDGE,
+  minOdds = 1.2,
+  maxOdds = 12,
+): number[] {
+  return probs.map((p) => {
+    if (p <= 0) return maxOdds;
+    const fair = 1 / p;
+    return Math.min(maxOdds, Math.max(minOdds, fair * houseEdge));
   });
-  const sum = bases.reduce((a, c) => a + c, 0);
-  return field.map((_, i) => Math.min(12, Math.max(1.2, 0.95 / (bases[i] / sum))));
+}
+
+/** Decimal odds from simulated win chances (includes house rake). */
+export function odds(
+  field: RaceBull[],
+  items: GameItem[] = [],
+  trials = ODDS_SIM_TRIALS,
+): number[] {
+  const probs = winProbabilities(field, items, trials);
+  return oddsFromProbabilities(probs);
 }
 
 export function simulateRace(

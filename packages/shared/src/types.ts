@@ -168,6 +168,11 @@ export interface PastureDisplayBull {
   name: string;
   coat: string;
   trait?: BullTrait;
+  rarity?: BullRarity;
+  level?: number;
+  speed?: number;
+  stamina?: number;
+  accel?: number;
 }
 
 export interface PasturePlotState {
@@ -177,6 +182,7 @@ export interface PasturePlotState {
   level: number;
   woodInvested: number;
   displayBull: PastureDisplayBull | null;
+  denBulls: PastureDisplayBull[];
   denCount: number;
   denCapacity: number;
   nextSpawnAt: number | null;

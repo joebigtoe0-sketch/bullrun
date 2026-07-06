@@ -58,10 +58,6 @@ export function stableWoodNeed(level: number): number {
   return 35 * level * level;
 }
 
-export function stableGoldNeed(level: number): number {
-  return 120 * level * level;
-}
-
 /** Energy restored per minute (all bulls). Higher stable level = faster recovery. */
 export function energyPerMinute(stableLevel: number): number {
   return ENERGY_REGEN_BASE_PER_MIN * (1 + 0.5 * Math.max(0, stableLevel - 1));

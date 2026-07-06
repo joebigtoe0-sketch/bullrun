@@ -23,7 +23,6 @@ import {
   statCap,
   TRAIN_STAT_GAIN,
   trainHayCost,
-  stableGoldNeed,
   stableWoodNeed,
   type MatType,
   type StatType,
@@ -32,6 +31,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getMeResponse, mapBull } from './player.js';
 import { requireNearInteractable } from './proximity.js';
+import { computeRaceOdds } from './raceOdds.js';
 
 type Io = SocketServer | null;
 let io: Io = null;
@@ -93,21 +93,17 @@ export async function upgradeStable(userId: string) {
   if (p.wood < 10) throw new Error('Need 10 wood');
   let wood = p.stableWood + 10;
   let matsWood = p.wood - 10;
-  let gold = p.gold;
   let level = p.stableLevel;
 
   const need = stableWoodNeed(level);
-  const goldNeed = stableGoldNeed(level);
   if (wood >= need) {
-    if (gold < goldNeed) throw new Error(`Need ${goldNeed}g to level up`);
-    gold -= goldNeed;
     level += 1;
     wood = 0;
   }
 
   await prisma.playerProfile.update({
     where: { userId },
-    data: { wood: matsWood, stableWood: wood, gold, stableLevel: level },
+    data: { wood: matsWood, stableWood: wood, stableLevel: level },
   });
   return getMeResponse(userId);
 }
@@ -358,7 +354,7 @@ export async function placeBet(
   targetBullId: string,
   targetName: string,
   amount: number,
-  odds: number,
+  _clientOdds: number,
   clientX?: number,
   clientY?: number,
 ) {
@@ -369,12 +365,26 @@ export async function placeBet(
   const existing = await prisma.bet.findFirst({ where: { raceId: race.id, userId } });
   if (existing) throw new Error('One bet per race');
 
+  const { field, odds: oddsArr } = await computeRaceOdds(race.id);
+  const idx = field.findIndex((b) => String(b.id) === targetBullId);
+  if (idx < 0) throw new Error('Bull not in this race');
+  const serverOdds = oddsArr[idx];
+
   const p = await getProfile(userId);
   if (p.gold < amount) throw new Error('Not enough gold');
 
   await prisma.$transaction([
     prisma.playerProfile.update({ where: { userId }, data: { gold: p.gold - amount } }),
-    prisma.bet.create({ data: { raceId: race.id, userId, targetBullId, targetName, amount, odds } }),
+    prisma.bet.create({
+      data: {
+        raceId: race.id,
+        userId,
+        targetBullId,
+        targetName: field[idx]?.name ?? targetName,
+        amount,
+        odds: serverOdds,
+      },
+    }),
   ]);
   return getMeResponse(userId);
 }
@@ -420,6 +430,146 @@ export async function listMaterial(userId: string, mat: MatType, pricePerUnit: n
   return getMeResponse(userId);
 }
 
+async function assertCanListBull(userId: string, bullId: number) {
+  const bull = await prisma.bull.findFirst({ where: { id: bullId, ownerId: userId } });
+  if (!bull) throw new Error('Bull not found');
+  if ((bull.location || 'stable') !== 'stable') throw new Error('Bull must be in your stable');
+  if (bull.location === 'following') throw new Error('Deposit bull first');
+
+  const profile = await prisma.playerProfile.findUnique({ where: { userId } });
+  if (!profile) throw new Error('Profile not found');
+  if (profile.followingBullIds.includes(bullId)) {
+    throw new Error('Deposit bull first');
+  }
+  if (profile.breedingAId === bullId || profile.breedingBId === bullId) {
+    throw new Error('Bull is breeding');
+  }
+
+  const inRace = await prisma.raceEntry.findFirst({
+    where: { bullId, race: { status: { in: ['scheduled', 'running'] } } },
+  });
+  if (inRace) throw new Error('Bull is in a race');
+
+  const existing = await prisma.marketListing.findFirst({
+    where: { sellerId: userId, type: 'bull', status: 'open' },
+  });
+  if (existing) throw new Error('You already have a bull listed (one at a time)');
+
+  return bull;
+}
+
+function bullListingSnapshot(bull: {
+  name: string;
+  level: number;
+  xp: number;
+  speed: number;
+  stamina: number;
+  accel: number;
+  temper: number;
+  coat: string;
+  trait: string;
+  rarity: string;
+  energy: number;
+}) {
+  return {
+    name: bull.name,
+    level: bull.level,
+    xp: bull.xp,
+    speed: bull.speed,
+    stamina: bull.stamina,
+    accel: bull.accel,
+    temper: bull.temper,
+    coat: bull.coat,
+    trait: bull.trait,
+    rarity: bull.rarity,
+    energy: bull.energy,
+  };
+}
+
+export async function listBull(userId: string, bullId: number, price: number) {
+  await requireNearInteractable(userId, 'market');
+  const amount = Math.floor(price);
+  if (amount < 1) throw new Error('Price must be at least 1g');
+  if (amount > 1_000_000) throw new Error('Price too high');
+
+  const bull = await assertCanListBull(userId, bullId);
+  const bullData = bullListingSnapshot(bull);
+
+  const listing = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.item.updateMany({ where: { equippedTo: bullId }, data: { equippedTo: null } });
+    await tx.bull.delete({ where: { id: bullId } });
+    const following = (await tx.playerProfile.findUnique({ where: { userId } }))?.followingBullIds ?? [];
+    if (following.includes(bullId)) {
+      await tx.playerProfile.update({
+        where: { userId },
+        data: { followingBullIds: following.filter((id) => id !== bullId) },
+      });
+    }
+    return tx.marketListing.create({
+      data: {
+        sellerId: userId,
+        type: 'bull',
+        bullData: bullData as object,
+        price: amount,
+        status: 'open',
+      },
+      include: { seller: true },
+    });
+  });
+
+  const payload = {
+    id: listing.id,
+    sellerId: listing.sellerId,
+    sellerName: listing.seller.displayName,
+    type: 'bull' as const,
+    bull: bullData,
+    price: listing.price,
+    status: 'open' as const,
+  };
+  broadcast('listing_created', payload);
+  const { broadcastPlayerBulls } = await import('../socket/index.js');
+  await broadcastPlayerBulls(userId);
+  return getMeResponse(userId);
+}
+
+export async function cancelBullListing(userId: string, listingId: string) {
+  await requireNearInteractable(userId, 'market');
+  const listing = await prisma.marketListing.findUnique({ where: { id: listingId } });
+  if (!listing || listing.status !== 'open') throw new Error('Listing not found');
+  if (listing.sellerId !== userId) throw new Error('Not your listing');
+  if (listing.type !== 'bull' || !listing.bullData) throw new Error('Not a bull listing');
+
+  const p = await getProfile(userId);
+  const stableCount = await prisma.bull.count({ where: { ownerId: userId, location: 'stable' } });
+  if (stableCount >= bullSlots(p.stableLevel)) throw new Error('No free stable slot');
+
+  const bull = listing.bullData as Record<string, unknown>;
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    await tx.bull.create({
+      data: {
+        ownerId: userId,
+        name: String(bull.name),
+        level: Number(bull.level ?? 1),
+        xp: Number(bull.xp ?? 0),
+        speed: Number(bull.speed),
+        stamina: Number(bull.stamina),
+        accel: Number(bull.accel),
+        temper: Number(bull.temper),
+        coat: String(bull.coat),
+        trait: String(bull.trait ?? 'normal'),
+        rarity: String(bull.rarity ?? 'common'),
+        energy: Number(bull.energy ?? 80),
+        location: 'stable',
+      },
+    });
+    await tx.marketListing.delete({ where: { id: listingId } });
+  });
+
+  const { broadcastPlayerBulls } = await import('../socket/index.js');
+  await broadcastPlayerBulls(userId);
+  return getMeResponse(userId);
+}
+
 export async function buyListing(userId: string, listingId: string) {
   await requireNearInteractable(userId, 'market');
   const listing = await prisma.marketListing.findUnique({
@@ -431,6 +581,11 @@ export async function buyListing(userId: string, listingId: string) {
 
   const buyer = await getProfile(userId);
   if (buyer.gold < listing.price) throw new Error('Not enough gold');
+
+  if (listing.type === 'bull') {
+    const stableCount = await prisma.bull.count({ where: { ownerId: userId, location: 'stable' } });
+    if (stableCount >= bullSlots(buyer.stableLevel)) throw new Error('No free stable slots');
+  }
 
   await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     await tx.playerProfile.update({
@@ -459,12 +614,17 @@ export async function buyListing(userId: string, listingId: string) {
         data: {
           ownerId: userId,
           name: String(bull.name),
+          level: Number(bull.level ?? 1),
+          xp: Number(bull.xp ?? 0),
           speed: Number(bull.speed),
           stamina: Number(bull.stamina),
           accel: Number(bull.accel),
           temper: Number(bull.temper),
           coat: String(bull.coat),
+          trait: String(bull.trait ?? 'normal'),
+          rarity: String(bull.rarity ?? 'common'),
           energy: Number(bull.energy ?? 80),
+          location: 'stable',
         },
       });
     }

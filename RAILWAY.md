@@ -18,7 +18,7 @@ Delete everything except these 4 variables:
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 JWT_SECRET=any-long-random-string-here
 CORS_ORIGIN=https://bullrunclient-production.up.railway.app
-RACE_INTERVAL_SEC=120
+RACE_INTERVAL_SEC=360
 ```
 
 ### How to set DATABASE_URL (important)

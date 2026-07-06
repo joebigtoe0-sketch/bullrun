@@ -4,7 +4,7 @@ import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
-import type { OtherPlayer, OtherPlayerBull } from '@bullrun/shared';
+import { CHAT_MAX_LEN, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
 
 type OnlinePlayer = {
   socketId: string;
@@ -122,6 +122,20 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
         await updatePosition(userId, x, y);
         socket.broadcast.emit('player_moved', { id: userId, x, y });
       }
+    });
+
+    socket.on('chat', ({ text }: { text: string }) => {
+      const p = onlinePlayers.get(userId);
+      if (!p || !ioRef) return;
+      const msg = String(text ?? '').trim().slice(0, CHAT_MAX_LEN);
+      if (!msg) return;
+      const payload: ChatMessage = {
+        id: userId,
+        displayName: p.displayName,
+        text: msg,
+        at: Date.now(),
+      };
+      ioRef.emit('chat_message', payload);
     });
 
     socket.on('disconnect', () => {

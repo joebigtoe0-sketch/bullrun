@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
+import { ChatPanel } from './ChatPanel';
 import {
   MAT_SWATCHES,
   bullSlots,
@@ -27,8 +28,6 @@ import {
   BULL_MAX_ENERGY,
   FORGE_MIN_ORE,
   TRAIN_HAY_COST,
-  REST_COST,
-  REST_ENERGY,
   BREED_COST,
 } from '@bullrun/shared';
 import type { Bull, BullRarity, MatType, MeResponse, StatType } from '@bullrun/shared';
@@ -88,7 +87,6 @@ function StablePanel() {
         {stableBulls.map((b) => (
           <BullCard key={b.id} bull={b} items={me.items}
             onTrain={(stat) => act(() => api.train(b.id, stat))}
-            onRest={() => act(() => api.rest(b.id))}
             onRename={() => { const n = prompt('Rename ' + b.name, b.name); if (n?.trim()) act(() => api.rename(b.id, n.trim())); }}
             onEquip={() => { setEquipTarget(b.id); setInvOpen(true); }}
             onFollow={followingBulls.length < followSlots ? () => act(() => api.followBull(b.id), `${b.name} is following you`) : undefined}
@@ -127,9 +125,9 @@ function StablePanel() {
   );
 }
 
-function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, onDelete }: {
+function BullCard({ bull, items, onTrain, onRename, onEquip, onFollow, onDelete }: {
   bull: Bull; items: import('@bullrun/shared').GameItem[];
-  onTrain: (s: StatType) => void; onRest: () => void; onRename: () => void; onEquip: () => void;
+  onTrain: (s: StatType) => void; onRename: () => void; onEquip: () => void;
   onFollow?: () => void; onDelete?: () => void;
 }) {
   const cap = statCap(bull);
@@ -177,7 +175,6 @@ function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, o
       <div className="muted sm">Equipped: {equipped.length ? equipped.map((e) => e.name).join(', ') : 'nothing'}</div>
       <div className="row gap wrap">
         <button className={`${btn} blue sm`} onClick={onEquip}>Equip items</button>
-        <button className={`${btn} sm`} onClick={onRest}>Rest +{REST_ENERGY}⚡ ({REST_COST}g)</button>
         <button className={`${btn} sm`} onClick={toggleBreed}>Select to breed</button>
         {onFollow && <button className={`${btn} green sm`} onClick={onFollow}>Follow me</button>}
         {onDelete && <button className={`${btn} sm`} style={{ color: '#e55' }} onClick={onDelete}>Release</button>}
@@ -663,6 +660,8 @@ export function GameUI() {
       <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</div>
 
       <GatherBar />
+
+      <ChatPanel />
 
       <div className="bottom-bar">
         {(['stable', 'race', 'bet', 'market', 'forge'] as const).map((p) => (

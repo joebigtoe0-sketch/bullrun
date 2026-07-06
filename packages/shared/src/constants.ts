@@ -53,6 +53,10 @@ export const MARKET_FEE = 0.05;
 export const DEFAULT_RACE_INTERVAL_SEC = 600;
 /** How long finished-race results stay painted on the track center (ms). */
 export const RACE_RESULTS_DISPLAY_MS = 60_000;
+export const CHAT_MAX_LEN = 120;
+export const CHAT_LOG_MAX = 80;
+export const CHAT_SPEECH_MS = 5 * 60_000;
+export const CHAT_SPEECH_FADE_MS = 4_000;
 export const DEFAULT_STARTING_GOLD = 0;
 export const INTERACT_USE_RANGE = 2.5;
 export const INTERACT_CLICK_RANGE = 1.6;

@@ -29,17 +29,21 @@ const DEN_GAP = 1.2;
 const MAP = 56;
 const EDGE = 1.0;
 
-const leftCy = (i: number) => EDGE + 2.5 + i * (DEN_H + DEN_GAP);
-const bottomCx = (i: number, count: number) => {
-  const span = MAP - EDGE * 2 - DEN_W;
+/** Keep top/bottom rows clear of left/right columns at map corners. */
+const CORNER_INSET = EDGE + DEN_W + PASTURE_FENCE_MARGIN + DEN_GAP;
+const TOP_ROW_RIGHT = MAP - EDGE - DEN_W - PASTURE_FENCE_MARGIN - DEN_GAP;
+const SIDE_START_Y = EDGE + DEN_H + DEN_GAP + PASTURE_FENCE_MARGIN;
+
+const edgeCx = (i: number, count: number) => {
+  const span = TOP_ROW_RIGHT - CORNER_INSET;
   const gap = count > 1 ? (span - count * DEN_W) / (count - 1) : 0;
-  return EDGE + i * (DEN_W + gap);
+  return CORNER_INSET + i * (DEN_W + gap);
 };
-const topCx = bottomCx;
+const leftCy = (i: number) => SIDE_START_Y + i * (DEN_H + DEN_GAP);
 const bottomY = MAP - EDGE - DEN_H - PASTURE_FENCE_MARGIN;
 const topY = EDGE;
 const rightCx = MAP - EDGE - DEN_W - PASTURE_FENCE_MARGIN;
-const rightCy = (i: number) => EDGE + 2.5 + i * (DEN_H + DEN_GAP);
+const rightCy = leftCy;
 
 function den(id: number, cx: number, cy: number, label: string, price: number): PasturePlotDef {
   return { id, cx, cy, w: DEN_W, h: DEN_H, price, label };
@@ -48,8 +52,8 @@ function den(id: number, cx: number, cy: number, label: string, price: number): 
 /** Dens along left, bottom, top, and right map edges. */
 export const PASTURE_PLOTS: PasturePlotDef[] = [
   ...Array.from({ length: 6 }, (_, i) => den(i, EDGE, leftCy(i), `Den ${i + 1}`, DEN_PRICE)),
-  ...Array.from({ length: 8 }, (_, i) => den(6 + i, bottomCx(i, 8), bottomY, `Den ${7 + i}`, DEN_PRICE)),
-  ...Array.from({ length: 6 }, (_, i) => den(14 + i, topCx(i, 6), topY, `Den ${15 + i}`, DEN_PRICE)),
+  ...Array.from({ length: 8 }, (_, i) => den(6 + i, edgeCx(i, 8), bottomY, `Den ${7 + i}`, DEN_PRICE)),
+  ...Array.from({ length: 6 }, (_, i) => den(14 + i, edgeCx(i, 6), topY, `Den ${15 + i}`, DEN_PRICE)),
   ...Array.from({ length: 6 }, (_, i) => den(20 + i, rightCx, rightCy(i), `Den ${21 + i}`, DEN_PRICE)),
 ];
 

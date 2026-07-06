@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { CHAT_MAX_LEN } from '@bullrun/shared';
 import { getWsUrl, api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
+
+export const gameSocketRef = { current: null as Socket | null };
+
+export function emitChat(text: string) {
+  const msg = text.trim().slice(0, CHAT_MAX_LEN);
+  if (!msg) return;
+  gameSocketRef.current?.emit('chat', { text: msg });
+}
 
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
@@ -16,6 +25,7 @@ export function useSocket() {
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
+    gameSocketRef.current = socket;
 
     socket.on('connect_error', (err) => {
       console.error('Socket connect_error', err.message);
@@ -132,10 +142,14 @@ export function useSocket() {
         },
       });
     });
+    socket.on('chat_message', (msg: import('@bullrun/shared').ChatMessage) => {
+      useGameStore.getState().addChatMessage(msg);
+    });
 
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      gameSocketRef.current = null;
     };
   }, [token, me?.id]);
 

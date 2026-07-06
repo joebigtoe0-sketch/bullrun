@@ -43,6 +43,8 @@ export function CanvasWorld() {
         useGameStore.getState().clearResults();
         state = useGameStore.getState();
       }
+      useGameStore.getState().pruneSpeechBubbles();
+      state = useGameStore.getState();
 
       if (state.me) {
         const racingIds = state.raceAnim || state.raceGrid
@@ -74,6 +76,8 @@ export function CanvasWorld() {
         ),
         folPos: folPosRef.current,
         otherFolPos: otherFolPosRef.current,
+        speechBubbles: state.speechBubbles,
+        myPlayerId: state.user?.id ?? null,
         camOff: camOffRef.current,
         dpr: window.devicePixelRatio || 1,
       });

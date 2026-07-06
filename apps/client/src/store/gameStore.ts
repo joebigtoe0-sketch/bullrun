@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS } from '@bullrun/shared';
-import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType } from '@bullrun/shared';
+import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS } from '@bullrun/shared';
+import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrun/shared';
 
 export interface SyncedWorldNode {
   id: string;
@@ -47,6 +47,8 @@ interface GameStore {
   cam: { x: number; y: number };
   freeCamUntil: number;
   shopBulls: MeResponse['shopBulls'];
+  chatLog: ChatMessage[];
+  speechBubbles: Record<string, { text: string; until: number }>;
 
   setAuth: (token: string, user: { id: string; username: string; displayName: string }) => void;
   setMe: (me: MeResponse) => void;
@@ -80,6 +82,8 @@ interface GameStore {
   setFreeCamUntil: (t: number) => void;
   setPastures: (p: PasturePlotState[]) => void;
   setDenPlotId: (id: number | null) => void;
+  addChatMessage: (msg: ChatMessage) => void;
+  pruneSpeechBubbles: () => void;
   logout: () => void;
 }
 
@@ -115,6 +119,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   shopBulls: [],
   pastures: [],
   denPlotId: null,
+  chatLog: [],
+  speechBubbles: {},
 
   setAuth: (token, user) => {
     localStorage.setItem('bullrun.token', token);
@@ -200,8 +206,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
   setPastures: (p) => set({ pastures: p }),
   setDenPlotId: (id) => set({ denPlotId: id }),
+  addChatMessage: (msg) => {
+    const until = Date.now() + CHAT_SPEECH_MS;
+    set({
+      chatLog: [...get().chatLog, msg].slice(-CHAT_LOG_MAX),
+      speechBubbles: { ...get().speechBubbles, [msg.id]: { text: msg.text, until } },
+    });
+  },
+  pruneSpeechBubbles: () => {
+    const now = Date.now();
+    const bb = get().speechBubbles;
+    let changed = false;
+    const next = { ...bb };
+    for (const [id, b] of Object.entries(bb)) {
+      if (b.until < now) {
+        delete next[id];
+        changed = true;
+      }
+    }
+    if (changed) set({ speechBubbles: next });
+  },
   logout: () => {
     localStorage.removeItem('bullrun.token');
-    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [], denPlotId: null, buyDenConfirm: null });
+    set({
+      token: null,
+      user: null,
+      me: null,
+      otherPlayers: [],
+      pastures: [],
+      denPlotId: null,
+      buyDenConfirm: null,
+      chatLog: [],
+      speechBubbles: {},
+    });
   },
 }));

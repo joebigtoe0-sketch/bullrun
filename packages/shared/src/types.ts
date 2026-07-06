@@ -322,6 +322,13 @@ export interface MeResponse extends UserProfile {
   shopBulls: ShopBull[];
 }
 
+export interface ChatMessage {
+  id: string;
+  displayName: string;
+  text: string;
+  at: number;
+}
+
 export interface SocketEvents {
   world_snapshot: {
     players: OtherPlayer[];
@@ -339,4 +346,5 @@ export interface SocketEvents {
   race_finished: { id: string; results: RaceResult[]; betResults: Record<string, string> };
   listing_created: MarketListing;
   listing_sold: { id: string; buyerId: string };
+  chat_message: ChatMessage;
 }

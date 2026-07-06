@@ -19,6 +19,7 @@ import {
   raceGridPosition,
   raceProgressAt,
   currentLap,
+  CHAT_SPEECH_FADE_MS,
   type MeResponse,
   type OtherPlayer,
   type PasturePlotState,
@@ -84,6 +85,71 @@ function label(ctx: CanvasRenderingContext2D, wx: number, wy: number, txt: strin
   ctx.textAlign = 'center';
   ctx.fillText(txt, s.x, s.y - yOff - 1);
   ctx.textAlign = 'left';
+}
+
+function wrapSpeechLines(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return [text.slice(0, 24)];
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(test).width > maxW && cur) {
+      lines.push(cur);
+      cur = w;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines.slice(0, 4);
+}
+
+function drawSpeechBubble(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  text: string,
+  alpha: number,
+) {
+  if (alpha <= 0) return;
+  const s = iso(wx, wy);
+  ctx.font = "600 10px 'Nunito', system-ui, sans-serif";
+  const maxW = 118;
+  const lines = wrapSpeechLines(ctx, text, maxW);
+  const lineH = 12;
+  const padX = 7;
+  const padY = 5;
+  const textW = Math.max(...lines.map((l) => ctx.measureText(l).width), 20);
+  const w = Math.min(maxW + padX * 2, textW + padX * 2);
+  const h = lines.length * lineH + padY * 2;
+  const bx = s.x - w / 2;
+  const by = s.y - 78 - h;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = 'rgba(252,248,240,0.96)';
+  ctx.strokeStyle = 'rgba(23,16,10,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, w, h, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(s.x - 5, by + h);
+  ctx.lineTo(s.x + 5, by + h);
+  ctx.lineTo(s.x, by + h + 6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#2d2318';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], s.x, by + padY + 9 + i * lineH);
+  }
+  ctx.textAlign = 'left';
+  ctx.restore();
 }
 
 function drawRing(ctx: CanvasRenderingContext2D, er: number, color: string) {
@@ -156,6 +222,7 @@ type DrawObj = WorldObject & {
   gatherMat?: string;
   gatherStart?: number;
   walking?: boolean;
+  speech?: { text: string; until: number };
 };
 
 function drawArm(
@@ -179,6 +246,12 @@ function drawPlayerCharacter(
   now: number,
 ) {
   const isMe = o.t === 'player';
+  if (o.speech) {
+    const remain = o.speech.until - now;
+    const fadeMs = CHAT_SPEECH_FADE_MS;
+    const alpha = remain <= fadeMs ? Math.max(0, remain / fadeMs) : 1;
+    if (alpha > 0) drawSpeechBubble(ctx, o.x, o.y, o.speech.text, alpha);
+  }
   const shirt = isMe ? '#e8a33d' : (o.shirt || '#e8a33d');
   const skin = '#e8c49a';
   const skinD = '#b08d64';
@@ -456,10 +529,10 @@ function drawGroundText(
   wx: number,
   wy: number,
   lines: { text: string; size: number; color: string; y: number }[],
-  scale = 0.028,
+  scale = 0.034,
 ) {
   const s = iso(wx, wy);
-  const paint = (ox: number, oy: number, alpha: number) => {
+  const paint = (ox: number, oy: number, alpha: number, shadow = false) => {
     ctx.save();
     ctx.translate(s.x, s.y);
     ctx.transform(32 * scale, 16 * scale, -32 * scale, 16 * scale, 0, 0);
@@ -468,12 +541,12 @@ function drawGroundText(
     ctx.textBaseline = 'middle';
     for (const line of lines) {
       ctx.font = `700 ${line.size}px 'Nunito', system-ui, sans-serif`;
-      ctx.fillStyle = line.color;
+      ctx.fillStyle = shadow ? 'rgba(23,16,10,0.9)' : line.color;
       ctx.fillText(line.text, ox, line.y + oy);
     }
     ctx.restore();
   };
-  paint(2, 2, 0.35);
+  paint(2.5, 2.5, 0.75, true);
   paint(0, 0, 1);
 }
 
@@ -494,17 +567,17 @@ function drawRaceTrackBoard(
   if (raceGrid) {
     const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
     drawGroundText(ctx, wx, wy - 0.75, [
-      { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 52 : 44, color: cd > 0 ? '#f2b23a' : '#7dc24f', y: 0 },
-      { text: 'STARTING GRID', size: 16, color: '#ffffff', y: 38 },
-    ], 0.028);
+      { text: cd > 0 ? String(cd) : 'GO!', size: cd > 0 ? 64 : 52, color: '#ffffff', y: 0 },
+      { text: 'STARTING GRID', size: 22, color: '#ffffff', y: 48 },
+    ], 0.036);
     raceGrid.bulls.slice(0, 6).forEach((b, i) => {
       const row = Math.floor(i / 2);
       const col = i % 2;
       const tx = wx - 1.6 + col * 3.2;
-      const ty = wy + 0.65 + row * 0.42;
+      const ty = wy + 0.75 + row * 0.5;
       drawGroundText(ctx, tx, ty, [
-        { text: `${b.pos}. ${b.name}`, size: 14, color: '#f3e7cd', y: 0 },
-      ], 0.024);
+        { text: `${b.pos}. ${b.name}`, size: 18, color: '#ffffff', y: 0 },
+      ], 0.032);
     });
     return;
   }
@@ -514,8 +587,8 @@ function drawRaceTrackBoard(
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
     drawGroundText(ctx, wx, wy - 0.85, [
-      { text: `LAP ${lap}/${laps}`, size: 24, color: '#7dc24f', y: 0 },
-    ], 0.028);
+      { text: `LAP ${lap}/${laps}`, size: 32, color: '#ffffff', y: 0 },
+    ], 0.036);
     const sorted = [...raceAnim.bulls].sort((a, b) => {
       const pa = a.lapTimes?.length
         ? raceProgressAt(el, a.lapTimes)
@@ -526,38 +599,38 @@ function drawRaceTrackBoard(
       return pb - pa;
     });
     sorted.slice(0, 5).forEach((b, i) => {
-      drawGroundText(ctx, wx, wy + 0.05 + i * 0.36, [
-        { text: `${i + 1}. ${b.name}`, size: 15, color: '#ffffff', y: 0 },
-      ], 0.024);
+      drawGroundText(ctx, wx, wy + 0.1 + i * 0.46, [
+        { text: `${i + 1}. ${b.name}`, size: 20, color: '#ffffff', y: 0 },
+      ], 0.032);
     });
     return;
   }
 
   if (results?.length && resultsUntil && now < resultsUntil) {
     const labels = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
-    drawGroundText(ctx, wx, wy - 1.15, [
-      { text: 'RACE RESULTS', size: 18, color: '#ffffff', y: 0 },
-    ], 0.028);
+    drawGroundText(ctx, wx, wy - 1.2, [
+      { text: 'RACE RESULTS', size: 28, color: '#ffffff', y: 0 },
+    ], 0.036);
     results.slice(0, 5).forEach((r, i) => {
       const label = labels[r.pos - 1] ?? `${r.pos}th`;
       const prize = r.prize ? `+${r.prize}g` : '—';
-      drawGroundText(ctx, wx - 0.8, wy - 0.55 + i * 0.36, [
+      drawGroundText(ctx, wx - 0.9, wy - 0.5 + i * 0.46, [
         {
           text: `${label} ${r.name}`,
-          size: r.mine ? 15 : 14,
-          color: r.mine ? '#f2b23a' : '#ffffff',
+          size: r.mine ? 22 : 20,
+          color: '#ffffff',
           y: 0,
         },
-      ], 0.024);
-      drawGroundText(ctx, wx + 2.2, wy - 0.55 + i * 0.36, [
-        { text: prize, size: 14, color: r.prize ? '#7dc24f' : '#c9b896', y: 0 },
-      ], 0.022);
+      ], 0.032);
+      drawGroundText(ctx, wx + 2.4, wy - 0.5 + i * 0.46, [
+        { text: prize, size: 20, color: '#ffffff', y: 0 },
+      ], 0.032);
     });
     if (betResult) {
       const short = betResult.length > 36 ? `${betResult.slice(0, 34)}…` : betResult;
-      drawGroundText(ctx, wx, wy + 1.05, [
-        { text: short, size: 12, color: '#7dc24f', y: 0 },
-      ], 0.02);
+      drawGroundText(ctx, wx, wy + 1.2, [
+        { text: short, size: 18, color: '#ffffff', y: 0 },
+      ], 0.03);
     }
     return;
   }
@@ -565,9 +638,9 @@ function drawRaceTrackBoard(
   if (me?.race && !raceLive) {
     const cd = fmtCountdown(new Date(me.race.startAt).getTime() - now);
     drawGroundText(ctx, wx, wy - 0.35, [
-      { text: 'NEXT RACE', size: 18, color: '#ffffff', y: -10 },
-      { text: cd, size: 46, color: '#f2b23a', y: 22 },
-    ], 0.028);
+      { text: 'NEXT RACE', size: 24, color: '#ffffff', y: -12 },
+      { text: cd, size: 56, color: '#ffffff', y: 28 },
+    ], 0.036);
   }
 }
 
@@ -597,12 +670,14 @@ export interface DrawState {
   walking: boolean;
   folPos: Record<number, { x: number; y: number }>;
   otherFolPos: Record<string, Record<number, { x: number; y: number }>>;
+  speechBubbles: Record<string, { text: string; until: number }>;
+  myPlayerId: string | null;
   camOff: { x: number; y: number };
   dpr: number;
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, walkDestination, worldNodes, raceAnim, raceGrid, raceLive, results, resultsUntil, betResult, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, walkDestination, worldNodes, raceAnim, raceGrid, raceLive, results, resultsUntil, betResult, pastures, gather, walking, folPos, otherFolPos, speechBubbles, myPlayerId, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -680,7 +755,17 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   }
 
   for (const p of otherPlayers) {
-    list.push({ d: p.x + p.y, o: { t: 'other', x: p.x, y: p.y, shirt: p.shirt, name: p.displayName } });
+    list.push({
+      d: p.x + p.y,
+      o: {
+        t: 'other',
+        x: p.x,
+        y: p.y,
+        shirt: p.shirt,
+        name: p.displayName,
+        speech: speechBubbles[p.id],
+      },
+    });
     const pf = otherFolPos[p.id] ?? {};
     let prev = { x: p.x, y: p.y };
     for (const b of p.bulls ?? []) {
@@ -712,6 +797,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         gatherMat: gather?.mat,
         gatherStart: gather?.start,
         walking: walking && !gather,
+        speech: myPlayerId ? speechBubbles[myPlayerId] : undefined,
       },
     });
 

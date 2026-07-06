@@ -27,7 +27,7 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .welcome-banner { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); z-index: 25; max-width: min(640px, 92vw); background: rgba(46,35,24,.94); border: 3px solid #17100a; border-radius: 12px; padding: 12px 16px; color: #f3e7cd; display: flex; align-items: center; gap: 12px; box-shadow: 0 6px 0 rgba(0,0,0,.35); animation: br-in .2s ease-out; pointer-events: auto; }
 .welcome-banner p { margin: 0; flex: 1; font-size: 14px; line-height: 1.35; }
 .game-hud { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
-.game-hud .hud-tl, .game-hud .hud-tc, .game-hud .hud-tr, .game-hud .bottom-bar, .game-hud .gather-bar, .game-hud .br-panel, .game-hud .inv-popup, .game-hud .modal-overlay, .game-hud .race-track-board-overlay, .game-hud .toast, .game-hud .welcome-banner { pointer-events: auto; }
+.game-hud .hud-tl, .game-hud .hud-tc, .game-hud .hud-tr, .game-hud .bottom-bar, .game-hud .gather-bar, .game-hud .br-panel, .game-hud .inv-popup, .game-hud .modal-overlay, .game-hud .race-track-board-overlay, .game-hud .toast, .game-hud .welcome-banner, .game-hud .chat-panel { pointer-events: auto; }
 .hud-tl { position: absolute; top: 14px; left: 14px; display: flex; flex-direction: column; gap: 8px; }
 .hud-tc { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .hud-tr { position: absolute; top: 14px; right: 14px; background: #2e2318; border: 3px solid #17100a; border-radius: 10px; padding: 6px 12px; color: #f3e7cd; font-size: 14px; font-weight: 600; box-shadow: 0 4px 0 rgba(0,0,0,.35); }
@@ -39,6 +39,66 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .standing-chip { background: rgba(23,16,10,.85); border: 2px solid #17100a; border-radius: 8px; padding: 3px 9px; color: #f3e7cd; font-size: 13px; font-weight: 600; }
 
 .bottom-bar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 9px; align-items: center; }
+
+.chat-panel {
+  position: absolute;
+  bottom: 16px;
+  left: 14px;
+  width: min(300px, 42vw);
+  background: rgba(46,35,24,.94);
+  border: 3px solid #17100a;
+  border-radius: 10px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.35);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 22;
+}
+.chat-panel.collapsed { width: auto; }
+.chat-toggle {
+  font-family: inherit;
+  background: #3a2f1a;
+  color: #f3e7cd;
+  border: none;
+  border-bottom: 2px solid #17100a;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-panel.collapsed .chat-toggle { border-bottom: none; }
+.chat-log {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.chat-line { color: #f3e7cd; word-break: break-word; }
+.chat-line.mine .chat-name { color: #f2b23a; }
+.chat-name { font-weight: 700; margin-right: 6px; color: #bfe3a4; }
+.chat-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px 8px;
+  border-top: 2px solid #17100a;
+}
+.chat-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 2px solid #17100a;
+  border-radius: 7px;
+  background: #221a11;
+  color: #f3e7cd;
+  outline: none;
+}
+.chat-input:focus { border-color: #f2b23a; }
 
 .br-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 430px; max-width: 94vw; background: #2e2318; border-left: 4px solid #17100a; color: #f3e7cd; display: flex; flex-direction: column; z-index: 30; animation: br-in .18s ease-out; box-shadow: -8px 0 24px rgba(0,0,0,.35); }
 .panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 3px solid #17100a; }

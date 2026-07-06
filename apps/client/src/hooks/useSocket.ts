@@ -53,6 +53,12 @@ export function useSocket() {
     socket.on('node_respawned', ({ id }: { id: string }) => {
       useGameStore.getState().clearNodeDead(id);
     });
+    socket.on('player_bulls_updated', ({ id, bulls }: { id: string; bulls: import('@bullrun/shared').OtherPlayerBull[] }) => {
+      const players = useGameStore.getState().otherPlayers.map((p) =>
+        p.id === id ? { ...p, bulls } : p,
+      );
+      useGameStore.getState().setOtherPlayers(players);
+    });
     socket.on('pastures_updated', (pastures: import('@bullrun/shared').PasturePlotState[]) => {
       useGameStore.getState().setPastures(pastures);
     });

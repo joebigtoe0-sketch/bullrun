@@ -9,6 +9,7 @@ import {
   pastureCenter,
   fmtCountdown,
   coatOf,
+  applyWorldCollision,
   trackClamp,
   nodeId,
   type MeResponse,
@@ -347,12 +348,13 @@ export interface DrawState {
   raceLive: boolean;
   pastures: PasturePlotState[];
   folPos: Record<number, { x: number; y: number }>;
+  otherFolPos: Record<string, Record<number, { x: number; y: number }>>;
   camOff: { x: number; y: number };
   dpr: number;
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, folPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, folPos, otherFolPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -432,6 +434,25 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
 
   for (const p of otherPlayers) {
     list.push({ d: p.x + p.y, o: { t: 'other', x: p.x, y: p.y, shirt: p.shirt, name: p.displayName } });
+    const pf = otherFolPos[p.id] ?? {};
+    let prev = { x: p.x, y: p.y };
+    for (const b of p.bulls ?? []) {
+      let f = pf[b.id];
+      if (!f) f = { x: p.x + 1.5, y: p.y + 1.5 };
+      list.push({
+        d: f.x + f.y,
+        o: {
+          t: 'bull',
+          x: f.x,
+          y: f.y,
+          coat: b.coat,
+          trait: b.trait,
+          label: b.name,
+          facingLeft: f.x > prev.x,
+        },
+      });
+      prev = f;
+    }
   }
 
   if (me) {
@@ -540,8 +561,32 @@ export function stepFollowers(
       f.x += ((prev.x - f.x) / d) * spd * dt;
       f.y += ((prev.y - f.y) / d) * spd * dt;
     }
-    trackClamp(f, CX, CY, RX, RY);
+    applyWorldCollision(f);
     prev = f;
+  }
+}
+
+export function stepOtherFollowers(
+  otherFolPos: Record<string, Record<number, { x: number; y: number }>>,
+  players: OtherPlayer[],
+  dt: number,
+) {
+  for (const p of players) {
+    if (!otherFolPos[p.id]) otherFolPos[p.id] = {};
+    const folPos = otherFolPos[p.id];
+    let prev = { x: p.x, y: p.y };
+    for (const b of p.bulls ?? []) {
+      let f = folPos[b.id];
+      if (!f) f = folPos[b.id] = { x: p.x + 1.5, y: p.y + 1.5 };
+      const d = Math.hypot(prev.x - f.x, prev.y - f.y);
+      if (d > 1.5) {
+        const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
+        f.x += ((prev.x - f.x) / d) * spd * dt;
+        f.y += ((prev.y - f.y) / d) * spd * dt;
+      }
+      applyWorldCollision(f);
+      prev = f;
+    }
   }
 }
 

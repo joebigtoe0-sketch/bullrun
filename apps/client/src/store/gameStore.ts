@@ -21,6 +21,7 @@ interface GameStore {
   betResult: string | null;
   forgeResult: string;
   moveTarget: { x: number; y: number } | null;
+  movePath: { x: number; y: number }[] | null;
   pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null;
   gather: { nodeId: string; start: number; dur: number } | null;
   keys: Record<string, boolean>;
@@ -46,6 +47,8 @@ interface GameStore {
   setResults: (r: RaceResult[] | null, betResult?: string | null) => void;
   setForgeResult: (s: string) => void;
   setMoveTarget: (t: { x: number; y: number } | null) => void;
+  setMovePath: (path: { x: number; y: number }[] | null) => void;
+  advanceMovePath: () => void;
   setPending: (p: GameStore['pending']) => void;
   setGather: (g: GameStore['gather']) => void;
   setKey: (code: string, down: boolean) => void;
@@ -73,6 +76,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   betResult: null,
   forgeResult: '',
   moveTarget: null,
+  movePath: null,
   pending: null,
   gather: null,
   keys: {},
@@ -115,10 +119,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ toast: msg });
     toastTimer = setTimeout(() => set({ toast: '' }), 2600);
   },
-  setOtherPlayers: (p) => set({ otherPlayers: p }),
+  setOtherPlayers: (p) => set({ otherPlayers: p.map((pl) => ({ ...pl, bulls: pl.bulls ?? [] })) }),
   updateOtherPlayer: (id, x, y) =>
     set({ otherPlayers: get().otherPlayers.map((p) => (p.id === id ? { ...p, x, y } : p)) }),
-  addOtherPlayer: (p) => set({ otherPlayers: [...get().otherPlayers.filter((o) => o.id !== p.id), p] }),
+  addOtherPlayer: (p) =>
+    set({
+      otherPlayers: [
+        ...get().otherPlayers.filter((o) => o.id !== p.id),
+        { ...p, bulls: p.bulls ?? [] },
+      ],
+    }),
   removeOtherPlayer: (id) => set({ otherPlayers: get().otherPlayers.filter((p) => p.id !== id) }),
   setNodeDead: (id, until) => set({ nodeDead: { ...get().nodeDead, [id]: until } }),
   clearNodeDead: (id) => {
@@ -131,6 +141,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setResults: (r, betResult = null) => set({ results: r, betResult: betResult ?? null, panel: r ? 'results' : get().panel }),
   setForgeResult: (s) => set({ forgeResult: s }),
   setMoveTarget: (t) => set({ moveTarget: t }),
+  setMovePath: (path) =>
+    set({ movePath: path, moveTarget: path && path.length > 0 ? path[0] : null }),
+  advanceMovePath: () => {
+    const path = get().movePath;
+    if (!path || path.length <= 1) {
+      set({ movePath: null, moveTarget: null });
+      return;
+    }
+    const rest = path.slice(1);
+    set({ movePath: rest, moveTarget: rest[0] });
+  },
   setPending: (p) => set({ pending: p }),
   setGather: (g) => set({ gather: g }),
   setKey: (code, down) => set({ keys: { ...get().keys, [code]: down } }),

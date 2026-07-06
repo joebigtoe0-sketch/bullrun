@@ -54,24 +54,15 @@ export function worldToGrid(wx: number, wz: number): { x: number; y: number } {
   return { x, y };
 }
 
-export function trackClamp(
-  o: { x: number; y: number },
-  CX: number,
-  CY: number,
-  RX: number,
-  RY: number
-): boolean {
-  const ex = (o.x - CX) / RX;
-  const ey = (o.y - CY) / RY;
-  const e = Math.hypot(ex, ey);
-  if (e > 0.79 && e < 1.225 && e > 0.01) {
-    const to = e < 1.0 ? 0.79 : 1.225;
-    o.x = CX + (ex / e) * to * RX;
-    o.y = CY + (ey / e) * to * RY;
-    return true;
-  }
-  return false;
-}
+export {
+  isTrackBlocked,
+  isPastureFenceBlocked,
+  isWorldBlocked,
+  isWalkableCell,
+  trackClamp,
+  applyWorldCollision,
+  findPath,
+} from './navigation.js';
 
 export function fmtCountdown(ms: number): string {
   const s = Math.ceil(Math.max(0, ms) / 1000);

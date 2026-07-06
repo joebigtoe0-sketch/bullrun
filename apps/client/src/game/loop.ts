@@ -5,15 +5,12 @@ import { useSocket } from '../hooks/useSocket';
 import {
   GATHER_DURATION_MS,
   NODE_RESPAWN_MS,
-  WORLD_CX,
-  WORLD_CY,
-  WORLD_RX,
-  WORLD_RY,
   INTERACT_USE_RANGE,
   PASTURE_PLOTS,
   pastureCenter,
   nodeId,
-  trackClamp,
+  applyWorldCollision,
+  findPath,
   isNearInteractable,
   isBuildingPanel,
 } from '@bullrun/shared';
@@ -77,8 +74,13 @@ export function useGameLoop() {
         const d = Math.hypot(mt.x - p.x, mt.y - p.y);
         const arrive = s.pending ? 1.7 : 0.15;
         if (d < arrive) {
-          s.setMoveTarget(null);
-          if (s.pending) execPending(s.pending);
+          if (s.movePath && s.movePath.length > 1) {
+            s.advanceMovePath();
+          } else {
+            s.setMovePath(null);
+            s.setMoveTarget(null);
+            if (s.pending) execPending(s.pending);
+          }
         } else {
           p.x += ((mt.x - p.x) / d) * 4.4 * dt;
           p.y += ((mt.y - p.y) / d) * 4.4 * dt;
@@ -87,7 +89,9 @@ export function useGameLoop() {
 
       p.x = Math.max(1, Math.min(M - 1, p.x));
       p.y = Math.max(1, Math.min(M - 1, p.y));
-      if (trackClamp(p, WORLD_CX, WORLD_CY, WORLD_RX, WORLD_RY)) s.setMoveTarget(null);
+      if (applyWorldCollision(p)) {
+        if (!s.movePath || s.movePath.length <= 1) s.setMoveTarget(null);
+      }
 
       if (s.me && s.panel && isBuildingPanel(s.panel)) {
         const pos = s.me.position;
@@ -181,6 +185,35 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
   }
 }
 
+function startMoveTo(
+  tx: number,
+  ty: number,
+  pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null,
+) {
+  const s = useGameStore.getState();
+  const p = s.me?.position;
+  if (!p) return;
+
+  const path = findPath(p.x, p.y, tx, ty, M);
+  if (!path.length) {
+    s.toastMsg("Can't reach there");
+    return;
+  }
+
+  s.setPending(pending);
+  s.setMovePath(path);
+
+  if (
+    pending &&
+    path.length === 1 &&
+    Math.hypot(p.x - tx, p.y - ty) < INTERACT_USE_RANGE
+  ) {
+    s.setMovePath(null);
+    s.setMoveTarget(null);
+    execPending(pending);
+  }
+}
+
 export function handleWorldClick(wx: number, wy: number) {
   const s = useGameStore.getState();
   if (wx <= 0 || wy <= 0 || wx >= M || wy >= M) return;
@@ -214,17 +247,10 @@ export function handleWorldClick(wx: number, wy: number) {
   }
 
   s.setGather(null);
-  const p = s.me?.position ?? { x: 0, y: 0 };
   if (best) {
-    s.setPending(best);
-    if (Math.hypot(p.x - best.x, p.y - best.y) < INTERACT_USE_RANGE) {
-      s.setMoveTarget(null);
-      execPending(best);
-    } else {
-      s.setMoveTarget({ x: best.x, y: best.y });
-    }
+    startMoveTo(best.x, best.y, best);
   } else {
     s.setPending(null);
-    s.setMoveTarget({ x: wx, y: wy });
+    startMoveTo(wx, wy, null);
   }
 }

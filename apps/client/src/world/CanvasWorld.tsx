@@ -4,6 +4,7 @@ import { handleWorldClick } from '../game/loop';
 import {
   drawWorld,
   stepFollowers,
+  stepOtherFollowers,
   screenToGrid,
 } from './canvas/drawWorld';
 
@@ -12,6 +13,7 @@ export function CanvasWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const camOffRef = useRef({ x: 0, y: 0 });
   const folPosRef = useRef<Record<number, { x: number; y: number }>>({});
+  const otherFolPosRef = useRef<Record<string, Record<number, { x: number; y: number }>>>({});
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,6 +45,7 @@ export function CanvasWorld() {
           : new Set<number | string>();
         stepFollowers(folPosRef.current, state.me, dt, racingIds);
       }
+      stepOtherFollowers(otherFolPosRef.current, state.otherPlayers, dt);
 
       drawWorld(ctx, {
         cam: state.cam,
@@ -54,6 +57,7 @@ export function CanvasWorld() {
         raceLive: !!state.raceLive,
         pastures: state.pastures,
         folPos: folPosRef.current,
+        otherFolPos: otherFolPosRef.current,
         camOff: camOffRef.current,
         dpr: window.devicePixelRatio || 1,
       });

@@ -4,8 +4,43 @@ import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
+import type { OtherPlayer, OtherPlayerBull } from '@bullrun/shared';
 
-const onlinePlayers = new Map<string, { socketId: string; username: string; displayName: string; x: number; y: number; stableLevel: number }>();
+type OnlinePlayer = {
+  socketId: string;
+  username: string;
+  displayName: string;
+  x: number;
+  y: number;
+  stableLevel: number;
+  shirt: string;
+  bulls: OtherPlayerBull[];
+};
+
+const onlinePlayers = new Map<string, OnlinePlayer>();
+
+async function loadBullsForUser(userId: string): Promise<OtherPlayerBull[]> {
+  const bulls = await prisma.bull.findMany({ where: { ownerId: userId } });
+  return bulls.map((b) => ({
+    id: b.id,
+    name: b.name,
+    coat: b.coat,
+    trait: (b.trait as OtherPlayerBull['trait']) || 'normal',
+  }));
+}
+
+function toPresence(id: string, p: OnlinePlayer): OtherPlayer {
+  return {
+    id,
+    username: p.username,
+    displayName: p.displayName,
+    x: p.x,
+    y: p.y,
+    stableLevel: p.stableLevel,
+    shirt: p.shirt,
+    bulls: p.bulls,
+  };
+}
 
 export function setupSocket(io: SocketServer, app: FastifyInstance) {
   io.use(async (socket, next) => {
@@ -31,17 +66,20 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
       return;
     }
 
-    const player = {
-      id: userId,
+    const bulls = await loadBullsForUser(userId);
+
+    const player: OnlinePlayer = {
+      socketId: socket.id,
       username: user.username,
       displayName: user.displayName,
       x: user.profile.posX,
       y: user.profile.posY,
       stableLevel: user.profile.stableLevel,
       shirt: '#e8a33d',
+      bulls,
     };
 
-    onlinePlayers.set(userId, { socketId: socket.id, ...player });
+    onlinePlayers.set(userId, player);
 
     const nodes = await prisma.worldNode.findMany();
     const pastures = await listPastures();
@@ -53,15 +91,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
     socket.emit('world_snapshot', {
       players: [...onlinePlayers.entries()]
         .filter(([id]) => id !== userId)
-        .map(([id, p]) => ({
-          id,
-          username: p.username,
-          displayName: p.displayName,
-          x: p.x,
-          y: p.y,
-          stableLevel: p.stableLevel,
-          shirt: '#e8a33d',
-        })),
+        .map(([id, p]) => toPresence(id, p)),
       nodes: nodes.map((n: WorldNode) => ({
         id: n.id,
         x: n.x,
@@ -75,7 +105,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
         : null,
     });
 
-    socket.broadcast.emit('player_joined', player);
+    socket.broadcast.emit('player_joined', toPresence(userId, player));
 
     socket.on('move', async ({ x, y }: { x: number; y: number }) => {
       const p = onlinePlayers.get(userId);
@@ -96,4 +126,11 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
 
 export function getOnlineCount() {
   return onlinePlayers.size;
+}
+
+export async function refreshPlayerBulls(userId: string): Promise<OtherPlayerBull[] | null> {
+  const p = onlinePlayers.get(userId);
+  if (!p) return null;
+  p.bulls = await loadBullsForUser(userId);
+  return p.bulls;
 }

@@ -177,6 +177,13 @@ export interface PlayerPosition {
   y: number;
 }
 
+export interface OtherPlayerBull {
+  id: number;
+  name: string;
+  coat: string;
+  trait?: BullTrait;
+}
+
 export interface OtherPlayer {
   id: string;
   username: string;
@@ -185,6 +192,7 @@ export interface OtherPlayer {
   y: number;
   stableLevel: number;
   shirt: string;
+  bulls: OtherPlayerBull[];
 }
 
 export interface ActiveBet {

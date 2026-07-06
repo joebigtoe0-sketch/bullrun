@@ -2,6 +2,8 @@ import {
   buildWorld,
   makeShopBulls,
   nodeId,
+  pickStarterBullName,
+  COAT_COLORS,
   type Bull,
   type GameItem,
   type MeResponse,
@@ -11,8 +13,7 @@ import {
 import type { Bull as PrismaBull, RaceEntry, MarketListing } from '@prisma/client';
 import { prisma } from '../db.js';
 
-const STARTER_BULL = {
-  name: 'Tank',
+const STARTER_BULL_STATS = {
   level: 1,
   xp: 0,
   speed: 7,
@@ -20,7 +21,6 @@ const STARTER_BULL = {
   accel: 6,
   temper: 4,
   energy: 100,
-  coat: '#33261d',
 };
 
 export async function initWorldNodes() {
@@ -50,7 +50,13 @@ export async function createStarterUser(userId: string) {
     },
   });
   await prisma.bull.create({
-    data: { ownerId: userId, ...STARTER_BULL },
+    data: {
+      ownerId: userId,
+      name: pickStarterBullName(Date.now()),
+      coat: COAT_COLORS[Math.floor(Math.random() * COAT_COLORS.length)],
+      trait: 'normal',
+      ...STARTER_BULL_STATS,
+    },
   });
   return profile;
 }

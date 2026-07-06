@@ -11,6 +11,7 @@ import {
 } from '@bullrun/shared';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
+import { refreshPlayerBulls } from '../socket/index.js';
 
 let io: SocketServer | null = null;
 
@@ -166,6 +167,8 @@ async function spawnOnPlot(plotId: number) {
 
   const pastures = await listPastures();
   broadcast('pastures_updated', pastures);
+  const bulls = await refreshPlayerBulls(plot.ownerId);
+  if (bulls) broadcast('player_bulls_updated', { id: plot.ownerId, bulls });
   broadcast('pasture_spawned', {
     plotId,
     ownerId: plot.ownerId,

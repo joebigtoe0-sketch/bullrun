@@ -80,6 +80,8 @@ export interface RaceBull {
   /** Per-lap durations (ms); cumulative sum equals finishT. */
   lapTimes?: number[];
   userId?: string;
+  /** Lane on the starting grid (1…n). Distinct from finish `pos`. */
+  gridSlot?: number;
 }
 
 export interface Stable {

@@ -7,62 +7,61 @@ import {
   maxBullLevel,
   pickNpcField,
   racePrizeForPosition,
+  serializeRaceBulls,
   simulateRace,
+  wireToRaceBulls,
   type RaceBull,
+  type RaceBullWire,
   type BullTrait,
 } from '@bullrun/shared';
 import type { Server as SocketServer } from 'socket.io';
+import { Prisma } from '@prisma/client';
 import type { RaceEntry, Item as PrismaItem } from '@prisma/client';
 import { prisma } from '../db.js';
 import { completeBreed, tickAllEnergy } from '../services/game.js';
 
 let io: SocketServer | null = null;
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
-const activeRaces = new Map<string, { bulls: RaceBull[]; startT: number; endT: number }>();
+const activeRaces = new Map<string, { bulls: RaceBullWire[]; startT: number; endT: number }>();
 const gridEmitted = new Set<string>();
-/** Pre-simulated field from grid window — reused at race start so positions match the grid. */
-const raceBullsCache = new Map<string, RaceBull[]>();
 
 export function setRaceIo(server: SocketServer) {
   io = server;
 }
 
-/** Re-sync a client that connected mid-race. */
-export function syncRunningRaceToSocket(raceId: string, socket: { emit: (ev: string, data: unknown) => void }) {
-  const active = activeRaces.get(raceId);
-  if (!active) return;
-  const elapsed = Date.now() - active.startT;
-  socket.emit('race_started', {
-    id: raceId,
-    bulls: active.bulls,
-    startT: active.startT,
-    endT: active.endT,
-    laps: RACE_LAPS,
-    elapsed,
-  });
-  socket.emit('race_standings', {
-    id: raceId,
-    standings: liveStandings(active.bulls, elapsed),
-    elapsed,
-  });
+function emitBulls(bulls: RaceBull[]) {
+  return serializeRaceBulls(bulls);
 }
 
-export async function ensureScheduledRace() {
-  const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
-  if (running) return running;
-
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
-  const field = pickNpcField(5);
-  return prisma.race.create({
-    data: {
-      status: 'scheduled',
-      startAt: new Date(Date.now() + intervalSec * 1000),
-      field: field as object,
-    },
-  });
+/** Load persisted simulation — never re-roll mid race. */
+async function loadSimulatedField(raceId: string): Promise<RaceBullWire[] | null> {
+  const row = await prisma.race.findUnique({ where: { id: raceId }, select: { simulatedField: true } });
+  if (!row?.simulatedField) return null;
+  const wire = row.simulatedField as unknown as RaceBullWire[];
+  return wire?.length ? wire : null;
 }
 
-async function buildRaceField(raceId: string): Promise<RaceBull[]> {
+async function persistSimulatedField(raceId: string, bulls: RaceBull[]): Promise<RaceBullWire[]> {
+  const wire = emitBulls(bulls);
+  const updated = await prisma.race.updateMany({
+    where: { id: raceId, simulatedField: { equals: Prisma.DbNull } },
+    data: { simulatedField: wire as object },
+  });
+  if (updated.count === 0) {
+    const again = await loadSimulatedField(raceId);
+    if (again) return again;
+    await prisma.race.update({
+      where: { id: raceId },
+      data: { simulatedField: wire as object },
+    });
+  }
+  return wire;
+}
+
+async function simulateOnce(raceId: string): Promise<RaceBullWire[]> {
+  const existing = await loadSimulatedField(raceId);
+  if (existing) return existing;
+
   const entries = await prisma.raceEntry.findMany({
     where: { raceId },
     include: { user: { include: { items: true } } },
@@ -98,26 +97,79 @@ async function buildRaceField(raceId: string): Promise<RaceBull[]> {
     equippedTo: it.equippedTo,
   })));
 
-  return bulls;
+  return persistSimulatedField(raceId, bulls);
+}
+
+/** Mid-race clock sync — never re-sends full field (avoids client reset). */
+export function syncRunningRaceToSocket(raceId: string, socket: { emit: (ev: string, data: unknown) => void }) {
+  const active = activeRaces.get(raceId);
+  if (!active) return;
+  const elapsed = Date.now() - active.startT;
+  socket.emit('race_sync', {
+    id: raceId,
+    elapsed,
+    standings: liveStandings(wireToRaceBulls(active.bulls), elapsed),
+  });
+}
+
+/** Late joiner — full field once, with elapsed offset. */
+export function joinRunningRaceToSocket(raceId: string, socket: { emit: (ev: string, data: unknown) => void }) {
+  const active = activeRaces.get(raceId);
+  if (!active) return;
+  const elapsed = Date.now() - active.startT;
+  socket.emit('race_started', {
+    id: raceId,
+    bulls: active.bulls,
+    startT: active.startT,
+    endT: active.endT,
+    laps: RACE_LAPS,
+    elapsed,
+  });
+  socket.emit('race_sync', {
+    id: raceId,
+    elapsed,
+    standings: liveStandings(wireToRaceBulls(active.bulls), elapsed),
+  });
+}
+
+export async function ensureScheduledRace() {
+  const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
+  if (running) return running;
+
+  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
+  const field = pickNpcField(5);
+  return prisma.race.create({
+    data: {
+      status: 'scheduled',
+      startAt: new Date(Date.now() + intervalSec * 1000),
+      field: field as object,
+    },
+  });
 }
 
 async function startRace(raceId: string) {
   const row = await prisma.race.findUnique({ where: { id: raceId } });
   if (!row || row.status !== 'scheduled') return;
 
-  const bulls = raceBullsCache.get(raceId) ?? await buildRaceField(raceId);
-  raceBullsCache.delete(raceId);
+  const bulls = await loadSimulatedField(raceId) ?? await simulateOnce(raceId);
   const now = Date.now();
-  const endT = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
+  const duration = Math.max(...bulls.map((b) => b.finishT), 9000);
 
   await prisma.race.update({
     where: { id: raceId },
-    data: { status: 'running', endAt: new Date(now + endT) },
+    data: { status: 'running', endAt: new Date(now + duration) },
   });
 
-  activeRaces.set(raceId, { bulls, startT: now, endT: now + endT });
+  activeRaces.set(raceId, { bulls, startT: now, endT: now + duration });
 
-  io?.emit('race_started', { id: raceId, bulls, startT: now, endT: now + endT, laps: RACE_LAPS, elapsed: 0 });
+  io?.emit('race_started', {
+    id: raceId,
+    bulls,
+    startT: now,
+    endT: now + duration,
+    laps: RACE_LAPS,
+    elapsed: 0,
+  });
 
   const standingsIv = setInterval(() => {
     const active = activeRaces.get(raceId);
@@ -127,10 +179,14 @@ async function startRace(raceId: string) {
       clearInterval(standingsIv);
       return;
     }
-    io?.emit('race_standings', { id: raceId, standings: liveStandings(active.bulls, elapsed), elapsed });
+    io?.emit('race_sync', {
+      id: raceId,
+      elapsed,
+      standings: liveStandings(wireToRaceBulls(active.bulls), elapsed),
+    });
   }, 250);
 
-  setTimeout(() => finishRace(raceId), endT + 2500);
+  setTimeout(() => finishRace(raceId), duration + 2500);
 }
 
 async function finishRace(raceId: string) {
@@ -138,21 +194,26 @@ async function finishRace(raceId: string) {
   if (!active) {
     const row = await prisma.race.findUnique({ where: { id: raceId } });
     if (!row || row.status !== 'running') return;
-    console.warn(`[race] finishRace ${raceId} without in-memory state — rebuilding field`);
-    const bulls = raceBullsCache.get(raceId) ?? await buildRaceField(raceId);
-    const span = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
-    const endT = Date.now();
+    const bulls = await loadSimulatedField(raceId);
+    if (!bulls) {
+      console.error(`[race] finishRace ${raceId}: no simulatedField in DB`);
+      await prisma.race.update({ where: { id: raceId }, data: { status: 'finished', results: [] } });
+      return;
+    }
+    const span = Math.max(...bulls.map((b) => b.finishT), 9000);
+    const endT = row.endAt?.getTime() ?? Date.now();
     active = { bulls, startT: endT - span, endT };
   }
+
   activeRaces.delete(raceId);
-  raceBullsCache.delete(raceId);
+  const raceBulls = wireToRaceBulls(active.bulls);
 
   const entries = await prisma.raceEntry.findMany({ where: { raceId } });
   const myBullIds = entries.filter((e: RaceEntry) => e.bullId).map((e: RaceEntry) => e.bullId!);
-  const results = buildRaceResults(active.bulls, myBullIds);
+  const results = buildRaceResults(raceBulls, myBullIds);
 
-  for (const rb of active.bulls) {
-    const prize = racePrizeForPosition(rb.pos ?? 1, active.bulls.length);
+  for (const rb of raceBulls) {
+    const prize = racePrizeForPosition(rb.pos ?? 1, raceBulls.length);
     const entry = entries.find((e: RaceEntry) => e.bullId === rb.id);
     if (entry?.userId && prize > 0) {
       const profile = await prisma.playerProfile.findUnique({ where: { userId: entry.userId } });
@@ -183,7 +244,7 @@ async function finishRace(raceId: string) {
   }
 
   const bets = await prisma.bet.findMany({ where: { raceId } });
-  const winner = active.bulls.find((b) => b.pos === 1);
+  const winner = raceBulls.find((b) => b.pos === 1);
   const betResults: Record<string, string> = {};
 
   for (const bet of bets) {
@@ -213,7 +274,7 @@ async function finishRace(raceId: string) {
     data: { status: 'finished', results: results as object },
   });
 
-  io?.emit('race_finished', { id: raceId, results, betResults });
+  io?.emit('race_finished', { id: raceId, results, betResults, bulls: active.bulls });
 
   const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
   const field = pickNpcField(5);
@@ -227,16 +288,18 @@ async function finishRace(raceId: string) {
   io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field });
 }
 
-/** Finish a race that lost in-memory state (e.g. server restarted mid-race). */
 async function salvageRunningRace(raceId: string) {
   const row = await prisma.race.findUnique({ where: { id: raceId } });
   if (!row || row.status !== 'running' || activeRaces.has(raceId)) return;
 
+  const bulls = await loadSimulatedField(raceId);
+  if (!bulls) {
+    console.warn(`[race] Salvage ${raceId}: no simulatedField, marking finished`);
+    await prisma.race.update({ where: { id: raceId }, data: { status: 'finished', results: [] } });
+    return;
+  }
+
   console.warn(`[race] Salvaging orphaned running race ${raceId}`);
-  const bulls = await buildRaceField(raceId);
-  const span = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
-  const endT = Date.now();
-  activeRaces.set(raceId, { bulls, startT: endT - span, endT });
   await finishRace(raceId);
 }
 
@@ -247,7 +310,10 @@ async function recoverRaceState() {
   });
   for (const race of stuck) {
     if (!activeRaces.has(race.id)) {
-      await salvageRunningRace(race.id);
+      const endMs = race.endAt?.getTime() ?? 0;
+      if (endMs > 0 && endMs < Date.now()) {
+        await salvageRunningRace(race.id);
+      }
     }
   }
 
@@ -298,8 +364,7 @@ async function schedulerTick() {
   });
   if (gridWindow && !gridEmitted.has(gridWindow.id)) {
     gridEmitted.add(gridWindow.id);
-    const bulls = await buildRaceField(gridWindow.id);
-    raceBullsCache.set(gridWindow.id, bulls);
+    const bulls = await simulateOnce(gridWindow.id);
     io?.emit('race_grid', {
       id: gridWindow.id,
       bulls,

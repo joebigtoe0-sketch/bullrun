@@ -6,7 +6,7 @@ import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
 import { CHAT_MAX_LEN, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
 import { walletHasAccess } from '../lib/solana.js';
-import { syncRunningRaceToSocket } from '../race/scheduler.js';
+import { syncRunningRaceToSocket, joinRunningRaceToSocket } from '../race/scheduler.js';
 
 type OnlinePlayer = {
   socketId: string;
@@ -120,7 +120,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
     });
 
     if (race?.status === 'running') {
-      syncRunningRaceToSocket(race.id, socket);
+      joinRunningRaceToSocket(race.id, socket);
     }
 
     socket.broadcast.emit('player_joined', toPresence(userId, player));

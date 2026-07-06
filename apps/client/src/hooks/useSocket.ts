@@ -82,10 +82,12 @@ export function useSocket() {
     });
     socket.on('race_grid', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; owner?: string; trait?: string }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; owner?: string; trait?: string }>;
       startAt: number;
       laps: number;
     }) => {
+      const anim = useGameStore.getState().raceAnim;
+      if (anim?.id === data.id && !anim.frozen) return;
       useGameStore.getState().setRaceGrid({
         ...data,
         bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
@@ -93,7 +95,7 @@ export function useSocket() {
     });
     socket.on('race_started', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
       startT: number;
       endT: number;
       laps?: number;
@@ -101,9 +103,12 @@ export function useSocket() {
     }) => {
       const prev = useGameStore.getState().raceAnim;
       const elapsed = data.elapsed ?? 0;
-      if (prev?.id === data.id && !prev.frozen && (prev.elapsedMs ?? 0) > 300) {
-        useGameStore.getState().syncRaceClock(data.id, Math.max(elapsed, prev.elapsedMs ?? 0));
-        return;
+      if (prev?.id === data.id) {
+        if (prev.frozen) return;
+        if ((prev.elapsedMs ?? 0) > 200) {
+          useGameStore.getState().syncRaceClock(data.id, Math.max(elapsed, prev.elapsedMs ?? 0));
+          return;
+        }
       }
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceAnim({
@@ -113,6 +118,12 @@ export function useSocket() {
         elapsedAt: Date.now(),
       });
       useGameStore.getState().setRaceLive({ id: data.id, standings: [] });
+    });
+    socket.on('race_sync', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[]; elapsed: number }) => {
+      const anim = useGameStore.getState().raceAnim;
+      if (!anim || anim.id !== data.id || anim.frozen) return;
+      useGameStore.getState().setRaceLive({ id: data.id, standings: data.standings });
+      useGameStore.getState().syncRaceClock(data.id, data.elapsed);
     });
     socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[]; elapsed?: number }) => {
       useGameStore.getState().setRaceLive(data);
@@ -124,12 +135,14 @@ export function useSocket() {
       id: string;
       results: import('@bullrun/shared').RaceResult[];
       betResults: Record<string, string>;
+      bulls?: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
     }) => {
       const userId = useGameStore.getState().user?.id;
       const anim = useGameStore.getState().raceAnim;
       if (anim?.id && anim.id !== data.id) return;
       if (anim) {
-        useGameStore.getState().setRaceAnim({ ...anim, frozen: true });
+        const bulls = data.bulls?.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })) ?? anim.bulls;
+        useGameStore.getState().setRaceAnim({ ...anim, bulls, frozen: true });
       }
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceLive(null);

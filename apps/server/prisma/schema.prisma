@@ -104,6 +104,7 @@ model Race {
   startAt   DateTime
   endAt     DateTime?
   field     Json
+  simulatedField Json?
   results   Json?
   entries   RaceEntry[]
   bets      Bet[]

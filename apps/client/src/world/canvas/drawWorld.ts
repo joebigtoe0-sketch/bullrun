@@ -708,7 +708,7 @@ export interface DrawState {
   worldNodes: SyncedWorldNode[];
   raceAnim: {
     id?: string;
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startT: number;
     laps?: number;
     frozen?: boolean;
@@ -717,7 +717,7 @@ export interface DrawState {
     maxElapsedMs?: number;
   } | null;
   raceGrid: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startAt: number;
     laps: number;
   } | null;
@@ -910,7 +910,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   if (raceGrid && !raceAnim) {
     const total = raceGrid.bulls.length;
     raceGrid.bulls.forEach((b, i) => {
-      const pos = raceGridPosition(b.pos ?? i + 1, total);
+      const slot = b.gridSlot ?? i + 1;
+      const pos = raceGridPosition(slot, total);
       list.push({
         d: pos.x + pos.y,
         o: {
@@ -934,10 +935,11 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     const fieldSize = raceAnim.bulls.length;
     for (let i = 0; i < raceAnim.bulls.length; i++) {
       const b = raceAnim.bulls[i]!;
-      const slot = b.pos ?? i + 1;
+      const gridSlot = b.gridSlot ?? i + 1;
+      const place = b.pos ?? i + 1;
       const pos = raceAnim.frozen
-        ? raceFinishPosition(b.pos ?? i + 1, fieldSize)
-        : raceBullAt(el, b.finishT, slot, laps, b.lapTimes, fieldSize, b.pos ?? i + 1);
+        ? raceFinishPosition(place, fieldSize)
+        : raceBullAt(el, b.finishT, gridSlot, laps, b.lapTimes, fieldSize, place);
       list.push({
         d: pos.x + pos.y,
         o: {

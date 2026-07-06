@@ -20,6 +20,8 @@ let io: SocketServer | null = null;
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
 const activeRaces = new Map<string, { bulls: RaceBull[]; startT: number; endT: number }>();
 const gridEmitted = new Set<string>();
+/** Pre-simulated field from grid window — reused at race start so positions match the grid. */
+const raceBullsCache = new Map<string, RaceBull[]>();
 
 export function setRaceIo(server: SocketServer) {
   io = server;
@@ -83,7 +85,8 @@ async function startRace(raceId: string) {
   const row = await prisma.race.findUnique({ where: { id: raceId } });
   if (!row || row.status !== 'scheduled') return;
 
-  const bulls = await buildRaceField(raceId);
+  const bulls = raceBullsCache.get(raceId) ?? await buildRaceField(raceId);
+  raceBullsCache.delete(raceId);
   const now = Date.now();
   const endT = Math.max(...bulls.map((b) => b.finishT ?? 0), 9000);
 
@@ -114,6 +117,7 @@ async function finishRace(raceId: string) {
   const active = activeRaces.get(raceId);
   if (!active) return;
   activeRaces.delete(raceId);
+  raceBullsCache.delete(raceId);
 
   const entries = await prisma.raceEntry.findMany({ where: { raceId } });
   const myBullIds = entries.filter((e: RaceEntry) => e.bullId).map((e: RaceEntry) => e.bullId!);
@@ -264,6 +268,7 @@ async function schedulerTick() {
   if (gridWindow && !gridEmitted.has(gridWindow.id)) {
     gridEmitted.add(gridWindow.id);
     const bulls = await buildRaceField(gridWindow.id);
+    raceBullsCache.set(gridWindow.id, bulls);
     io?.emit('race_grid', {
       id: gridWindow.id,
       bulls,

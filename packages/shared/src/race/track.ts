@@ -49,6 +49,9 @@ export function raceProgressAt(elapsed: number, lapTimes: number[]): number {
   return 1;
 }
 
+/** Hold grid formation briefly after the flag, then blend onto the racing line. */
+const GRID_HOLD_MS = 2000;
+
 export function raceBullAt(
   elapsed: number,
   finishT: number,
@@ -57,21 +60,22 @@ export function raceBullAt(
   lapTimes?: number[],
   fieldSize = 6,
 ): { x: number; y: number; facingLeft: boolean } {
+  const t = Math.max(0, elapsed);
   const totalProg = lapTimes?.length
-    ? raceProgressAt(elapsed, lapTimes)
-    : Math.min(1, Math.max(0, finishT > 0 ? elapsed / finishT : 0));
+    ? raceProgressAt(t, lapTimes)
+    : Math.min(1, Math.max(0, finishT > 0 ? t / finishT : 0));
+  const prog = Math.max(0, totalProg);
 
-  // Match starting-grid stagger at the line, then fade into the oval path.
   const gridAngleOffset = (slot - 1) * 0.035;
   const spread = (slot - (fieldSize + 1) / 2) * 0.28;
-  const spreadFade = Math.min(1, totalProg * 30);
+  const spreadFade = t < GRID_HOLD_MS ? 0 : Math.min(1, prog * 40);
   const laneEr = raceStartLane(slot);
   const er = laneEr + (RACE_TRACK_ER - laneEr) * spreadFade;
 
   const a =
     Math.PI / 2 -
     gridAngleOffset * (1 - spreadFade) +
-    totalProg * Math.PI * 2 * laps;
+    prog * Math.PI * 2 * laps;
   const spreadX = spread * (1 - spreadFade);
   const spreadY = spread * 0.35 * (1 - spreadFade);
   const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er + spreadX;
@@ -90,10 +94,11 @@ export function raceGridPosition(
 }
 
 export function currentLap(elapsed: number, finishT: number, laps = RACE_LAPS, lapTimes?: number[]): number {
+  const t = Math.max(0, elapsed);
   const totalProg = lapTimes?.length
-    ? raceProgressAt(elapsed, lapTimes)
-    : finishT <= 0 ? 0 : Math.min(1, Math.max(0, elapsed / finishT));
-  return Math.min(laps, Math.floor(totalProg * laps) + 1);
+    ? raceProgressAt(t, lapTimes)
+    : finishT <= 0 ? 0 : Math.min(1, Math.max(0, t / finishT));
+  return Math.min(laps, Math.max(1, Math.floor(Math.max(0, totalProg) * laps) + 1));
 }
 
 export function scaledRaceFinishT(baseMs: number): number {

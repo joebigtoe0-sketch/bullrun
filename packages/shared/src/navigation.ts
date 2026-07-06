@@ -5,11 +5,11 @@ import {
   WORLD_RY,
   WORLD_SIZE,
 } from './constants.js';
-import { PASTURE_PLOTS } from './pastures.js';
+import { PASTURE_PLOTS, PASTURE_FENCE_MARGIN } from './pastures.js';
 
 const TRACK_INNER = 0.79;
 const TRACK_OUTER = 1.225;
-const PASTURE_FENCE = 0.42;
+const PASTURE_FENCE = PASTURE_FENCE_MARGIN;
 const PASTURE_INNER = 0.38;
 
 /** Race track + fence band — blocks walking through the track oval. */

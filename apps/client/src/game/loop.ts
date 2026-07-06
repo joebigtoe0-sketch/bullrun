@@ -7,12 +7,14 @@ import {
   NODE_RESPAWN_MS,
   INTERACT_USE_RANGE,
   PASTURE_PLOTS,
-  pastureCenter,
+  pastureApproachPoint,
+  nearestPasturePlot,
+  distanceToPastureFence,
+  isNearPasturePlot,
   nodeId,
   applyWorldCollision,
   findPath,
   isNearInteractable,
-  isNearPasturePlot,
   isBuildingPanel,
 } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
@@ -73,7 +75,7 @@ export function useGameLoop() {
         s.setFreeCamUntil(0);
         const mt = s.moveTarget;
         const d = Math.hypot(mt.x - p.x, mt.y - p.y);
-        const arrive = s.pending ? 1.7 : 0.15;
+        const arrive = s.pending?.type === 'pasture' ? 0.5 : s.pending ? 1.7 : 0.15;
         if (d < arrive) {
           if (s.movePath && s.movePath.length > 1) {
             s.advanceMovePath();
@@ -86,6 +88,16 @@ export function useGameLoop() {
           p.x += ((mt.x - p.x) / d) * 4.4 * dt;
           p.y += ((mt.y - p.y) / d) * 4.4 * dt;
         }
+      }
+
+      if (
+        s.pending?.type === 'pasture' &&
+        s.pending.plotId != null &&
+        isNearPasturePlot(p.x, p.y, s.pending.plotId)
+      ) {
+        s.setMovePath(null);
+        s.setMoveTarget(null);
+        execPending(s.pending);
       }
 
       p.x = Math.max(1, Math.min(M - 1, p.x));
@@ -162,8 +174,8 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
     const plot = s.pastures.find((p) => p.id === pending.plotId);
     const def = PASTURE_PLOTS.find((p) => p.id === pending.plotId);
     const pos = s.me?.position;
-    if (!plot || !def || !pos || Math.hypot(pos.x - pending.x, pos.y - pending.y) >= INTERACT_USE_RANGE) {
-      s.toastMsg('Get closer to the plot');
+    if (!plot || !def || !pos || !isNearPasturePlot(pos.x, pos.y, plot.id)) {
+      s.toastMsg('Get closer to the den fence');
       return;
     }
     if (!plot.ownerId) {
@@ -223,14 +235,13 @@ export function handleWorldClick(wx: number, wy: number) {
 
   let best: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null = null;
   let bd = 1.6;
+  const playerPos = s.me?.position ?? { x: wx, y: wy };
 
-  for (const def of PASTURE_PLOTS) {
-    const c = pastureCenter(def);
-    const d = Math.hypot(c.x - wx, c.y - wy);
-    if (d < Math.min(bd, 2.4)) {
-      bd = d;
-      best = { type: 'pasture', plotId: def.id, x: c.x, y: c.y };
-    }
+  const clickedPlot = nearestPasturePlot(wx, wy, 3.5);
+  if (clickedPlot) {
+    const approach = pastureApproachPoint(playerPos.x, playerPos.y, clickedPlot);
+    bd = distanceToPastureFence(wx, wy, clickedPlot);
+    best = { type: 'pasture', plotId: clickedPlot.id, x: approach.x, y: approach.y };
   }
 
   for (const it of worldData.interactables) {

@@ -8,7 +8,7 @@ import {
   NPC_SHIRT_COLORS,
   FENCE_RINGS,
 } from '../constants.js';
-import { PASTURE_PLOTS } from '../pastures.js';
+import { PASTURE_PLOTS, isOnAnyPasture } from '../pastures.js';
 import type { Interactable, NpcWanderer, TileType, WorldData, WorldNode, WorldObject } from '../types.js';
 
 function makeRng(seed: number) {
@@ -69,6 +69,7 @@ export function buildWorld(npcWanderers = 0): WorldData {
 
   const free = (x: number, y: number) => {
     if (ell(x, y) < 1.32) return false;
+    if (isOnAnyPasture(x, y, 0.4)) return false;
     const tx = Math.floor(x);
     const ty = Math.floor(y);
     if (tx < 2 || ty < 2 || tx > M - 3 || ty > M - 3) return false;

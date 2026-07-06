@@ -10,20 +10,31 @@ export interface PasturePlotDef {
   label: string;
 }
 
-/** Fenced den plots along the left edge and bottom of the map. */
+/** Fence thickness used for collision + interaction (world units). */
+export const PASTURE_FENCE_MARGIN = 0.42;
+
+/** How close to the fence ring you can be to buy / open the den menu. */
+export const DEN_INTERACT_RANGE = 2.4;
+
+const DEN_W = 3.6;
+const DEN_H = 3.5;
+const DEN_GAP = 1.5;
+
+/** Fenced den plots along the left edge and bottom of the map (gaps between for walking). */
 export const PASTURE_PLOTS: PasturePlotDef[] = [
-  { id: 0, cx: 2.4, cy: 12.0, w: 3.6, h: 4.0, price: 120, label: 'Den 1' },
-  { id: 1, cx: 2.4, cy: 17.0, w: 3.6, h: 4.0, price: 140, label: 'Den 2' },
-  { id: 2, cx: 2.4, cy: 22.0, w: 3.6, h: 4.0, price: 160, label: 'Den 3' },
-  { id: 3, cx: 2.4, cy: 27.0, w: 3.6, h: 4.0, price: 180, label: 'Den 4' },
-  { id: 4, cx: 6.0, cy: 40.5, w: 4.2, h: 3.5, price: 200, label: 'Den 5' },
-  { id: 5, cx: 11.0, cy: 40.5, w: 4.2, h: 3.5, price: 220, label: 'Den 6' },
-  { id: 6, cx: 16.0, cy: 40.5, w: 4.2, h: 3.5, price: 240, label: 'Den 7' },
-  { id: 7, cx: 21.0, cy: 40.5, w: 4.2, h: 3.5, price: 260, label: 'Den 8' },
-  { id: 8, cx: 26.0, cy: 40.5, w: 4.2, h: 3.5, price: 280, label: 'Den 9' },
-  { id: 9, cx: 31.0, cy: 40.5, w: 4.2, h: 3.5, price: 300, label: 'Den 10' },
-  { id: 10, cx: 36.0, cy: 40.5, w: 4.2, h: 3.5, price: 320, label: 'Den 11' },
-  { id: 11, cx: 41.0, cy: 40.5, w: 4.2, h: 3.5, price: 340, label: 'Den 12' },
+  { id: 0, cx: 2.0, cy: 10.0, w: DEN_W, h: DEN_H, price: 120, label: 'Den 1' },
+  { id: 1, cx: 2.0, cy: 10.0 + DEN_H + DEN_GAP, w: DEN_W, h: DEN_H, price: 140, label: 'Den 2' },
+  { id: 2, cx: 2.0, cy: 10.0 + (DEN_H + DEN_GAP) * 2, w: DEN_W, h: DEN_H, price: 160, label: 'Den 3' },
+  { id: 3, cx: 2.0, cy: 10.0 + (DEN_H + DEN_GAP) * 3, w: DEN_W, h: DEN_H, price: 180, label: 'Den 4' },
+  ...Array.from({ length: 8 }, (_, i) => ({
+    id: 4 + i,
+    cx: 3.5 + i * (DEN_W + DEN_GAP),
+    cy: 39.0,
+    w: DEN_W,
+    h: DEN_H,
+    price: 200 + i * 20,
+    label: `Den ${5 + i}`,
+  })),
 ];
 
 export const MAX_FOLLOWING_BULLS = 3;
@@ -90,4 +101,87 @@ export function rollPastureBull(seed: number): {
 
 export function pastureCenter(plot: PasturePlotDef) {
   return { x: plot.cx + plot.w / 2, y: plot.cy + plot.h / 2 };
+}
+
+/** Distance from a point to the outer fence ring of a plot. */
+export function distanceToPastureFence(px: number, py: number, plot: PasturePlotDef): number {
+  const m = PASTURE_FENCE_MARGIN;
+  const x0 = plot.cx - m;
+  const x1 = plot.cx + plot.w + m;
+  const y0 = plot.cy - m;
+  const y1 = plot.cy + plot.h + m;
+  const dx = Math.max(x0 - px, 0, px - x1);
+  const dy = Math.max(y0 - py, 0, py - y1);
+  return Math.hypot(dx, dy);
+}
+
+export function isPointOnPasture(px: number, py: number, plot: PasturePlotDef, extra = 0): boolean {
+  const m = PASTURE_FENCE_MARGIN + extra;
+  return (
+    px >= plot.cx - m &&
+    px <= plot.cx + plot.w + m &&
+    py >= plot.cy - m &&
+    py <= plot.cy + plot.h + m
+  );
+}
+
+export function isOnAnyPasture(px: number, py: number, extra = 0.35): boolean {
+  return PASTURE_PLOTS.some((p) => isPointOnPasture(px, py, p, extra));
+}
+
+export function isNearPasturePlot(
+  px: number,
+  py: number,
+  plotId: number,
+  range = DEN_INTERACT_RANGE,
+): boolean {
+  const def = PASTURE_PLOTS.find((p) => p.id === plotId);
+  if (!def) return false;
+  return distanceToPastureFence(px, py, def) <= range;
+}
+
+/** Walk target just outside the nearest fence edge (pathfinding can't reach plot center). */
+export function pastureApproachPoint(
+  px: number,
+  py: number,
+  plot: PasturePlotDef,
+  standOff = 0.75,
+): { x: number; y: number } {
+  const m = PASTURE_FENCE_MARGIN;
+  const x0 = plot.cx - m;
+  const x1 = plot.cx + plot.w + m;
+  const y0 = plot.cy - m;
+  const y1 = plot.cy + plot.h + m;
+  const cx = Math.max(x0, Math.min(px, x1));
+  const cy = Math.max(y0, Math.min(py, y1));
+
+  if (px >= x0 && px <= x1 && py >= y0 && py <= y1) {
+    const dl = px - x0;
+    const dr = x1 - px;
+    const dt = py - y0;
+    const db = y1 - py;
+    const min = Math.min(dl, dr, dt, db);
+    if (min === dl) return { x: x0 - standOff, y: cy };
+    if (min === dr) return { x: x1 + standOff, y: cy };
+    if (min === dt) return { x: cx, y: y0 - standOff };
+    return { x: cx, y: y1 + standOff };
+  }
+
+  const dx = px - cx;
+  const dy = py - cy;
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: cx + (dx / d) * standOff, y: cy + (dy / d) * standOff };
+}
+
+export function nearestPasturePlot(px: number, py: number, maxDist = DEN_INTERACT_RANGE + 1.5): PasturePlotDef | null {
+  let best: PasturePlotDef | null = null;
+  let bd = maxDist;
+  for (const p of PASTURE_PLOTS) {
+    const d = distanceToPastureFence(px, py, p);
+    if (d < bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best;
 }

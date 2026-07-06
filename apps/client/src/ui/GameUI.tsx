@@ -15,8 +15,9 @@ import {
   RARITIES,
   isNearInteractable,
 } from '@bullrun/shared';
-import type { Bull, MatType, MeResponse, PanelType, StatType } from '@bullrun/shared';
+import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
+import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 
 const btn = 'br-btn';
 const panel = 'br-panel';
@@ -402,11 +403,34 @@ function HelpModal() {
   );
 }
 
+function GatherBar() {
+  const gather = useGameStore((s) => s.gather);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!gather) return;
+    let raf = 0;
+    const frame = () => {
+      setTick((t) => t + 1);
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [gather]);
+
+  if (!gather) return null;
+  const pct = Math.min(100, ((Date.now() - gather.start) / gather.dur) * 100);
+  return (
+    <div className="gather-bar">
+      <div style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 export function GameUI() {
   const me = useGameStore((s) => s.me);
   const panel = useGameStore((s) => s.panel);
   const toast = useGameStore((s) => s.toast);
-  const gather = useGameStore((s) => s.gather);
   const raceLive = useGameStore((s) => s.raceLive);
   const setPanel = useGameStore((s) => s.setPanel);
   const setInvOpen = useGameStore((s) => s.setInvOpen);
@@ -432,11 +456,19 @@ export function GameUI() {
   const slots = bullSlots(me.stable.level);
 
   return (
-    <>
+    <div className="game-hud">
       <div className="hud-tl">
-        <div className="hud-chip"><span className="gold bold">{Math.round(me.gold)}</span></div>
         <div className="hud-chip">
-          <span>{me.mats.hay}</span><span>{me.mats.ore}</span><span>{me.mats.wood}</span>
+          <GoldIcon />
+          <span className="hud-gold-val">{Math.round(me.gold)}</span>
+        </div>
+        <div className="hud-chip">
+          <HayIcon />
+          <span className="hud-mat-val">{me.mats.hay}</span>
+          <OreIcon />
+          <span className="hud-mat-val">{me.mats.ore}</span>
+          <WoodIcon />
+          <span className="hud-mat-val">{me.mats.wood}</span>
         </div>
       </div>
       <div className="hud-tc">
@@ -447,9 +479,7 @@ export function GameUI() {
       </div>
       <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.length}/{slots} bulls</div>
 
-      {gather && (
-        <div className="gather-bar"><div style={{ width: `${Math.min(100, (Date.now() - gather.start) / gather.dur * 100)}%` }} /></div>
-      )}
+      <GatherBar />
 
       <div className="bottom-bar">
         {(['stable', 'race', 'bet', 'market', 'forge'] as const).map((p) => (
@@ -469,6 +499,6 @@ export function GameUI() {
       <InventoryPopup />
       <ResultsModal />
       {toast && <div className="toast">{toast}</div>}
-    </>
+    </div>
   );
 }

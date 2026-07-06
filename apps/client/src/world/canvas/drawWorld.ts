@@ -886,11 +886,17 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
+  const myFollowing = new Set(me?.followingBullIds ?? []);
+  const myBullById = new Map(me?.bulls.map((b) => [b.id, b]) ?? []);
+
   for (const plot of pastures) {
     if (!plot.ownerId || !plot.denBulls?.length) continue;
     const def = PASTURE_PLOTS.find((p) => p.id === plot.id);
     if (!def) continue;
     for (const b of plot.denBulls) {
+      if (myFollowing.has(b.id)) continue;
+      const own = myBullById.get(b.id);
+      if (own && own.location !== 'den') continue;
       const pos = denBullPos(b.id, def);
       list.push({
         d: pos.x + pos.y,

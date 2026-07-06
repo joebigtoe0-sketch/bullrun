@@ -35,6 +35,13 @@ export async function initPasturePlots() {
   }
 }
 
+/** Rebuild pasture state and push to all connected clients. */
+export async function emitPasturesUpdated(): Promise<PasturePlotState[]> {
+  const pastures = await listPastures();
+  broadcast('pastures_updated', pastures);
+  return pastures;
+}
+
 async function denCountForPlot(plotId: number): Promise<number> {
   return prisma.bull.count({ where: { location: 'den', denPlotId: plotId } });
 }
@@ -155,8 +162,7 @@ export async function buyPasture(userId: string, plotId: number) {
     }),
   ]);
 
-  const pastures = await listPastures();
-  broadcast('pastures_updated', pastures);
+  const pastures = await emitPasturesUpdated();
   return { me: await getMeResponse(userId), pastures };
 }
 
@@ -189,8 +195,7 @@ export async function upgradePasture(userId: string, plotId: number) {
     }),
   ]);
 
-  const pastures = await listPastures();
-  broadcast('pastures_updated', pastures);
+  const pastures = await emitPasturesUpdated();
   return {
     me: await getMeResponse(userId),
     pastures,
@@ -236,8 +241,7 @@ async function spawnOnPlot(plotId: number) {
     data: { nextSpawnAt },
   });
 
-  const pastures = await listPastures();
-  broadcast('pastures_updated', pastures);
+  await emitPasturesUpdated();
   await broadcastPlayerBulls(plot.ownerId);
   broadcast('pasture_spawned', {
     plotId,

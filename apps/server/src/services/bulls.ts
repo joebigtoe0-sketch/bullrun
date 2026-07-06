@@ -37,6 +37,7 @@ export async function deleteBull(userId: string, bullId: number) {
 
   const loc = bull.location || 'stable';
   if (loc === 'following') throw new Error('Deposit bull first');
+  const wasInDen = loc === 'den';
   if (loc === 'den') {
     if (bull.denPlotId == null) throw new Error('Invalid den');
     await requireNearDen(userId, bull.denPlotId);
@@ -60,6 +61,10 @@ export async function deleteBull(userId: string, bullId: number) {
   ]);
 
   await broadcastBulls(userId);
+  if (wasInDen) {
+    const { emitPasturesUpdated } = await import('./pasture.js');
+    await emitPasturesUpdated();
+  }
   return getMeResponse(userId);
 }
 
@@ -84,8 +89,10 @@ export async function takeBullFollow(userId: string, bullId: number) {
     throw new Error('Bull not available');
   }
 
+  const wasInDen = loc === 'den';
+
   await prisma.$transaction([
-    prisma.bull.update({ where: { id: bullId }, data: { location: 'following' } }),
+    prisma.bull.update({ where: { id: bullId }, data: { location: 'following', denPlotId: null } }),
     prisma.playerProfile.update({
       where: { userId },
       data: { followingBullIds: [...following, bullId] },
@@ -93,6 +100,10 @@ export async function takeBullFollow(userId: string, bullId: number) {
   ]);
 
   await broadcastBulls(userId);
+  if (wasInDen) {
+    const { emitPasturesUpdated } = await import('./pasture.js');
+    await emitPasturesUpdated();
+  }
   return getMeResponse(userId);
 }
 
@@ -153,8 +164,8 @@ export async function depositBullDen(userId: string, bullId: number, plotId: num
     prisma.playerProfile.update({ where: { userId }, data: { followingBullIds: following } }),
   ]);
 
-  const { listPastures } = await import('./pasture.js');
-  const pastures = await listPastures();
+  const { emitPasturesUpdated } = await import('./pasture.js');
+  const pastures = await emitPasturesUpdated();
   await broadcastBulls(userId);
   return { me: await getMeResponse(userId), pastures };
 }

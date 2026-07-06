@@ -80,10 +80,10 @@ export const api = {
     request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[] }>('/bulls/to-den', { method: 'POST', body: JSON.stringify({ bullId, plotId }) }),
   gatherComplete: (nodeId: string, x?: number, y?: number) =>
     request<{ qty: number; mat: string; me: MeResponse }>('/gather/complete', { method: 'POST', body: JSON.stringify({ nodeId, x, y }) }),
-  enterRace: (bullId: number) =>
-    request<MeResponse>('/race/enter', { method: 'POST', body: JSON.stringify({ bullId }) }),
-  placeBet: (targetBullId: string, targetName: string, amount: number, odds: number) =>
-    request<MeResponse>('/race/bet', { method: 'POST', body: JSON.stringify({ targetBullId, targetName, amount, odds }) }),
+  enterRace: (bullId: number, x?: number, y?: number) =>
+    request<MeResponse>('/race/enter', { method: 'POST', body: JSON.stringify({ bullId, x, y }) }),
+  placeBet: (targetBullId: string, targetName: string, amount: number, odds: number, x?: number, y?: number) =>
+    request<MeResponse>('/race/bet', { method: 'POST', body: JSON.stringify({ targetBullId, targetName, amount, odds, x, y }) }),
   raceOdds: () => request<{ field: unknown[]; odds: number[] }>('/race/odds'),
   listMaterial: (mat: string, pricePerUnit: number, qty: number) =>
     request<MeResponse>('/market/list', { method: 'POST', body: JSON.stringify({ mat, pricePerUnit, qty }) }),

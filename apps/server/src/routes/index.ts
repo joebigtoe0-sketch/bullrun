@@ -182,19 +182,27 @@ export async function gameRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post<{ Body: { bullId: number } }>('/race/enter', async (req, reply) => {
+  app.post<{ Body: { bullId: number; x?: number; y?: number } }>('/race/enter', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
-      return await game.enterRace(userId, req.body.bullId);
+      return await game.enterRace(userId, req.body.bullId, req.body.x, req.body.y);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }
   });
 
-  app.post<{ Body: { targetBullId: string; targetName: string; amount: number; odds: number } }>('/race/bet', async (req, reply) => {
+  app.post<{ Body: { targetBullId: string; targetName: string; amount: number; odds: number; x?: number; y?: number } }>('/race/bet', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
-      return await game.placeBet(userId, req.body.targetBullId, req.body.targetName, req.body.amount, req.body.odds);
+      return await game.placeBet(
+        userId,
+        req.body.targetBullId,
+        req.body.targetName,
+        req.body.amount,
+        req.body.odds,
+        req.body.x,
+        req.body.y,
+      );
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

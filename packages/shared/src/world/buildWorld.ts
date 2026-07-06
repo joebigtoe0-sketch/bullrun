@@ -109,11 +109,11 @@ export function buildWorld(npcWanderers = 0): WorldData {
   spawnNodes('hay', 'hay', 26, 0.78);
 
   const interactables: Interactable[] = [
-    { t: 'stable', x: 38, y: 38.8, label: 'Stable' },
-    { t: 'bet', x: 31, y: 38.5, label: 'Betting booth' },
-    { t: 'forge', x: 9, y: 33.5, label: 'Forge' },
-    { t: 'market', x: 9, y: 37, label: 'Market' },
-    { t: 'race', x: 24, y: 38.8, label: 'Race signup' },
+    { t: 'stable', x: 38, y: 37.5, label: 'Stable' },
+    { t: 'bet', x: 31, y: 37.2, label: 'Betting booth' },
+    { t: 'forge', x: 9, y: 32, label: 'Forge' },
+    { t: 'market', x: 9, y: 35.5, label: 'Market' },
+    { t: 'race', x: 24, y: 37.5, label: 'Race signup' },
   ];
 
   const names: [string, number][] = [

@@ -371,7 +371,7 @@ function RacePanel() {
               ) : b.energy < BULL_MAX_ENERGY ? (
                 <span className="muted sm">Need {BULL_MAX_ENERGY}⚡</span>
               ) : (
-                <button className={`${btn} gold`} onClick={() => api.enterRace(b.id).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
+                <button className={`${btn} gold`} onClick={() => api.enterRace(b.id, me.position.x, me.position.y).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
               )}
             </div>
           ))
@@ -417,7 +417,7 @@ function BetPanel() {
             </div>
             <div className="row gap">
               <span className="gold bold">{(oddsArr[i] ?? 0).toFixed(1)}×</span>
-              <button className={`${btn} green`} onClick={() => api.placeBet(String(e.id), e.name, me.betAmount, oddsArr[i]).then(setMe).catch((err) => toast(err.message))}>Bet</button>
+              <button className={`${btn} green`} onClick={() => api.placeBet(String(e.id), e.name, me.betAmount, oddsArr[i], me.position.x, me.position.y).then(setMe).catch((err) => toast(err.message))}>Bet</button>
             </div>
           </div>
         ))}

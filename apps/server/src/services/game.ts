@@ -322,8 +322,8 @@ export async function completeGather(userId: string, nodeIdStr: string, nearX?: 
   return { qty, mat, me: await getMeResponse(userId) };
 }
 
-export async function enterRace(userId: string, bullId: number) {
-  await requireNearInteractable(userId, 'race');
+export async function enterRace(userId: string, bullId: number, clientX?: number, clientY?: number) {
+  await requireNearInteractable(userId, 'race', clientX, clientY);
   const race = await prisma.race.findFirst({ where: { status: 'scheduled' }, orderBy: { startAt: 'asc' } });
   if (!race) throw new Error('No scheduled race');
   if (race.startAt.getTime() <= Date.now()) throw new Error('Race locked');
@@ -353,8 +353,16 @@ export async function enterRace(userId: string, bullId: number) {
   return getMeResponse(userId);
 }
 
-export async function placeBet(userId: string, targetBullId: string, targetName: string, amount: number, odds: number) {
-  await requireNearInteractable(userId, 'bet');
+export async function placeBet(
+  userId: string,
+  targetBullId: string,
+  targetName: string,
+  amount: number,
+  odds: number,
+  clientX?: number,
+  clientY?: number,
+) {
+  await requireNearInteractable(userId, 'bet', clientX, clientY);
   const race = await prisma.race.findFirst({ where: { status: 'scheduled' }, orderBy: { startAt: 'asc' } });
   if (!race) throw new Error('No scheduled race');
 

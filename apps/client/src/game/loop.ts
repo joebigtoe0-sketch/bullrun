@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
-import { useSocket } from '../hooks/useSocket';
+import { useSocket, gameSocketRef } from '../hooks/useSocket';
 import {
   GATHER_DURATION_MS,
   NODE_RESPAWN_MS,
@@ -181,6 +181,11 @@ export function useGameLoop() {
   }, [meId]);
 }
 
+function syncPosition(x: number, y: number) {
+  api.updatePosition(x, y).catch(() => {});
+  gameSocketRef.current?.emit('move', { x, y });
+}
+
 function execPending(pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number }) {
   const s = useGameStore.getState();
   s.setPending(null);
@@ -221,6 +226,7 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       s.toastMsg('Get closer to use that');
       return;
     }
+    syncPosition(pos.x, pos.y);
     s.setPanel(pending.type as import('@bullrun/shared').PanelType);
   }
 }
@@ -307,6 +313,7 @@ export function navigateToBuilding(p: 'stable' | 'race' | 'bet' | 'market' | 'fo
   const it = worldData.interactables.find((i) => i.t === p);
   if (!it) return;
   if (isNearInteractable(me.position.x, me.position.y, p, worldData.interactables)) {
+    syncPosition(me.position.x, me.position.y);
     s.setPanel(p);
     return;
   }

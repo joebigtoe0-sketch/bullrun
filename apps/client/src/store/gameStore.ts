@@ -15,7 +15,8 @@ interface GameStore {
   otherPlayers: OtherPlayer[];
   nodeDead: Record<string, number>;
   raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
-  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number }>; startT: number; endT: number } | null;
+  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startT: number; endT: number; laps?: number } | null;
+  raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;
   results: RaceResult[] | null;
@@ -46,6 +47,7 @@ interface GameStore {
   clearNodeDead: (id: string) => void;
   setRaceLive: (r: GameStore['raceLive']) => void;
   setRaceAnim: (r: GameStore['raceAnim']) => void;
+  setRaceGrid: (r: GameStore['raceGrid']) => void;
   setResults: (r: RaceResult[] | null, betResult?: string | null) => void;
   setForgeResult: (s: string) => void;
   setMoveTarget: (t: { x: number; y: number } | null) => void;
@@ -76,6 +78,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   nodeDead: {},
   raceLive: null,
   raceAnim: null,
+  raceGrid: null,
   results: null,
   betResult: null,
   forgeResult: '',
@@ -143,7 +146,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ nodeDead: nd });
   },
   setRaceLive: (r) => set({ raceLive: r }),
-  setRaceAnim: (r) => set({ raceAnim: r }),
+  setRaceAnim: (r) => set({ raceAnim: r, ...(r ? { raceGrid: null } : {}) }),
+  setRaceGrid: (r) => set({ raceGrid: r }),
   setResults: (r, betResult = null) => set({ results: r, betResult: betResult ?? null, panel: r ? 'results' : get().panel }),
   setForgeResult: (s) => set({ forgeResult: s }),
   setMoveTarget: (t) => set({ moveTarget: t }),

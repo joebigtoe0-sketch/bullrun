@@ -13,6 +13,10 @@ import {
   applyWorldCollision,
   trackClamp,
   nodeId,
+  RACE_LAPS,
+  raceBullAt,
+  raceGridPosition,
+  currentLap,
   type MeResponse,
   type OtherPlayer,
   type PasturePlotState,
@@ -444,6 +448,90 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
   }
 }
 
+function drawRaceTrackBoard(
+  ctx: CanvasRenderingContext2D,
+  sx: number,
+  sy: number,
+  now: number,
+  raceLive: boolean,
+  raceGrid: DrawState['raceGrid'],
+  raceAnim: DrawState['raceAnim'],
+  me: MeResponse | null,
+) {
+  const show = raceGrid || raceAnim || (me?.race && !raceLive);
+  if (!show) return;
+
+  const w = 200;
+  const h = raceGrid ? 118 : raceAnim ? 96 : 52;
+  const x = sx - w / 2;
+  const y = sy - h / 2 - 8;
+
+  ctx.fillStyle = 'rgba(23,16,10,.88)';
+  ctx.strokeStyle = '#17100a';
+  ctx.lineWidth = 3;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x, y, w, h);
+
+  ctx.textAlign = 'center';
+  ctx.font = "700 11px 'Pixelify Sans', monospace";
+
+  if (raceGrid) {
+    const cd = Math.max(0, Math.ceil((raceGrid.startAt - now) / 1000));
+    ctx.fillStyle = cd > 0 ? '#f2b23a' : '#7dc24f';
+    ctx.font = "700 36px 'Pixelify Sans', monospace";
+    ctx.fillText(cd > 0 ? String(cd) : 'GO!', sx, y + 42);
+    ctx.font = "700 11px 'Pixelify Sans', monospace";
+    ctx.fillStyle = '#c9b896';
+    ctx.fillText('STARTING GRID', sx, y + 58);
+    ctx.fillStyle = '#f3e7cd';
+    ctx.textAlign = 'left';
+    raceGrid.bulls.slice(0, 6).forEach((b, i) => {
+      const row = Math.floor(i / 2);
+      const col = i % 2;
+      const tx = x + 12 + col * 94;
+      const ty = y + 72 + row * 14;
+      ctx.fillStyle = b.coat || '#888';
+      ctx.fillRect(tx, ty - 8, 8, 8);
+      ctx.fillStyle = '#f3e7cd';
+      ctx.fillText(`${b.pos}. ${b.name}`, tx + 12, ty);
+    });
+    ctx.textAlign = 'center';
+    return;
+  }
+
+  if (raceAnim) {
+    const el = now - raceAnim.startT;
+    const laps = raceAnim.laps ?? RACE_LAPS;
+    const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps);
+    ctx.fillStyle = '#7dc24f';
+    ctx.font = "700 16px 'Pixelify Sans', monospace";
+    ctx.fillText(`LAP ${lap}/${laps}`, sx, y + 22);
+    ctx.font = "700 11px 'Pixelify Sans', monospace";
+    ctx.fillStyle = '#f3e7cd';
+    ctx.textAlign = 'left';
+    const sorted = [...raceAnim.bulls].sort((a, b) => {
+      const pa = Math.min(1, el / a.finishT);
+      const pb = Math.min(1, el / b.finishT);
+      return pb - pa;
+    });
+    sorted.slice(0, 4).forEach((b, i) => {
+      ctx.fillStyle = '#f3e7cd';
+      ctx.fillText(`${i + 1}. ${b.name}`, x + 12, y + 40 + i * 14);
+    });
+    ctx.textAlign = 'center';
+    return;
+  }
+
+  if (me?.race) {
+    ctx.fillStyle = '#f2b23a';
+    ctx.font = "700 13px 'Pixelify Sans', monospace";
+    ctx.fillText('NEXT RACE', sx, y + 20);
+    ctx.fillStyle = '#f3e7cd';
+    ctx.fillText(fmtCountdown(new Date(me.race.startAt).getTime() - now), sx, y + 38);
+  }
+  ctx.textAlign = 'left';
+}
+
 export interface DrawState {
   cam: { x: number; y: number };
   me: MeResponse | null;
@@ -451,8 +539,14 @@ export interface DrawState {
   nodeDead: Record<string, number>;
   moveTarget: { x: number; y: number } | null;
   raceAnim: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>;
     startT: number;
+    laps?: number;
+  } | null;
+  raceGrid: {
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; owner?: string }>;
+    startAt: number;
+    laps: number;
   } | null;
   raceLive: boolean;
   pastures: PasturePlotState[];
@@ -465,7 +559,7 @@ export interface DrawState {
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
-  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
+  const { cam, me, otherPlayers, nodeDead, moveTarget, raceAnim, raceGrid, raceLive, pastures, gather, walking, folPos, otherFolPos, camOff, dpr } = state;
   const now = Date.now();
   const cw = window.innerWidth;
   const ch = window.innerHeight;
@@ -516,20 +610,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   ctx.setLineDash([]);
 
   const c = iso(CX, CY);
-  cube(ctx, CX - 0.08, CY - 0.08, 0.16, 0.16, 20, 0, '#8a6a44', '#5e4527', '#6f5432');
-  const lbl = raceLive
-    ? 'RACING!'
-    : me?.race
-      ? `NEXT RACE ${fmtCountdown(new Date(me.race.startAt).getTime() - now)}`
-      : 'NEXT RACE';
-  ctx.font = "700 14px 'Pixelify Sans', monospace";
-  const lw = ctx.measureText(lbl).width + 16;
-  ctx.fillStyle = '#17100a';
-  ctx.fillRect(c.x - lw / 2, c.y - 44, lw, 22);
-  ctx.fillStyle = raceLive ? '#7dc24f' : '#f2b23a';
-  ctx.textAlign = 'center';
-  ctx.fillText(lbl, c.x, c.y - 28);
-  ctx.textAlign = 'left';
+  drawRaceTrackBoard(ctx, c.x, c.y, now, raceLive, raceGrid, raceAnim, me);
 
   const list: { d: number; o: DrawObj }[] = [];
 
@@ -623,27 +704,40 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     });
   }
 
-  if (raceAnim) {
-    const el = now - raceAnim.startT;
-    for (const b of raceAnim.bulls) {
-      const prog = Math.min(1, el / b.finishT);
-      const a = Math.PI / 2 + prog * Math.PI * 2;
-      const er = 0.88 + (b.pos % 3) * 0.1;
-      const bx = CX + Math.cos(a) * RX * er;
-      const by = CY + Math.sin(a) * RY * er;
-      const tx = -Math.sin(a) * RX * er;
-      const ty = Math.cos(a) * RY * er;
-      const facingLeft = (tx - ty) * 32 < 0;
+  if (raceGrid && !raceAnim) {
+    const total = raceGrid.bulls.length;
+    raceGrid.bulls.forEach((b, i) => {
+      const pos = raceGridPosition(b.pos ?? i + 1, total);
       list.push({
-        d: bx + by,
+        d: pos.x + pos.y,
         o: {
           t: 'bull',
-          x: bx,
-          y: by,
+          x: pos.x,
+          y: pos.y,
           coat: b.coat,
           trait: b.trait as BullTrait | undefined,
           label: b.name,
-          facingLeft,
+          facingLeft: pos.facingLeft,
+        },
+      });
+    });
+  }
+
+  if (raceAnim) {
+    const el = now - raceAnim.startT;
+    const laps = raceAnim.laps ?? RACE_LAPS;
+    for (const b of raceAnim.bulls) {
+      const pos = raceBullAt(el, b.finishT, b.pos ?? 1, laps);
+      list.push({
+        d: pos.x + pos.y,
+        o: {
+          t: 'bull',
+          x: pos.x,
+          y: pos.y,
+          coat: b.coat,
+          trait: b.trait as BullTrait | undefined,
+          label: b.name,
+          facingLeft: pos.facingLeft,
         },
       });
     }

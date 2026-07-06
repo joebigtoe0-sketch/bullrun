@@ -1,6 +1,7 @@
 import type { Bull, GameItem, NpcBull, RaceBull, RaceResult } from '../types.js';
 import { eff, coatOf } from '../helpers.js';
 import { NPC_POOL, PURSE } from '../constants.js';
+import { RACE_DURATION_SCALE, RACE_LAPS } from './track.js';
 
 export function raceScore(bull: Bull, items: GameItem[]): number {
   return eff(bull, 'speed', items) * 1.0 + eff(bull, 'stamina', items) * 0.8 + eff(bull, 'accel', items) * 0.6;
@@ -42,7 +43,8 @@ export function simulateRace(
   const base = 9000;
   scored.forEach((b, i) => {
     b.pos = i + 1;
-    b.finishT = base + i * (500 + Math.random() * 600);
+    const lapTime = base + i * (500 + Math.random() * 600);
+    b.finishT = lapTime * RACE_LAPS * RACE_DURATION_SCALE;
   });
   const endT = scored[scored.length - 1].finishT ?? base;
   return { bulls: scored, endT };

@@ -67,13 +67,29 @@ export function useSocket() {
       useGameStore.getState().toastMsg(`New bull in plot ${data.plotId + 1}: ${data.bull.name}${trait}!`);
       api.me().then((m) => { if (m) useGameStore.getState().setMe(m); }).catch(() => {});
     });
+    socket.on('race_grid', (data: {
+      id: string;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; owner?: string; trait?: string }>;
+      startAt: number;
+      laps: number;
+    }) => {
+      useGameStore.getState().setRaceGrid({
+        ...data,
+        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
+      });
+    });
     socket.on('race_started', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; finishT: number; owner?: string; trait?: string }>;
       startT: number;
       endT: number;
+      laps?: number;
     }) => {
-      useGameStore.getState().setRaceAnim(data);
+      useGameStore.getState().setRaceGrid(null);
+      useGameStore.getState().setRaceAnim({
+        ...data,
+        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
+      });
       useGameStore.getState().setRaceLive({ id: data.id, standings: [] });
     });
     socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string }[] }) => {
@@ -86,6 +102,7 @@ export function useSocket() {
     }) => {
       const userId = useGameStore.getState().user?.id;
       useGameStore.getState().setRaceAnim(null);
+      useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceLive(null);
       useGameStore.getState().setResults(data.results, userId ? data.betResults[userId] ?? null : null);
     });

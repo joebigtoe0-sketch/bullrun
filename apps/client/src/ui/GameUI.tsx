@@ -22,6 +22,7 @@ import {
 import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
+import { RaceTrackBoard } from './RaceTrackBoard';
 
 const btn = 'br-btn';
 const panel = 'br-panel';
@@ -463,32 +464,6 @@ function InventoryPopup() {
   );
 }
 
-function ResultsModal() {
-  const results = useGameStore((s) => s.results);
-  const betResult = useGameStore((s) => s.betResult);
-  const setPanel = useGameStore((s) => s.setPanel);
-  const setResults = useGameStore((s) => s.setResults);
-  if (!results) return null;
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <div className="modal-header">Race Results</div>
-        <div className="panel-body">
-          {results.map((r) => (
-            <div key={r.pos} className={`card row-between ${r.mine ? 'mine' : ''}`}>
-              <span><b className="gold">{['1st','2nd','3rd','4th','5th','6th'][r.pos-1]}</b> {r.name} <span className="muted sm">{r.owner}</span></span>
-              <span className="green-txt">{r.prize ? `+${r.prize}g` : '—'}</span>
-            </div>
-          ))}
-          {betResult && <div className="card green-txt">{betResult}</div>}
-          <button className={`${btn} gold`} onClick={() => { setResults(null); setPanel(null); }}>Continue</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function WelcomeBanner() {
   const setMe = useGameStore((s) => s.setMe);
   const toast = useGameStore((s) => s.toastMsg);
@@ -658,7 +633,7 @@ export function GameUI() {
       {panel === 'help' && <HelpModal />}
       {!me.helpSeen && panel !== 'help' && <WelcomeBanner />}
       <InventoryPopup />
-      <ResultsModal />
+      <RaceTrackBoard />
       <BuyDenModal />
       {toast && <div className="toast">{toast}</div>}
     </div>

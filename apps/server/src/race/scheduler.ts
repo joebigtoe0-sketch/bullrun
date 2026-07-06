@@ -1,6 +1,7 @@
 import {
   NPC_POOL,
   PURSE,
+  RACE_LAPS,
   buildRaceResults,
   liveStandings,
   pickNpcField,
@@ -15,6 +16,7 @@ import { completeBreed } from '../services/game.js';
 let io: SocketServer | null = null;
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
 const activeRaces = new Map<string, { bulls: RaceBull[]; startT: number; endT: number }>();
+const gridEmitted = new Set<string>();
 
 export function setRaceIo(server: SocketServer) {
   io = server;
@@ -86,7 +88,7 @@ async function startRace(raceId: string) {
 
   activeRaces.set(raceId, { bulls, startT: now, endT: now + endT });
 
-  io?.emit('race_started', { id: raceId, bulls, startT: now, endT: now + endT });
+  io?.emit('race_started', { id: raceId, bulls, startT: now, endT: now + endT, laps: RACE_LAPS });
 
   const standingsIv = setInterval(() => {
     const active = activeRaces.get(raceId);
@@ -188,11 +190,33 @@ export function startRaceScheduler() {
   });
 
   schedulerTimer = setInterval(async () => {
+    const now = Date.now();
+    const gridWindow = await prisma.race.findFirst({
+      where: {
+        status: 'scheduled',
+        startAt: { lte: new Date(now + 10_000), gt: new Date(now) },
+      },
+      orderBy: { startAt: 'asc' },
+    });
+    if (gridWindow && !gridEmitted.has(gridWindow.id)) {
+      gridEmitted.add(gridWindow.id);
+      const bulls = await buildRaceField(gridWindow.id);
+      io?.emit('race_grid', {
+        id: gridWindow.id,
+        bulls,
+        startAt: gridWindow.startAt.getTime(),
+        laps: RACE_LAPS,
+      });
+    }
+
     const due = await prisma.race.findFirst({
       where: { status: 'scheduled', startAt: { lte: new Date() } },
       orderBy: { startAt: 'asc' },
     });
-    if (due) await startRace(due.id);
+    if (due) {
+      gridEmitted.delete(due.id);
+      await startRace(due.id);
+    }
 
     const nodes = await prisma.worldNode.findMany({
       where: { deadUntil: { lte: new Date() } },

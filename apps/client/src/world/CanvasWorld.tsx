@@ -40,8 +40,8 @@ export function CanvasWorld() {
 
       const state = useGameStore.getState();
       if (state.me) {
-        const racingIds = state.raceAnim
-          ? new Set(state.raceAnim.bulls.map((b) => b.id))
+        const racingIds = state.raceAnim || state.raceGrid
+          ? new Set((state.raceAnim ?? state.raceGrid)!.bulls.map((b) => b.id))
           : new Set<number | string>();
         stepFollowers(folPosRef.current, state.me, dt, racingIds);
       }
@@ -54,6 +54,7 @@ export function CanvasWorld() {
         nodeDead: state.nodeDead,
         moveTarget: state.moveTarget,
         raceAnim: state.raceAnim,
+        raceGrid: state.raceGrid,
         raceLive: !!state.raceLive,
         pastures: state.pastures,
         gather: state.gather,

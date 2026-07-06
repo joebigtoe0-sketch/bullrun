@@ -65,12 +65,13 @@ export function raceBullAt(
   const gridAngleOffset = (slot - 1) * 0.035;
   const spread = (slot - (fieldSize + 1) / 2) * 0.28;
   const spreadFade = Math.min(1, totalProg * 30);
+  const laneEr = raceStartLane(slot);
+  const er = laneEr + (RACE_TRACK_ER - laneEr) * spreadFade;
 
   const a =
     Math.PI / 2 -
     gridAngleOffset * (1 - spreadFade) +
     totalProg * Math.PI * 2 * laps;
-  const er = RACE_TRACK_ER;
   const spreadX = spread * (1 - spreadFade);
   const spreadY = spread * 0.35 * (1 - spreadFade);
   const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er + spreadX;
@@ -85,12 +86,7 @@ export function raceGridPosition(
   slot: number,
   total: number,
 ): { x: number; y: number; facingLeft: boolean } {
-  const a = Math.PI / 2 - (slot - 1) * 0.035;
-  const er = raceStartLane(slot);
-  const spread = (slot - (total + 1) / 2) * 0.28;
-  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er + spread;
-  const by = WORLD_CY + Math.sin(a) * WORLD_RY * er + spread * 0.35;
-  return { x: bx, y: by, facingLeft: false };
+  return raceBullAt(0, 1, slot, RACE_LAPS, undefined, total);
 }
 
 export function currentLap(elapsed: number, finishT: number, laps = RACE_LAPS, lapTimes?: number[]): number {

@@ -136,10 +136,7 @@ export function AuthScreen() {
         ) : (
           <>
             <p className="auth-hint">Connect your Solana wallet to play. Hold 1,000 tokens to enter.</p>
-            <button type="button" className="br-btn gold auth-btn auth-connect-btn" onClick={() => setVisible(true)}>
-              <span className="auth-connect-icon" aria-hidden>
-                <svg viewBox="0 0 24 24"><path d="M4 8h16v2H4V8zm0 5h10v2H4v-2z"/></svg>
-              </span>
+            <button type="button" className="br-btn gold auth-btn" onClick={() => setVisible(true)}>
               Connect wallet
             </button>
             <button type="button" className="link-btn" onClick={() => setGuideOpen(true)}>New here? Read the game guide →</button>

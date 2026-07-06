@@ -109,7 +109,7 @@ export function AuthScreen() {
               required
             />
             {error && <div className="error">{error}</div>}
-            <button type="submit" className="btn gold" disabled={loading || displayName.trim().length < 2}>
+            <button type="submit" className="br-btn gold auth-btn" disabled={loading || displayName.trim().length < 2}>
               {loading ? '...' : 'Enter game'}
             </button>
           </form>
@@ -118,15 +118,22 @@ export function AuthScreen() {
             <p className="auth-hint">Connected as <span className="wallet-chip">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : ''}</span></p>
             <p className="auth-hint">Sign a free message to prove you own this wallet.</p>
             {error && <div className="error">{error}</div>}
-            <button className="btn gold" onClick={signIn} disabled={loading}>
-              {loading ? 'Waiting for signature…' : 'Sign & continue'}
-            </button>
-            <button type="button" className="link-btn" onClick={reset}>Use a different wallet</button>
+            <div className="auth-actions">
+              <button type="button" className="br-btn gold auth-btn" onClick={signIn} disabled={loading}>
+                {loading ? 'Waiting for signature…' : 'Sign & continue'}
+              </button>
+              <button type="button" className="link-btn" onClick={reset}>Use a different wallet</button>
+            </div>
           </>
         ) : (
           <>
             <p className="auth-hint">Connect your Solana wallet to play. Hold 1,000 tokens to enter.</p>
-            <button className="btn gold" onClick={() => setVisible(true)}>Connect wallet</button>
+            <button type="button" className="br-btn gold auth-btn auth-connect-btn" onClick={() => setVisible(true)}>
+              <span className="auth-connect-icon" aria-hidden>
+                <svg viewBox="0 0 24 24"><path d="M4 8h16v2H4V8zm0 5h10v2H4v-2z"/></svg>
+              </span>
+              Connect wallet
+            </button>
           </>
         )}
       </div>

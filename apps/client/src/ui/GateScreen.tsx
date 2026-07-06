@@ -28,7 +28,7 @@ export function GateScreen() {
           </div>
         </div>
 
-        <button className="btn gold" onClick={() => void checkAccess()} disabled={accessChecking}>
+        <button type="button" className="br-btn gold auth-btn" onClick={() => void checkAccess()} disabled={accessChecking}>
           {accessChecking ? 'Checking balance…' : "I've bought — re-check balance"}
         </button>
         <button type="button" className="link-btn" onClick={logout}>Disconnect wallet</button>

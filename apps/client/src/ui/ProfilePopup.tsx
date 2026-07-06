@@ -43,7 +43,7 @@ export function ProfilePopup() {
             <span className="profile-label">Token balance</span>
             <span className="profile-val">{tokenBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })} / {accessRequired.toLocaleString()}</span>
           </div>
-          <button type="button" className="btn red profile-disconnect" onClick={handleDisconnect}>
+          <button type="button" className="br-btn red profile-disconnect" onClick={handleDisconnect}>
             Disconnect wallet
           </button>
         </div>

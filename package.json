@@ -8,7 +8,8 @@
     "build": "pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/server build && pnpm --filter @bullrun/client build",
     "db:generate": "pnpm --filter @bullrun/server db:generate",
     "db:migrate": "pnpm --filter @bullrun/server db:migrate",
-    "db:push": "pnpm --filter @bullrun/server db:push"
+    "db:push": "pnpm --filter @bullrun/server db:push",
+    "db:deploy": "pnpm --filter @bullrun/server db:deploy"
   },
   "engines": {
     "node": ">=20"

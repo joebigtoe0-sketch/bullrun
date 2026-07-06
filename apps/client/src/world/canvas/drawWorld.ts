@@ -7,6 +7,7 @@ import {
   FENCE_RINGS,
   PASTURE_PLOTS,
   pastureCenter,
+  type PasturePlotDef,
   fmtCountdown,
   coatOf,
   applyWorldCollision,
@@ -36,6 +37,14 @@ export function shade(hex: string, amt: number): string {
   const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
   const b = Math.max(0, Math.min(255, (n & 255) + amt));
   return `rgb(${r},${g},${b})`;
+}
+
+function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number } {
+  const seed = bullId * 7919;
+  const rx = ((seed % 100) / 100 - 0.5) * (def.w * 0.55);
+  const ry = (((seed >> 8) % 100) / 100 - 0.5) * (def.h * 0.45);
+  const c = pastureCenter(def);
+  return { x: c.x + rx, y: c.y + ry };
 }
 
 function cube(
@@ -244,7 +253,7 @@ function drawPasturePlots(
     }
     label(ctx, c.x, c.y, lbl, 22, col);
     if (state?.ownerId === meId) {
-      label(ctx, c.x, c.y, 'click: +10 wood', 38, '#bfe3a4');
+      label(ctx, c.x, c.y, 'click to manage', 38, '#bfe3a4');
     }
   }
 }
@@ -461,6 +470,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     const racingIds = raceAnim ? new Set(raceAnim.bulls.map((b) => b.id)) : new Set<number | string>();
 
     for (const b of me.bulls) {
+      if (!me.followingBullIds?.includes(b.id)) continue;
       if (me.entered.includes(b.id) || racingIds.has(b.id)) continue;
       let f = folPos[b.id];
       if (!f) {
@@ -482,19 +492,18 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     }
   }
 
-  for (const plot of pastures) {
-    if (!plot.displayBull) continue;
-    const def = PASTURE_PLOTS.find((p) => p.id === plot.id);
+  for (const b of me?.bulls ?? []) {
+    if (b.location !== 'den' || b.denPlotId == null) continue;
+    const def = PASTURE_PLOTS.find((p) => p.id === b.denPlotId);
     if (!def) continue;
-    const c = pastureCenter(def);
-    const b = plot.displayBull;
+    const pos = denBullPos(b.id, def);
     list.push({
-      d: c.x + c.y,
+      d: pos.x + pos.y,
       o: {
         t: 'bull',
-        x: c.x,
-        y: c.y,
-        coat: b.coat,
+        x: pos.x,
+        y: pos.y,
+        coat: coatOf(b, me!.items),
         trait: b.trait,
         label: b.name,
         facingLeft: false,
@@ -551,7 +560,9 @@ export function stepFollowers(
   racingIds: Set<number | string> = new Set(),
 ) {
   let prev = me.position;
+  const followIds = new Set(me.followingBullIds ?? []);
   for (const b of me.bulls) {
+    if (!followIds.has(b.id)) continue;
     if (me.entered.includes(b.id) || racingIds.has(b.id)) continue;
     let f = folPos[b.id];
     if (!f) f = folPos[b.id] = { x: me.position.x + 1.5, y: me.position.y + 1.5 };

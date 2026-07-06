@@ -1,5 +1,6 @@
 import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
 import { INTERACT_USE_RANGE } from './constants.js';
+import { PASTURE_PLOTS, pastureCenter } from './pastures.js';
 
 export function shade(hex: string, amt: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -73,9 +74,9 @@ export function nodeId(x: number, y: number, mat: string): string {
   return `${mat}:${x.toFixed(2)}:${y.toFixed(2)}`;
 }
 
-const BUILDING_PANELS = new Set<PanelType>(['stable', 'bet', 'market', 'forge', 'race']);
+const BUILDING_PANELS = new Set<PanelType>(['stable', 'bet', 'market', 'forge', 'race', 'den']);
 
-export function isBuildingPanel(panel: PanelType | null): panel is 'stable' | 'bet' | 'market' | 'forge' | 'race' {
+export function isBuildingPanel(panel: PanelType | null): panel is 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'den' {
   return panel !== null && BUILDING_PANELS.has(panel);
 }
 
@@ -89,4 +90,11 @@ export function isNearInteractable(
   const it = interactables.find((i) => i.t === type);
   if (!it) return false;
   return Math.hypot(px - it.x, py - it.y) < range;
+}
+
+export function isNearPasturePlot(px: number, py: number, plotId: number, range = INTERACT_USE_RANGE): boolean {
+  const def = PASTURE_PLOTS.find((p) => p.id === plotId);
+  if (!def) return false;
+  const c = pastureCenter(def);
+  return Math.hypot(px - c.x, py - c.y) < range;
 }

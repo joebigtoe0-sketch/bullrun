@@ -18,9 +18,15 @@ type OnlinePlayer = {
 };
 
 const onlinePlayers = new Map<string, OnlinePlayer>();
+let ioRef: SocketServer | null = null;
 
 async function loadBullsForUser(userId: string): Promise<OtherPlayerBull[]> {
-  const bulls = await prisma.bull.findMany({ where: { ownerId: userId } });
+  const profile = await prisma.playerProfile.findUnique({ where: { userId } });
+  const ids = profile?.followingBullIds ?? [];
+  if (!ids.length) return [];
+  const bulls = await prisma.bull.findMany({
+    where: { ownerId: userId, id: { in: ids }, location: 'following' },
+  });
   return bulls.map((b) => ({
     id: b.id,
     name: b.name,
@@ -43,6 +49,7 @@ function toPresence(id: string, p: OnlinePlayer): OtherPlayer {
 }
 
 export function setupSocket(io: SocketServer, app: FastifyInstance) {
+  ioRef = io;
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token as string;
@@ -133,4 +140,12 @@ export async function refreshPlayerBulls(userId: string): Promise<OtherPlayerBul
   if (!p) return null;
   p.bulls = await loadBullsForUser(userId);
   return p.bulls;
+}
+
+export async function broadcastPlayerBulls(userId: string): Promise<OtherPlayerBull[] | null> {
+  const bulls = await refreshPlayerBulls(userId);
+  if (bulls && ioRef) {
+    ioRef.emit('player_bulls_updated', { id: userId, bulls });
+  }
+  return bulls;
 }

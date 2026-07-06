@@ -23,20 +23,35 @@ const STARTER_BULL_STATS = {
   energy: 100,
 };
 
-export async function initWorldNodes() {
+export async function syncWorldNodes() {
   const world = buildWorld();
-  const existing = await prisma.worldNode.count();
-  if (existing > 0) return;
+  const nodes = world.nodes.map((n) => ({
+    id: nodeId(n.x, n.y, n.mat),
+    type: n.t,
+    mat: n.mat,
+    x: n.x,
+    y: n.y,
+  }));
 
-  await prisma.worldNode.createMany({
-    data: world.nodes.map((n) => ({
-      id: nodeId(n.x, n.y, n.mat),
-      type: n.t,
-      mat: n.mat,
-      x: n.x,
-      y: n.y,
-    })),
-  });
+  for (const n of nodes) {
+    await prisma.worldNode.upsert({
+      where: { id: n.id },
+      create: n,
+      update: { x: n.x, y: n.y, type: n.type, mat: n.mat },
+    });
+  }
+
+  const validIds = new Set(nodes.map((n) => n.id));
+  const existing = await prisma.worldNode.findMany({ select: { id: true } });
+  for (const e of existing) {
+    if (!validIds.has(e.id)) {
+      await prisma.worldNode.delete({ where: { id: e.id } });
+    }
+  }
+}
+
+export async function initWorldNodes() {
+  await syncWorldNodes();
 }
 
 export async function createStarterUser(userId: string) {
@@ -55,6 +70,7 @@ export async function createStarterUser(userId: string) {
       name: pickStarterBullName(Date.now()),
       coat: COAT_COLORS[Math.floor(Math.random() * COAT_COLORS.length)],
       trait: 'normal',
+      location: 'stable',
       ...STARTER_BULL_STATS,
     },
   });
@@ -73,6 +89,8 @@ export function mapBull(b: {
   energy: number;
   coat: string;
   trait: string;
+  location?: string;
+  denPlotId?: number | null;
 }): Bull {
   return {
     id: b.id,
@@ -86,6 +104,8 @@ export function mapBull(b: {
     energy: b.energy,
     coat: b.coat,
     trait: (b.trait as Bull['trait']) || 'normal',
+    location: (b.location as Bull['location']) || 'stable',
+    denPlotId: b.denPlotId ?? null,
   };
 }
 
@@ -149,6 +169,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     breedSel: p.breedSel,
     forgeOre: p.forgeOre,
     listPrice: { hay: p.listHay, ore: p.listOre, wood: p.listWood },
+    followingBullIds: p.followingBullIds ?? [],
   };
 }
 

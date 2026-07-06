@@ -3,7 +3,8 @@ export type StatType = 'speed' | 'stamina' | 'accel';
 export type ItemSlot = 'coat' | 'horns' | 'hooves' | 'tail' | 'accessory';
 export type RarityKey = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
-export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'help' | 'results' | null;
+export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'help' | 'results' | null;
+export type BullLocation = 'stable' | 'den' | 'following';
 export type BullTrait = 'normal' | 'rainbow' | 'ghost';
 
 export interface Materials {
@@ -40,6 +41,8 @@ export interface Bull {
   energy: number;
   coat: string;
   trait?: BullTrait;
+  location?: BullLocation;
+  denPlotId?: number | null;
 }
 
 export interface NpcBull {
@@ -170,6 +173,8 @@ export interface PasturePlotState {
   level: number;
   woodInvested: number;
   displayBull: PastureDisplayBull | null;
+  denCount: number;
+  denCapacity: number;
 }
 
 export interface PlayerPosition {
@@ -292,6 +297,7 @@ export interface UserProfile {
   breedSel: number[];
   forgeOre: number;
   listPrice: Record<MatType, number>;
+  followingBullIds: number[];
 }
 
 export interface AuthResponse {

@@ -42,6 +42,7 @@ model PlayerProfile {
   listOre     Int      @default(8)
   listWood    Int      @default(5)
   breedSel    Int[]    @default([])
+  followingBullIds Int[] @default([])
   breedingAId Int?
   breedingBId Int?
   breedingDone DateTime?
@@ -63,6 +64,8 @@ model Bull {
   energy    Float    @default(100)
   coat      String
   trait     String   @default("normal")
+  location  String   @default("stable")
+  denPlotId Int?
   items     Item[]
   entries   RaceEntry[] @relation("BullEntries")
 }

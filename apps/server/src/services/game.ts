@@ -11,9 +11,11 @@ import {
   REST_COST,
   REST_ENERGY,
   TRAIN_HAY_COST,
+  buildWorld,
   bullSlots,
   energyRegen,
   makeItem,
+  nodeId,
   rollRarityIndex,
   statCap,
   stableGoldNeed,
@@ -158,6 +160,7 @@ export async function completeBreed(userId: string) {
         temper: mix('temper'),
         energy: 60,
         coat: Math.random() < 0.5 ? a.coat : b.coat,
+        location: 'stable',
       },
     }),
     prisma.playerProfile.update({
@@ -224,10 +227,50 @@ export async function startGather(userId: string, nodeIdStr: string) {
   return { nodeId: node.id, dur: GATHER_DURATION_MS };
 }
 
-export async function completeGather(userId: string, nodeIdStr: string) {
-  const node = await prisma.worldNode.findUnique({ where: { id: nodeIdStr } });
+export async function completeGather(userId: string, nodeIdStr: string, nearX?: number, nearY?: number) {
+  let node = await prisma.worldNode.findUnique({ where: { id: nodeIdStr } });
+
+  if (!node && nearX != null && nearY != null) {
+    const profile = await prisma.playerProfile.findUnique({ where: { userId } });
+    const px = profile?.posX ?? nearX;
+    const py = profile?.posY ?? nearY;
+    const live = await prisma.worldNode.findMany({
+      where: {
+        OR: [{ deadUntil: null }, { deadUntil: { lte: new Date() } }],
+      },
+    });
+    let best: (typeof live)[0] | null = null;
+    let bestD = 2.5;
+    for (const n of live) {
+      const d = Math.hypot(n.x - px, n.y - py);
+      if (d < bestD) {
+        bestD = d;
+        best = n;
+      }
+    }
+    if (!best) {
+      const world = buildWorld();
+      for (const n of world.nodes) {
+        const d = Math.hypot(n.x - px, n.y - py);
+        if (d < bestD) {
+          bestD = d;
+          const id = nodeId(n.x, n.y, n.mat);
+          best = { id, type: n.t, mat: n.mat, x: n.x, y: n.y, deadUntil: null };
+        }
+      }
+      if (best && !(await prisma.worldNode.findUnique({ where: { id: best.id } }))) {
+        await prisma.worldNode.create({
+          data: { id: best.id, type: best.type, mat: best.mat, x: best.x, y: best.y },
+        });
+      }
+    }
+    node = best;
+  }
+
   if (!node) throw new Error('Node not found');
   if (node.deadUntil && node.deadUntil.getTime() > Date.now()) throw new Error('Node depleted');
+
+  const resolvedId = node.id;
 
   const qty = 2 + Math.floor(Math.random() * 3);
   const mat = node.mat as MatType;
@@ -237,11 +280,11 @@ export async function completeGather(userId: string, nodeIdStr: string) {
   const matField = mat === 'hay' ? 'hay' : mat === 'ore' ? 'ore' : 'wood';
 
   await prisma.$transaction([
-    prisma.worldNode.update({ where: { id: nodeIdStr }, data: { deadUntil } }),
+    prisma.worldNode.update({ where: { id: resolvedId }, data: { deadUntil } }),
     prisma.playerProfile.update({ where: { userId }, data: { [matField]: (p[matField as 'hay'] as number) + qty } }),
   ]);
 
-  broadcast('node_depleted', { id: nodeIdStr, deadUntil: deadUntil.getTime() });
+  broadcast('node_depleted', { id: resolvedId, deadUntil: deadUntil.getTime() });
   return { qty, mat, me: await getMeResponse(userId) };
 }
 
@@ -419,8 +462,8 @@ export async function buyNpcCatalog(userId: string, mat: MatType, price: number)
 export async function buyShopBull(userId: string, bullData: Record<string, unknown>, price: number) {
   await requireNearInteractable(userId, 'market');
   const p = await getProfile(userId);
-  const count = await prisma.bull.count({ where: { ownerId: userId } });
-  if (count >= bullSlots(p.stableLevel)) throw new Error('No free bull slots');
+  const count = await prisma.bull.count({ where: { ownerId: userId, location: 'stable' } });
+  if (count >= bullSlots(p.stableLevel)) throw new Error('No free stable slots');
   if (p.gold < price) throw new Error('Not enough gold');
 
   await prisma.$transaction([
@@ -435,6 +478,7 @@ export async function buyShopBull(userId: string, bullData: Record<string, unkno
         temper: Number(bullData.temper),
         coat: String(bullData.coat),
         energy: 80,
+        location: 'stable',
       },
     }),
   ]);

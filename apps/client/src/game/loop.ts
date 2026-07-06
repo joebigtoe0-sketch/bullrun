@@ -12,6 +12,7 @@ import {
   applyWorldCollision,
   findPath,
   isNearInteractable,
+  isNearPasturePlot,
   isBuildingPanel,
 } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
@@ -95,7 +96,11 @@ export function useGameLoop() {
 
       if (s.me && s.panel && isBuildingPanel(s.panel)) {
         const pos = s.me.position;
-        if (!isNearInteractable(pos.x, pos.y, s.panel, worldData.interactables)) {
+        if (s.panel === 'den') {
+          if (s.denPlotId == null || !isNearPasturePlot(pos.x, pos.y, s.denPlotId)) {
+            s.setPanel(null);
+          }
+        } else if (!isNearInteractable(pos.x, pos.y, s.panel, worldData.interactables)) {
           s.setPanel(null);
         }
       }
@@ -115,8 +120,9 @@ export function useGameLoop() {
 
       if (s.gather && now - s.gather.start >= s.gather.dur) {
         const nodeIdStr = s.gather.nodeId;
+        const pos = s.me?.position;
         s.setGather(null);
-        api.gatherComplete(nodeIdStr).then((res) => {
+        api.gatherComplete(nodeIdStr, pos?.x, pos?.y).then((res) => {
           const r = res as { qty: number; mat: string; me: import('@bullrun/shared').MeResponse };
           useGameStore.getState().setNodeDead(nodeIdStr, Date.now() + NODE_RESPAWN_MS);
           useGameStore.getState().setMe(r.me);
@@ -167,11 +173,8 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
         s.toastMsg(`Bought ${def.label} for ${def.price}g!`);
       }).catch((e) => s.toastMsg(e.message));
     } else if (plot.ownerId === s.me?.id) {
-      api.upgradePasture(plot.id).then((r) => {
-        s.setMe(r.me);
-        s.setPastures(r.pastures);
-        s.toastMsg('Plot upgraded — faster bull spawns!');
-      }).catch((e) => s.toastMsg(e.message));
+      s.setDenPlotId(plot.id);
+      s.setPanel('den');
     } else {
       s.toastMsg(`Owned by ${plot.ownerName}`);
     }

@@ -5,6 +5,7 @@ import { prisma } from '../db.js';
 import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
+import * as bulls from '../services/bulls.js';
 import { odds, raceScore, type Bull, type GameItem } from '@bullrun/shared';
 
 export async function authRoutes(app: FastifyInstance) {
@@ -99,6 +100,42 @@ export async function gameRoutes(app: FastifyInstance) {
     }
   });
 
+  app.post<{ Body: { bullId: number } }>('/bulls/delete', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await bulls.deleteBull(userId, req.body.bullId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { bullId: number } }>('/bulls/follow', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await bulls.takeBullFollow(userId, req.body.bullId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { bullId: number } }>('/bulls/to-stable', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await bulls.depositBullStable(userId, req.body.bullId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { bullId: number; plotId: number } }>('/bulls/to-den', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await bulls.depositBullDen(userId, req.body.bullId, req.body.plotId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
   app.post('/stable/upgrade', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
@@ -135,10 +172,10 @@ export async function gameRoutes(app: FastifyInstance) {
     }
   });
 
-  app.post<{ Body: { nodeId: string } }>('/gather/complete', async (req, reply) => {
+  app.post<{ Body: { nodeId: string; x?: number; y?: number } }>('/gather/complete', async (req, reply) => {
     try {
       const userId = (req.user as { sub: string }).sub;
-      return await game.completeGather(userId, req.body.nodeId);
+      return await game.completeGather(userId, req.body.nodeId, req.body.x, req.body.y);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

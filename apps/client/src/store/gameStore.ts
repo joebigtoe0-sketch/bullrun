@@ -17,6 +17,7 @@ interface GameStore {
   raceLive: { id: string; standings: { pos: number; name: string }[] } | null;
   raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number }>; startT: number; endT: number } | null;
   pastures: PasturePlotState[];
+  denPlotId: number | null;
   results: RaceResult[] | null;
   betResult: string | null;
   forgeResult: string;
@@ -55,6 +56,7 @@ interface GameStore {
   setCam: (x: number, y: number) => void;
   setFreeCamUntil: (t: number) => void;
   setPastures: (p: PasturePlotState[]) => void;
+  setDenPlotId: (id: number | null) => void;
   logout: () => void;
 }
 
@@ -84,6 +86,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   freeCamUntil: 0,
   shopBulls: [],
   pastures: [],
+  denPlotId: null,
 
   setAuth: (token, user) => {
     localStorage.setItem('bullrun.token', token);
@@ -111,7 +114,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (me.position.x === x && me.position.y === y) return;
     set({ me: { ...me, position: { x, y } } });
   },
-  setPanel: (p) => set({ panel: p }),
+  setPanel: (p) => set({ panel: p, denPlotId: p === 'den' ? get().denPlotId : null }),
   setInvOpen: (v) => set({ invOpen: v, equipTarget: v ? get().equipTarget : null }),
   setEquipTarget: (id) => set({ equipTarget: id }),
   toastMsg: (msg) => {
@@ -158,8 +161,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setCam: (x, y) => set({ cam: { x, y } }),
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
   setPastures: (p) => set({ pastures: p }),
+  setDenPlotId: (id) => set({ denPlotId: id }),
   logout: () => {
     localStorage.removeItem('bullrun.token');
-    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [] });
+    set({ token: null, user: null, me: null, otherPlayers: [], pastures: [], denPlotId: null });
   },
 }));

@@ -70,8 +70,16 @@ export const api = {
     request<MeResponse>('/items/equip', { method: 'POST', body: JSON.stringify({ itemId, bullId }) }),
   unequip: (itemId: number) =>
     request<MeResponse>('/items/unequip', { method: 'POST', body: JSON.stringify({ itemId }) }),
-  gatherComplete: (nodeId: string) =>
-    request<{ qty: number; mat: string; me: MeResponse }>('/gather/complete', { method: 'POST', body: JSON.stringify({ nodeId }) }),
+  deleteBull: (bullId: number) =>
+    request<MeResponse>('/bulls/delete', { method: 'POST', body: JSON.stringify({ bullId }) }),
+  followBull: (bullId: number) =>
+    request<MeResponse>('/bulls/follow', { method: 'POST', body: JSON.stringify({ bullId }) }),
+  depositBullStable: (bullId: number) =>
+    request<MeResponse>('/bulls/to-stable', { method: 'POST', body: JSON.stringify({ bullId }) }),
+  depositBullDen: (bullId: number, plotId: number) =>
+    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[] }>('/bulls/to-den', { method: 'POST', body: JSON.stringify({ bullId, plotId }) }),
+  gatherComplete: (nodeId: string, x?: number, y?: number) =>
+    request<{ qty: number; mat: string; me: MeResponse }>('/gather/complete', { method: 'POST', body: JSON.stringify({ nodeId, x, y }) }),
   enterRace: (bullId: number) =>
     request<MeResponse>('/race/enter', { method: 'POST', body: JSON.stringify({ bullId }) }),
   placeBet: (targetBullId: string, targetName: string, amount: number, odds: number) =>

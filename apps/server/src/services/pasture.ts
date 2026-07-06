@@ -3,15 +3,15 @@ import {
   PASTURE_PLOTS,
   PASTURE_WOOD_UPGRADE_COST,
   PASTURE_WOOD_PER_LEVEL,
+  denCapacity,
   pastureSpawnIntervalMs,
   pastureWoodToNextLevel,
   rollPastureBull,
   type PasturePlotState,
-  type PastureDisplayBull,
 } from '@bullrun/shared';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
-import { refreshPlayerBulls } from '../socket/index.js';
+import { broadcastPlayerBulls } from '../socket/index.js';
 
 let io: SocketServer | null = null;
 
@@ -33,15 +33,19 @@ export async function initPasturePlots() {
   }
 }
 
+async function denCountForPlot(plotId: number): Promise<number> {
+  return prisma.bull.count({ where: { location: 'den', denPlotId: plotId } });
+}
+
 function mapPlot(
   row: {
     id: number;
     ownerId: string | null;
     level: number;
     woodInvested: number;
-    displayBull: unknown;
     owner?: { displayName: string } | null;
   },
+  denCount: number,
 ): PasturePlotState {
   return {
     id: row.id,
@@ -49,7 +53,9 @@ function mapPlot(
     ownerName: row.owner?.displayName ?? null,
     level: row.level,
     woodInvested: row.woodInvested,
-    displayBull: (row.displayBull as PastureDisplayBull | null) ?? null,
+    displayBull: null,
+    denCount,
+    denCapacity: denCapacity(row.level),
   };
 }
 
@@ -58,7 +64,13 @@ export async function listPastures(): Promise<PasturePlotState[]> {
     include: { owner: true },
     orderBy: { id: 'asc' },
   });
-  return rows.map(mapPlot);
+  const counts = await prisma.bull.groupBy({
+    by: ['denPlotId'],
+    where: { location: 'den', denPlotId: { not: null } },
+    _count: { _all: true },
+  });
+  const countMap = new Map(counts.map((c) => [c.denPlotId!, c._count._all]));
+  return rows.map((r) => mapPlot(r, countMap.get(r.id) ?? 0));
 }
 
 export async function buyPasture(userId: string, plotId: number) {
@@ -134,8 +146,14 @@ async function spawnOnPlot(plotId: number) {
   });
   if (!plot?.ownerId) return;
 
-  const profile = await prisma.playerProfile.findUnique({ where: { userId: plot.ownerId } });
-  if (!profile) return;
+  const denCount = await denCountForPlot(plotId);
+  const cap = denCapacity(plot.level);
+  const nextSpawnAt = new Date(Date.now() + pastureSpawnIntervalMs(plot.level));
+
+  if (denCount >= cap) {
+    await prisma.pasturePlot.update({ where: { id: plotId }, data: { nextSpawnAt } });
+    return;
+  }
 
   const rolled = rollPastureBull(Date.now() + plotId * 997);
   const bull = await prisma.bull.create({
@@ -148,31 +166,23 @@ async function spawnOnPlot(plotId: number) {
       temper: rolled.temper,
       coat: rolled.coat,
       trait: rolled.trait,
+      location: 'den',
+      denPlotId: plotId,
     },
   });
 
-  const displayBull: PastureDisplayBull = {
-    id: bull.id,
-    name: bull.name,
-    coat: bull.coat,
-    trait: rolled.trait,
-  };
-
-  const nextSpawnAt = new Date(Date.now() + pastureSpawnIntervalMs(plot.level));
-
   await prisma.pasturePlot.update({
     where: { id: plotId },
-    data: { displayBull: displayBull as unknown as import('@prisma/client').Prisma.InputJsonValue, nextSpawnAt },
+    data: { nextSpawnAt },
   });
 
   const pastures = await listPastures();
   broadcast('pastures_updated', pastures);
-  const bulls = await refreshPlayerBulls(plot.ownerId);
-  if (bulls) broadcast('player_bulls_updated', { id: plot.ownerId, bulls });
+  await broadcastPlayerBulls(plot.ownerId);
   broadcast('pasture_spawned', {
     plotId,
     ownerId: plot.ownerId,
-    bull: displayBull,
+    bull: { id: bull.id, name: bull.name, coat: bull.coat, trait: rolled.trait },
     trait: rolled.trait,
   });
 }

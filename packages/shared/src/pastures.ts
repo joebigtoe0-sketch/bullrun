@@ -10,21 +10,29 @@ export interface PasturePlotDef {
   label: string;
 }
 
-/** Fenced pasture plots along the left edge and bottom-left of the map. */
+/** Fenced den plots along the left edge and bottom of the map. */
 export const PASTURE_PLOTS: PasturePlotDef[] = [
-  // Left column (4 plots)
-  { id: 0, cx: 2.4, cy: 12.0, w: 3.6, h: 4.0, price: 120, label: 'Plot 1' },
-  { id: 1, cx: 2.4, cy: 17.0, w: 3.6, h: 4.0, price: 140, label: 'Plot 2' },
-  { id: 2, cx: 2.4, cy: 22.0, w: 3.6, h: 4.0, price: 160, label: 'Plot 3' },
-  { id: 3, cx: 2.4, cy: 27.0, w: 3.6, h: 4.0, price: 180, label: 'Plot 4' },
-  // Bottom row (4 plots)
-  { id: 4, cx: 6.0, cy: 40.5, w: 4.2, h: 3.5, price: 200, label: 'Plot 5' },
-  { id: 5, cx: 11.0, cy: 40.5, w: 4.2, h: 3.5, price: 220, label: 'Plot 6' },
-  { id: 6, cx: 16.0, cy: 40.5, w: 4.2, h: 3.5, price: 240, label: 'Plot 7' },
-  { id: 7, cx: 21.0, cy: 40.5, w: 4.2, h: 3.5, price: 260, label: 'Plot 8' },
+  { id: 0, cx: 2.4, cy: 12.0, w: 3.6, h: 4.0, price: 120, label: 'Den 1' },
+  { id: 1, cx: 2.4, cy: 17.0, w: 3.6, h: 4.0, price: 140, label: 'Den 2' },
+  { id: 2, cx: 2.4, cy: 22.0, w: 3.6, h: 4.0, price: 160, label: 'Den 3' },
+  { id: 3, cx: 2.4, cy: 27.0, w: 3.6, h: 4.0, price: 180, label: 'Den 4' },
+  { id: 4, cx: 6.0, cy: 40.5, w: 4.2, h: 3.5, price: 200, label: 'Den 5' },
+  { id: 5, cx: 11.0, cy: 40.5, w: 4.2, h: 3.5, price: 220, label: 'Den 6' },
+  { id: 6, cx: 16.0, cy: 40.5, w: 4.2, h: 3.5, price: 240, label: 'Den 7' },
+  { id: 7, cx: 21.0, cy: 40.5, w: 4.2, h: 3.5, price: 260, label: 'Den 8' },
+  { id: 8, cx: 26.0, cy: 40.5, w: 4.2, h: 3.5, price: 280, label: 'Den 9' },
+  { id: 9, cx: 31.0, cy: 40.5, w: 4.2, h: 3.5, price: 300, label: 'Den 10' },
+  { id: 10, cx: 36.0, cy: 40.5, w: 4.2, h: 3.5, price: 320, label: 'Den 11' },
+  { id: 11, cx: 41.0, cy: 40.5, w: 4.2, h: 3.5, price: 340, label: 'Den 12' },
 ];
 
-/** Base spawn interval per owned plot (testing: ~20s at level 1). */
+export const MAX_FOLLOWING_BULLS = 3;
+export const DEN_BASE_CAPACITY = 3;
+
+export function denCapacity(level: number): number {
+  return DEN_BASE_CAPACITY + (level - 1) * 2;
+}
+
 export const PASTURE_BASE_SPAWN_MS = 20_000;
 export const PASTURE_WOOD_UPGRADE_COST = 10;
 export const PASTURE_WOOD_PER_LEVEL = 15;
@@ -68,7 +76,6 @@ export function rollPastureBull(seed: number): {
   let coat = COATS[Math.floor(rng() * COATS.length)];
   if (r < 0.03) trait = 'ghost';
   else if (r < 0.13) trait = 'rainbow';
-  else if (r < 0.35) coat = COATS[Math.floor(rng() * COATS.length)];
 
   return {
     name: CALF_NAMES[Math.floor(rng() * CALF_NAMES.length)],

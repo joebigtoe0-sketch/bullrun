@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { getWsUrl } from '../api/client';
+import { getWsUrl, api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 
 export function useSocket() {
@@ -65,6 +65,7 @@ export function useSocket() {
     socket.on('pasture_spawned', (data: { plotId: number; bull: { name: string; trait?: string } }) => {
       const trait = data.bull.trait && data.bull.trait !== 'normal' ? ` (${data.bull.trait})` : '';
       useGameStore.getState().toastMsg(`New bull in plot ${data.plotId + 1}: ${data.bull.name}${trait}!`);
+      api.me().then((m) => { if (m) useGameStore.getState().setMe(m); }).catch(() => {});
     });
     socket.on('race_started', (data: {
       id: string;

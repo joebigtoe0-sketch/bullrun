@@ -5,6 +5,7 @@ import {
   NPC_CATALOG,
   MAT_SWATCHES,
   bullSlots,
+  denCapacity,
   eff,
   coatOf,
   forgeChances,
@@ -14,6 +15,9 @@ import {
   fmtCountdown,
   RARITIES,
   isNearInteractable,
+  MAX_FOLLOWING_BULLS,
+  PASTURE_PLOTS,
+  PASTURE_WOOD_UPGRADE_COST,
 } from '@bullrun/shared';
 import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
@@ -41,6 +45,9 @@ function StablePanel() {
   const slots = bullSlots(me.stable.level);
   const woodNeed = stableWoodNeed(me.stable.level);
   const goldNeed = stableGoldNeed(me.stable.level);
+  const stableBulls = me.bulls.filter((b) => (b.location ?? 'stable') === 'stable');
+  const followingBulls = me.bulls.filter((b) => me.followingBullIds?.includes(b.id));
+  const followSlots = MAX_FOLLOWING_BULLS;
 
   const act = async (fn: () => Promise<MeResponse>, ok?: string) => {
     try { const r = await fn(); setMe(r); if (ok) toast(ok); }
@@ -58,19 +65,32 @@ function StablePanel() {
           </div>
           <div className="bar"><div className="bar-fill wood" style={{ width: `${Math.min(100, me.stable.wood / woodNeed * 100)}%` }} /></div>
           <div className="row-between">
-            <span className="muted">Wood {me.stable.wood} / {woodNeed} · {slots} bull slots</span>
+            <span className="muted">Wood {me.stable.wood} / {woodNeed} · {stableBulls.length}/{slots} bull slots</span>
             <button className={`${btn} green`} onClick={() => act(api.upgradeStable)}>Add 5 wood{me.stable.wood + 5 >= woodNeed ? ` (+${goldNeed}g to level!)` : ''}</button>
           </div>
         </div>
-        {me.bulls.map((b) => (
+        {stableBulls.map((b) => (
           <BullCard key={b.id} bull={b} items={me.items} entered={me.entered.includes(b.id)}
             onTrain={(stat) => act(() => api.train(b.id, stat))}
             onRest={() => act(() => api.rest(b.id))}
             onRename={() => { const n = prompt('Rename ' + b.name, b.name); if (n?.trim()) act(() => api.rename(b.id, n.trim())); }}
             onEquip={() => { setEquipTarget(b.id); setInvOpen(true); }}
             onEnter={() => act(() => api.enterRace(b.id), `${b.name} entered!`)}
+            onFollow={followingBulls.length < followSlots ? () => act(() => api.followBull(b.id), `${b.name} is following you`) : undefined}
+            onDelete={() => { if (confirm(`Release ${b.name}?`)) act(() => api.deleteBull(b.id)); }}
           />
         ))}
+        {followingBulls.length > 0 && (
+          <div className="card">
+            <div className="bold">Following you ({followingBulls.length}/{followSlots})</div>
+            {followingBulls.map((b) => (
+              <div key={b.id} className="row-between" style={{ marginTop: 8 }}>
+                <span>{b.name}</span>
+                <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="card row-between">
           <div>
             <div className="bold">Breeding</div>
@@ -86,9 +106,10 @@ function StablePanel() {
   );
 }
 
-function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, onEnter }: {
+function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, onEnter, onFollow, onDelete }: {
   bull: Bull; items: import('@bullrun/shared').GameItem[]; entered: boolean;
   onTrain: (s: StatType) => void; onRest: () => void; onRename: () => void; onEquip: () => void; onEnter: () => void;
+  onFollow?: () => void; onDelete?: () => void;
 }) {
   const cap = statCap(bull);
   const coat = coatOf(bull, items);
@@ -130,7 +151,109 @@ function BullCard({ bull, items, entered, onTrain, onRest, onRename, onEquip, on
         <button className={`${btn} blue sm`} onClick={onEquip}>Equip items</button>
         <button className={`${btn} sm`} onClick={onRest}>Rest +40⚡ (40g)</button>
         <button className={`${btn} sm`} onClick={toggleBreed}>Select to breed</button>
+        {onFollow && <button className={`${btn} green sm`} onClick={onFollow}>Follow me</button>}
+        {onDelete && <button className={`${btn} sm`} style={{ color: '#e55' }} onClick={onDelete}>Release</button>}
         {entered ? <span className="entered">Entered ✓</span> : <button className={`${btn} gold sm`} onClick={onEnter}>Enter race</button>}
+      </div>
+    </div>
+  );
+}
+
+function DenPanel() {
+  const me = useGameStore((s) => s.me)!;
+  const denPlotId = useGameStore((s) => s.denPlotId);
+  const pastures = useGameStore((s) => s.pastures);
+  const setMe = useGameStore((s) => s.setMe);
+  const setPastures = useGameStore((s) => s.setPastures);
+  const setPanel = useGameStore((s) => s.setPanel);
+  const toast = useGameStore((s) => s.toastMsg);
+
+  if (denPlotId == null) return null;
+  const plot = pastures.find((p) => p.id === denPlotId);
+  const def = PASTURE_PLOTS.find((p) => p.id === denPlotId);
+  if (!plot || !def) return null;
+
+  const denBulls = me.bulls.filter((b) => b.location === 'den' && b.denPlotId === denPlotId);
+  const followingBulls = me.bulls.filter((b) => me.followingBullIds?.includes(b.id));
+  const stableBulls = me.bulls.filter((b) => (b.location ?? 'stable') === 'stable');
+  const cap = plot.denCapacity ?? denCapacity(plot.level);
+  const followSlots = MAX_FOLLOWING_BULLS;
+
+  const act = async (fn: () => Promise<MeResponse>, ok?: string) => {
+    try { const r = await fn(); setMe(r); if (ok) toast(ok); }
+    catch (e) { toast((e as Error).message); }
+  };
+
+  const actDen = async (fn: () => Promise<{ me: MeResponse; pastures: typeof pastures }>, ok?: string) => {
+    try {
+      const r = await fn();
+      setMe(r.me);
+      setPastures(r.pastures);
+      if (ok) toast(ok);
+    } catch (e) { toast((e as Error).message); }
+  };
+
+  return (
+    <div className={panel}>
+      <PanelHeader title={def.label} color="#8bc34a" onClose={() => setPanel(null)} />
+      <div className="panel-body">
+        <div className="card">
+          <div className="row-between">
+            <span className="bold">Den Level {plot.level}</span>
+            <span className="muted">{denBulls.length}/{cap} bulls · spawns every ~{Math.round(20 / plot.level)}s</span>
+          </div>
+          <div className="row-between">
+            <span className="muted">Upgrade: {PASTURE_WOOD_UPGRADE_COST} wood</span>
+            <button className={`${btn} green`} onClick={() => actDen(() => api.upgradePasture(denPlotId), 'Den upgraded!')}>Upgrade den</button>
+          </div>
+        </div>
+
+        {denBulls.map((b) => (
+          <div key={b.id} className="card">
+            <div className="row-between">
+              <div className="row gap">
+                <span className="swatch" style={{ background: coatOf(b, me.items) }} />
+                <span className="bold">{b.name}</span>
+                {b.trait && b.trait !== 'normal' && <span className="badge">{b.trait}</span>}
+              </div>
+              <div className="row gap">
+                {followingBulls.length < followSlots && (
+                  <button className={`${btn} green sm`} onClick={() => act(() => api.followBull(b.id), `${b.name} is following you`)}>Follow me</button>
+                )}
+                <button className={`${btn} sm`} style={{ color: '#e55' }} onClick={() => { if (confirm(`Release ${b.name}?`)) act(() => api.deleteBull(b.id)); }}>Release</button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {followingBulls.length > 0 && (
+          <div className="card">
+            <div className="bold">Following you ({followingBulls.length}/{followSlots})</div>
+            {followingBulls.map((b) => (
+              <div key={b.id} className="row-between" style={{ marginTop: 8 }}>
+                <span>{b.name}</span>
+                <div className="row gap">
+                  {denBulls.length < cap && (
+                    <button className={`${btn} sm green`} onClick={() => actDen(() => api.depositBullDen(b.id, denPlotId), `${b.name} sent to den`)}>To den</button>
+                  )}
+                  <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {stableBulls.length > 0 && denBulls.length < cap && (
+          <div className="card">
+            <div className="bold">From stable</div>
+            {stableBulls.map((b) => (
+              <div key={b.id} className="row-between" style={{ marginTop: 8 }}>
+                <span>{b.name}</span>
+                <button className={`${btn} sm green`} onClick={() => actDen(() => api.depositBullDen(b.id, denPlotId), `${b.name} moved to den`)}>Move to den</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -477,7 +600,7 @@ export function GameUI() {
           <div className="standings">{raceLive.standings.map((s) => <span key={s.pos} className="standing-chip">{s.pos}. {s.name}</span>)}</div>
         )}
       </div>
-      <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.length}/{slots} bulls</div>
+      <div className="hud-tr">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</div>
 
       <GatherBar />
 
@@ -490,6 +613,7 @@ export function GameUI() {
       </div>
 
       {panel === 'stable' && <StablePanel />}
+      {panel === 'den' && <DenPanel />}
       {panel === 'race' && <RacePanel />}
       {panel === 'bet' && <BetPanel />}
       {panel === 'market' && <MarketPanel />}

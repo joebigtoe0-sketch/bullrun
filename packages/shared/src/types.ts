@@ -6,6 +6,7 @@ export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
 export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'help' | 'results' | null;
 export type BullLocation = 'stable' | 'den' | 'following';
 export type BullTrait = 'normal' | 'rainbow' | 'ghost';
+export type BullRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 export interface Materials {
   hay: number;
@@ -41,6 +42,7 @@ export interface Bull {
   energy: number;
   coat: string;
   trait?: BullTrait;
+  rarity?: BullRarity;
   location?: BullLocation;
   denPlotId?: number | null;
 }
@@ -177,6 +179,7 @@ export interface PasturePlotState {
   displayBull: PastureDisplayBull | null;
   denCount: number;
   denCapacity: number;
+  nextSpawnAt: number | null;
 }
 
 export interface PlayerPosition {

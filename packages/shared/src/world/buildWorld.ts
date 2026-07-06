@@ -42,10 +42,10 @@ export function buildWorld(npcWanderers = 0): WorldData {
   const path = (x: number, y: number) => {
     if (tiles[x]?.[y]?.startsWith('g')) tiles[x][y] = 'dirt';
   };
-  for (let x = 3; x < 49; x++) { path(x, 38); path(x, 6); }
-  for (let y = 6; y < 39; y++) { path(6, y); path(45, y); }
-  for (let y = 33; y < 39; y++) path(26, y);
-  for (let x = 26; x <= 30; x++) path(x, 35);
+  for (let x = 3; x < 53; x++) { path(x, 40); path(x, 6); }
+  for (let y = 6; y < 41; y++) { path(6, y); path(49, y); }
+  for (let y = 35; y < 41; y++) path(28, y);
+  for (let x = 28; x <= 32; x++) path(x, 37);
 
   const objs: WorldObject[] = [];
   const nodes: WorldNode[] = [];
@@ -58,11 +58,11 @@ export function buildWorld(npcWanderers = 0): WorldData {
   };
   for (const { er, n } of FENCE_RINGS) fence(er, n);
 
-  objs.push({ t: 'booth', x: 29, y: 35.2, label: 'BETS' });
-  objs.push({ t: 'market', x: 43, y: 17, label: 'MARKET' });
-  objs.push({ t: 'forge', x: 9, y: 30, label: 'FORGE' });
-  objs.push({ t: 'stable', x: 36, y: 35.5, label: 'YOUR STABLE' });
-  objs.push({ t: 'raceBooth', x: 26, y: 35.2, label: 'RACE SIGNUP' });
+  objs.push({ t: 'booth', x: 31, y: 37.2, label: 'BETS' });
+  objs.push({ t: 'market', x: 47, y: 18, label: 'MARKET' });
+  objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
+  objs.push({ t: 'stable', x: 38, y: 37.5, label: 'YOUR STABLE' });
+  objs.push({ t: 'raceBooth', x: 28, y: 37.2, label: 'RACE SIGNUP' });
 
   const occupied = (x: number, y: number, r: number) =>
     objs.some((o) => Math.hypot(o.x - x, o.y - y) < r);
@@ -109,11 +109,11 @@ export function buildWorld(npcWanderers = 0): WorldData {
   spawnNodes('hay', 'hay', 26, 0.78);
 
   const interactables: Interactable[] = [
-    { t: 'stable', x: 36, y: 36.8, label: 'Stable' },
-    { t: 'bet', x: 29, y: 36.5, label: 'Betting booth' },
-    { t: 'market', x: 43, y: 18.5, label: 'Market' },
-    { t: 'forge', x: 9, y: 31.5, label: 'Forge' },
-    { t: 'race', x: 26, y: 36.5, label: 'Race signup' },
+    { t: 'stable', x: 38, y: 38.8, label: 'Stable' },
+    { t: 'bet', x: 31, y: 38.5, label: 'Betting booth' },
+    { t: 'market', x: 47, y: 19.5, label: 'Market' },
+    { t: 'forge', x: 9, y: 33.5, label: 'Forge' },
+    { t: 'race', x: 28, y: 38.5, label: 'Race signup' },
   ];
 
   const names: [string, number][] = [

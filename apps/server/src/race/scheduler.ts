@@ -1,11 +1,11 @@
 import {
   NPC_POOL,
-  PURSE,
   RACE_LAPS,
   buildRaceResults,
   liveStandings,
   maxBullLevel,
   pickNpcField,
+  racePrizeForPosition,
   simulateRace,
   type RaceBull,
   type BullTrait,
@@ -13,7 +13,7 @@ import {
 import type { Server as SocketServer } from 'socket.io';
 import type { RaceEntry, Item as PrismaItem } from '@prisma/client';
 import { prisma } from '../db.js';
-import { completeBreed } from '../services/game.js';
+import { completeBreed, tickAllEnergy } from '../services/game.js';
 
 let io: SocketServer | null = null;
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
@@ -28,7 +28,7 @@ export async function ensureScheduledRace() {
   const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
   if (running) return running;
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 120);
+  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 600);
   const field = pickNpcField(5);
   return prisma.race.create({
     data: {
@@ -116,7 +116,7 @@ async function finishRace(raceId: string) {
   const results = buildRaceResults(active.bulls, myBullIds);
 
   for (const rb of active.bulls) {
-    const prize = PURSE[(rb.pos ?? 1) - 1] || 0;
+    const prize = racePrizeForPosition(rb.pos ?? 1, active.bulls.length);
     const entry = entries.find((e: RaceEntry) => e.bullId === rb.id);
     if (entry?.userId && prize > 0) {
       const profile = await prisma.playerProfile.findUnique({ where: { userId: entry.userId } });
@@ -131,7 +131,7 @@ async function finishRace(raceId: string) {
         const xpGain = rb.pos === 1 ? 60 : Math.max(10, 40 - (rb.pos ?? 1) * 5);
         let xp = bull.xp + xpGain;
         let level = bull.level;
-        const maxLv = maxBullLevel((bull.trait as BullTrait) || 'normal');
+        const maxLv = maxBullLevel((bull.rarity as import('@bullrun/shared').BullRarity) || (bull.trait as BullTrait) || 'common');
         let need = level * 100;
         while (xp >= need && level < maxLv) {
           level++;
@@ -140,7 +140,7 @@ async function finishRace(raceId: string) {
         }
         await prisma.bull.update({
           where: { id: bull.id },
-          data: { xp, level, energy: Math.max(0, bull.energy - 10) },
+          data: { xp, level },
         });
       }
     }
@@ -179,7 +179,7 @@ async function finishRace(raceId: string) {
 
   io?.emit('race_finished', { id: raceId, results, betResults });
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 120);
+  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || 600);
   const field = pickNpcField(5);
   const next = await prisma.race.create({
     data: {
@@ -236,6 +236,10 @@ export function startRaceScheduler() {
     const users = await prisma.user.findMany({ select: { id: true } });
     for (const u of users) await completeBreed(u.id);
   }, 1000);
+
+  setInterval(() => {
+    void tickAllEnergy().catch((err) => console.error('Energy tick error', err));
+  }, 60_000);
 }
 
 export function stopRaceScheduler() {

@@ -37,7 +37,7 @@ model PlayerProfile {
   posY        Float    @default(41)
   helpSeen    Boolean  @default(false)
   betAmount   Int      @default(50)
-  forgeOre    Int      @default(50)
+  forgeOre    Int      @default(100)
   listHay     Int      @default(3)
   listOre     Int      @default(8)
   listWood    Int      @default(5)
@@ -64,6 +64,7 @@ model Bull {
   energy    Float    @default(100)
   coat      String
   trait     String   @default("normal")
+  rarity    String   @default("common")
   location  String   @default("stable")
   denPlotId Int?
   items     Item[]

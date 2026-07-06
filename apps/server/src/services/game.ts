@@ -2,6 +2,8 @@ import type { Server as SocketServer } from 'socket.io';
 import {
   BREED_COST,
   BREED_DURATION_MS,
+  BULL_MAX_ENERGY,
+  FORGE_MIN_ORE,
   GATHER_DURATION_MS,
   MARKET_FEE,
   NODE_RESPAWN_MS,
@@ -11,10 +13,13 @@ import {
   TRAIN_HAY_COST,
   buildWorld,
   bullSlots,
-  energyRegen,
+  energyPerMinute,
+  inferBullRarity,
   makeItem,
   nodeId,
   normalizeStat,
+  traitForRarity,
+  statRangeForRarity,
   rollRarityIndex,
   statCap,
   TRAIN_STAT_GAIN,
@@ -55,7 +60,7 @@ export async function trainBull(userId: string, bullId: number, stat: StatType) 
   const cap = statCap(mapBull(bull));
   const cur = normalizeStat(bull[stat]);
   if (cur >= cap) throw new Error(`${stat} capped at ${cap}`);
-  if (profile.hay < TRAIN_HAY_COST) throw new Error('Need 6 hay');
+  if (profile.hay < TRAIN_HAY_COST) throw new Error(`Need ${TRAIN_HAY_COST} hay`);
 
   await prisma.$transaction([
     prisma.playerProfile.update({ where: { userId }, data: { hay: profile.hay - TRAIN_HAY_COST } }),
@@ -72,11 +77,11 @@ export async function restBull(userId: string, bullId: number) {
   ]);
   if (!bull) throw new Error('Bull not found');
   if (profile.gold < REST_COST) throw new Error('Need 40g');
-  if (bull.energy >= 100) throw new Error('Already rested');
+  if (bull.energy >= BULL_MAX_ENERGY) throw new Error('Already rested');
 
   await prisma.$transaction([
     prisma.playerProfile.update({ where: { userId }, data: { gold: profile.gold - REST_COST } }),
-    prisma.bull.update({ where: { id: bullId }, data: { energy: Math.min(100, bull.energy + REST_ENERGY) } }),
+    prisma.bull.update({ where: { id: bullId }, data: { energy: Math.min(BULL_MAX_ENERGY, bull.energy + REST_ENERGY) } }),
   ]);
   return getMeResponse(userId);
 }
@@ -84,9 +89,9 @@ export async function restBull(userId: string, bullId: number) {
 export async function upgradeStable(userId: string) {
   await requireNearInteractable(userId, 'stable');
   const p = await getProfile(userId);
-  if (p.wood < 5) throw new Error('Need 5 wood');
-  let wood = p.stableWood + 5;
-  let matsWood = p.wood - 5;
+  if (p.wood < 10) throw new Error('Need 10 wood');
+  let wood = p.stableWood + 10;
+  let matsWood = p.wood - 10;
   let gold = p.gold;
   let level = p.stableLevel;
 
@@ -120,7 +125,13 @@ export async function breedBulls(userId: string, bullAId: number, bullBId: numbe
   const p = await getProfile(userId);
   const bulls = await prisma.bull.findMany({ where: { ownerId: userId } });
   if (bulls.length >= bullSlots(p.stableLevel)) throw new Error('No free bull slots');
-  if (p.gold < BREED_COST) throw new Error('Need 200g');
+  const bullA = bulls.find((b) => b.id === bullAId);
+  const bullB = bulls.find((b) => b.id === bullBId);
+  if (!bullA || !bullB) throw new Error('Bulls not found');
+  if ((bullA.location ?? 'stable') !== 'stable' || (bullB.location ?? 'stable') !== 'stable') {
+    throw new Error('Both bulls must be in your stable');
+  }
+  if (p.gold < BREED_COST) throw new Error(`Need ${BREED_COST}g`);
 
   await prisma.playerProfile.update({
     where: { userId },
@@ -140,14 +151,32 @@ export async function completeBreed(userId: string) {
   if (!p?.breedingAId || !p.breedingBId || !p.breedingDone) return null;
   if (p.breedingDone.getTime() > Date.now()) return null;
 
+  const bulls = await prisma.bull.findMany({ where: { ownerId: userId } });
+  if (bulls.length >= bullSlots(p.stableLevel)) return null;
+
   const [a, b] = await Promise.all([
     prisma.bull.findUnique({ where: { id: p.breedingAId } }),
     prisma.bull.findUnique({ where: { id: p.breedingBId } }),
   ]);
   if (!a || !b) return null;
 
+  const parentRarities = [
+    inferBullRarity(a.trait as 'normal' | 'rainbow' | 'ghost', a.rarity as 'common' | 'uncommon' | 'rare' | 'legendary'),
+    inferBullRarity(b.trait as 'normal' | 'rainbow' | 'ghost', b.rarity as 'common' | 'uncommon' | 'rare' | 'legendary'),
+  ];
+  const rarityBoost = parentRarities.includes('legendary') ? 0.02
+    : parentRarities.includes('rare') ? 0.01
+    : parentRarities.includes('uncommon') ? 0.005
+    : 0;
+  const roll = Math.random();
+  const rarity = roll < 0.01 + rarityBoost ? 'legendary'
+    : roll < 0.04 + rarityBoost ? 'rare'
+    : roll < 0.24 + rarityBoost ? 'uncommon'
+    : 'common';
+  const trait = traitForRarity(rarity as 'common' | 'uncommon' | 'rare' | 'legendary', Math.random());
+  const range = statRangeForRarity(rarity as 'common' | 'uncommon' | 'rare' | 'legendary');
   const mix = (k: 'speed' | 'stamina' | 'accel' | 'temper') =>
-    Math.max(1, Math.round((a[k] + b[k]) / 2 + (Math.random() * 3 - 1)));
+    Math.max(range.min, Math.min(range.max, Math.round((a[k] + b[k]) / 2 + (Math.random() * 6 - 3))));
   const names = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder'];
 
   await prisma.$transaction([
@@ -159,8 +188,10 @@ export async function completeBreed(userId: string) {
         stamina: mix('stamina'),
         accel: mix('accel'),
         temper: mix('temper'),
-        energy: 60,
+        energy: BULL_MAX_ENERGY,
         coat: Math.random() < 0.5 ? a.coat : b.coat,
+        trait,
+        rarity,
         location: 'stable',
       },
     }),
@@ -175,7 +206,7 @@ export async function completeBreed(userId: string) {
 export async function forgeItem(userId: string, oreAmount: number) {
   await requireNearInteractable(userId, 'forge');
   const p = await getProfile(userId);
-  if (p.ore < oreAmount || oreAmount < 50) throw new Error('Not enough ore');
+  if (p.ore < oreAmount || oreAmount < FORGE_MIN_ORE) throw new Error(`Need at least ${FORGE_MIN_ORE} ore`);
 
   const rarIdx = rollRarityIndex(oreAmount);
   const item = makeItem(rarIdx, p.nextItemId);
@@ -309,7 +340,7 @@ export async function enterRace(userId: string, bullId: number) {
     throw new Error('Only a bull following you can enter');
   }
   if (userEntries > 0) throw new Error('One bull per race');
-  if (bull.energy < RACE_ENTRY_ENERGY) throw new Error('Need 30 energy');
+  if (bull.energy < RACE_ENTRY_ENERGY) throw new Error(`Need ${RACE_ENTRY_ENERGY} energy`);
 
   await prisma.$transaction([
     prisma.bull.update({ where: { id: bullId }, data: { energy: bull.energy - RACE_ENTRY_ENERGY } }),
@@ -492,16 +523,22 @@ export async function buyShopBull(userId: string, bullData: Record<string, unkno
 }
 
 export async function tickEnergy(userId: string) {
-  const p = await prisma.playerProfile.findUnique({ where: { userId }, include: { user: { include: { bulls: true } } } });
-  if (!p) return;
-  const regen = energyRegen(p.stableLevel);
-  for (const b of p.user.bulls) {
-    if (b.energy < 100) {
-      await prisma.bull.update({
-        where: { id: b.id },
-        data: { energy: Math.min(100, b.energy + regen) },
-      });
+  await completeBreed(userId);
+}
+
+export async function tickAllEnergy() {
+  const profiles = await prisma.playerProfile.findMany({
+    include: { user: { include: { bulls: true } } },
+  });
+  for (const p of profiles) {
+    const rate = energyPerMinute(p.stableLevel);
+    for (const b of p.user.bulls) {
+      if (b.energy < BULL_MAX_ENERGY) {
+        await prisma.bull.update({
+          where: { id: b.id },
+          data: { energy: Math.min(BULL_MAX_ENERGY, b.energy + rate) },
+        });
+      }
     }
   }
-  await completeBreed(userId);
 }

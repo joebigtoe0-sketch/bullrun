@@ -2,8 +2,9 @@ import {
   buildWorld,
   makeShopBulls,
   nodeId,
-  pickStarterBullName,
   normalizeStat,
+  pickStarterBullName,
+  inferBullRarity,
   COAT_COLORS,
   type Bull,
   type GameItem,
@@ -71,6 +72,7 @@ export async function createStarterUser(userId: string) {
       name: pickStarterBullName(Date.now()),
       coat: COAT_COLORS[Math.floor(Math.random() * COAT_COLORS.length)],
       trait: 'normal',
+      rarity: 'common',
       location: 'stable',
       ...STARTER_BULL_STATS,
     },
@@ -90,6 +92,7 @@ export function mapBull(b: {
   energy: number;
   coat: string;
   trait: string;
+  rarity?: string;
   location?: string;
   denPlotId?: number | null;
 }): Bull {
@@ -105,6 +108,7 @@ export function mapBull(b: {
     energy: b.energy,
     coat: b.coat,
     trait: (b.trait as Bull['trait']) || 'normal',
+    rarity: inferBullRarity(b.trait as Bull['trait'], b.rarity as Bull['rarity']),
     location: (b.location as Bull['location']) || 'stable',
     denPlotId: b.denPlotId ?? null,
   };

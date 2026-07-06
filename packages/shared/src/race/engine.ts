@@ -1,7 +1,8 @@
 import type { Bull, GameItem, NpcBull, RaceBull, RaceResult } from '../types.js';
 import { eff, coatOf } from '../helpers.js';
 import { normalizeStat } from '../stats.js';
-import { NPC_POOL, PURSE } from '../constants.js';
+import { NPC_POOL } from '../constants.js';
+import { racePrizeForPosition } from './prizes.js';
 import {
   RACE_BASE_LAP_MS,
   RACE_LAP_SPREAD,
@@ -154,11 +155,12 @@ export function buildRaceResults(
   myBullIds: number[],
 ): RaceResult[] {
   const sorted = [...bulls].sort((a, b) => (a.pos ?? 0) - (b.pos ?? 0));
+  const fieldSize = sorted.length;
   return sorted.map((r) => ({
     name: r.name,
     owner: r.owner || '',
     pos: r.pos ?? 0,
-    prize: PURSE[(r.pos ?? 1) - 1] || 0,
+    prize: racePrizeForPosition(r.pos ?? 0, fieldSize),
     mine: myBullIds.includes(r.id as number),
   }));
 }

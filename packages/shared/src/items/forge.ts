@@ -1,15 +1,17 @@
-import { RARITIES, COAT_COLORS } from '../constants.js';
+import { RARITIES, COAT_COLORS, FORGE_MIN_ORE } from '../constants.js';
 import type { GameItem, ItemSlot, RarityKey } from '../types.js';
 
 export function forgeChances(ore: number): number[] {
-  const b = Math.max(0, ore - 50);
-  const raw = [
-    Math.max(8, 60 - b * 0.6),
-    25,
-    10 + b * 0.3,
-    4 + b * 0.2,
-    1 + b * 0.1,
-  ];
+  const o = Math.max(FORGE_MIN_ORE, ore);
+  if (o <= FORGE_MIN_ORE) return [1, 0, 0, 0, 0];
+
+  const extra = o - FORGE_MIN_ORE;
+  const uncommon = Math.min(0.42, extra * 0.0035);
+  const rare = Math.min(0.28, extra * 0.002);
+  const epic = Math.min(0.14, extra * 0.001);
+  const legendary = Math.min(0.10, extra * 0.0007);
+  const common = Math.max(0.05, 1 - uncommon - rare - epic - legendary);
+  const raw = [common, uncommon, rare, epic, legendary];
   const sum = raw.reduce((a, c) => a + c, 0);
   return raw.map((x) => x / sum);
 }
@@ -43,7 +45,7 @@ export function makeItem(rarIdx: number, nextItemId: number): GameItem {
     tail: 'Tail Wrap',
     accessory: 'Harness',
   };
-  const bonusAmt = [0, 5, 8, 12, 18][rarIdx];
+  const bonusAmt = [0, 4, 7, 11, 16][rarIdx];
   const stats = ['speed', 'stamina', 'accel'] as const;
   return {
     id: nextItemId,

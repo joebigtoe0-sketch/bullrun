@@ -13,18 +13,34 @@ import {
   MARKET_LIST_QUANTITIES,
   stableGoldNeed,
   stableWoodNeed,
+  energyPerMinute,
   fmtCountdown,
   RARITIES,
   MAX_FOLLOWING_BULLS,
   PASTURE_PLOTS,
   PASTURE_WOOD_UPGRADE_COST,
+  PASTURE_SPAWN_MS,
+  pastureUpgradeGoldCost,
+  BULL_RARITY_COLOR,
+  BULL_RARITY_LABEL,
+  inferBullRarity,
+  BULL_MAX_ENERGY,
+  FORGE_MIN_ORE,
+  TRAIN_HAY_COST,
+  REST_COST,
+  REST_ENERGY,
+  BREED_COST,
 } from '@bullrun/shared';
-import type { Bull, MatType, MeResponse, StatType } from '@bullrun/shared';
+import type { Bull, BullRarity, MatType, MeResponse, StatType } from '@bullrun/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 
 const btn = 'br-btn';
 const panel = 'br-panel';
+
+function bullRarity(bull: Bull): BullRarity {
+  return inferBullRarity(bull.trait, bull.rarity);
+}
 
 function PanelHeader({ title, color, onClose }: { title: string; color?: string; onClose: () => void }) {
   return (
@@ -61,12 +77,12 @@ function StablePanel() {
         <div className="card">
           <div className="row-between">
             <span className="bold">Stable Level {me.stable.level}</span>
-            <span className="muted">+{(me.stable.level - 1) * 50}% energy regen</span>
+            <span className="muted">{energyPerMinute(me.stable.level).toFixed(1)}⚡/min regen</span>
           </div>
           <div className="bar"><div className="bar-fill wood" style={{ width: `${Math.min(100, me.stable.wood / woodNeed * 100)}%` }} /></div>
           <div className="row-between">
             <span className="muted">Wood {me.stable.wood} / {woodNeed} · {stableBulls.length}/{slots} bull slots</span>
-            <button className={`${btn} green`} onClick={() => act(api.upgradeStable)}>Add 5 wood{me.stable.wood + 5 >= woodNeed ? ` (+${goldNeed}g to level!)` : ''}</button>
+            <button className={`${btn} green`} onClick={() => act(api.upgradeStable)}>Add 10 wood{me.stable.wood + 10 >= woodNeed ? ` (+${goldNeed}g to level!)` : ''}</button>
           </div>
         </div>
         {stableBulls.map((b) => (
@@ -93,12 +109,18 @@ function StablePanel() {
         <div className="card row-between">
           <div>
             <div className="bold">Breeding</div>
-            <div className="muted">{me.breeding ? 'Calf arriving soon…' : me.breedSel.length ? `Selected: ${me.breedSel.join('+')}` : 'Select two bulls above'}</div>
+            <div className="muted">
+              {me.breeding
+                ? `Calf in ${fmtCountdown(me.breeding.done - Date.now())}`
+                : me.breedSel.length
+                  ? `Selected: ${me.breedSel.join('+')}`
+                  : 'Select two stable bulls above'}
+            </div>
           </div>
-          <button className={`${btn} purple`} onClick={() => {
+          <button className={`${btn} purple`} disabled={!!me.breeding} onClick={() => {
             if (me.breedSel.length !== 2) return toast('Select exactly two bulls');
-            act(() => api.breed(me.breedSel[0], me.breedSel[1]), 'Breeding…');
-          }}>Breed (200g)</button>
+            act(() => api.breed(me.breedSel[0], me.breedSel[1]), 'Breeding started');
+          }}>Breed ({BREED_COST}g)</button>
         </div>
       </div>
     </div>
@@ -111,8 +133,8 @@ function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, o
   onFollow?: () => void; onDelete?: () => void;
 }) {
   const cap = statCap(bull);
-  const maxLv = maxBullLevel(bull.trait);
-  const coat = coatOf(bull, items);
+  const rarity = bullRarity(bull);
+  const maxLv = maxBullLevel(rarity);
   const equipped = items.filter((it) => it.equippedTo === bull.id);
   const setMe = useGameStore((s) => s.setMe);
   const toggleBreed = () => {
@@ -129,15 +151,16 @@ function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, o
     <div className="card">
       <div className="row-between">
         <div className="row gap">
-          <span className="swatch" style={{ background: coat }} />
+          <span className="swatch" style={{ background: BULL_RARITY_COLOR[rarity] }} />
           <span className="bold lg">{bull.name}</span>
+          <span className="badge" style={{ color: BULL_RARITY_COLOR[rarity] }}>{BULL_RARITY_LABEL[rarity]}</span>
           <span className="badge">Lv {bull.level}/{maxLv}</span>
         </div>
         <button className="small-btn" onClick={onRename}>Rename</button>
       </div>
       <div className="bar-row">
         <div className="bar flex1"><div className="bar-fill energy" style={{ width: `${bull.energy}%` }} /></div>
-        <span>{Math.round(bull.energy)}</span>
+        <span>{Math.round(bull.energy)}/{BULL_MAX_ENERGY}</span>
         <span className="muted">XP {Math.round(bull.xp)}/{bull.level * 100}</span>
       </div>
       {(['speed', 'stamina', 'accel'] as StatType[]).map((stat) => {
@@ -147,14 +170,14 @@ function BullCard({ bull, items, onTrain, onRest, onRename, onEquip, onFollow, o
         return (
         <div key={stat} className="grid-train">
           <span>{stat} <b className="gold stat-num">{base}{bonus > 0 ? `+${bonus}` : ''} / {cap}</b></span>
-          <button className="small-btn" onClick={() => onTrain(stat)}>Train · 6 hay</button>
+          <button className="small-btn" onClick={() => onTrain(stat)}>Train · {TRAIN_HAY_COST} hay</button>
         </div>
         );
       })}
       <div className="muted sm">Equipped: {equipped.length ? equipped.map((e) => e.name).join(', ') : 'nothing'}</div>
       <div className="row gap wrap">
         <button className={`${btn} blue sm`} onClick={onEquip}>Equip items</button>
-        <button className={`${btn} sm`} onClick={onRest}>Rest +40⚡ (40g)</button>
+        <button className={`${btn} sm`} onClick={onRest}>Rest +{REST_ENERGY}⚡ ({REST_COST}g)</button>
         <button className={`${btn} sm`} onClick={toggleBreed}>Select to breed</button>
         {onFollow && <button className={`${btn} green sm`} onClick={onFollow}>Follow me</button>}
         {onDelete && <button className={`${btn} sm`} style={{ color: '#e55' }} onClick={onDelete}>Release</button>}
@@ -171,6 +194,12 @@ function DenPanel() {
   const setPastures = useGameStore((s) => s.setPastures);
   const setPanel = useGameStore((s) => s.setPanel);
   const toast = useGameStore((s) => s.toastMsg);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   if (denPlotId == null) return null;
   const plot = pastures.find((p) => p.id === denPlotId);
@@ -182,6 +211,8 @@ function DenPanel() {
   const stableBulls = me.bulls.filter((b) => (b.location ?? 'stable') === 'stable');
   const cap = plot.denCapacity ?? denCapacity(plot.level);
   const followSlots = MAX_FOLLOWING_BULLS;
+  const spawnCd = plot.nextSpawnAt ? fmtCountdown(plot.nextSpawnAt - Date.now()) : fmtCountdown(PASTURE_SPAWN_MS);
+  const upGold = pastureUpgradeGoldCost(plot.level);
 
   const act = async (fn: () => Promise<MeResponse>, ok?: string) => {
     try { const r = await fn(); setMe(r); if (ok) toast(ok); }
@@ -204,21 +235,23 @@ function DenPanel() {
         <div className="card">
           <div className="row-between">
             <span className="bold">Den Level {plot.level}</span>
-            <span className="muted">{denBulls.length}/{cap} bulls · spawns every ~{Math.round(20 / plot.level)}s</span>
+            <span className="muted">{denBulls.length}/{cap} bulls · next spawn {spawnCd}</span>
           </div>
           <div className="row-between">
-            <span className="muted">Upgrade: {PASTURE_WOOD_UPGRADE_COST} wood</span>
+            <span className="muted">Upgrade: {PASTURE_WOOD_UPGRADE_COST} wood + {upGold}g</span>
             <button className={`${btn} green`} onClick={() => actDen(() => api.upgradePasture(denPlotId), 'Den upgraded!')}>Upgrade den</button>
           </div>
         </div>
 
-        {denBulls.map((b) => (
+        {denBulls.map((b) => {
+          const rarity = bullRarity(b);
+          return (
           <div key={b.id} className="card">
             <div className="row-between">
               <div className="row gap">
-                <span className="swatch" style={{ background: coatOf(b, me.items) }} />
+                <span className="swatch" style={{ background: BULL_RARITY_COLOR[rarity] }} />
                 <span className="bold">{b.name}</span>
-                {b.trait && b.trait !== 'normal' && <span className="badge">{b.trait}</span>}
+                <span className="badge" style={{ color: BULL_RARITY_COLOR[rarity] }}>{BULL_RARITY_LABEL[rarity]}</span>
               </div>
               <div className="row gap">
                 {followingBulls.length < followSlots && (
@@ -228,7 +261,8 @@ function DenPanel() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {followingBulls.length > 0 && (
           <div className="card">
@@ -280,7 +314,7 @@ function RacePanel() {
         <div className="card center">
           <div className="muted">NEXT RACE IN</div>
           <div className="countdown">{raceLive ? 'LIVE' : cd}</div>
-          <div className="muted">Entry: 30⚡ · Free · One bull per player · Following bulls only</div>
+          <div className="muted">Entry: {BULL_MAX_ENERGY}⚡ · Free · Purse 1000g · One bull per player</div>
         </div>
         {followingBulls.length === 0 ? (
           <div className="card muted">Bring a bull with you first — use &quot;Follow me&quot; in your stable or den.</div>
@@ -295,8 +329,8 @@ function RacePanel() {
                 <span className="entered">Entered ✓</span>
               ) : alreadyEntered ? (
                 <span className="muted sm">Already entered another bull</span>
-              ) : b.energy < 30 ? (
-                <span className="muted sm">Need 30⚡</span>
+              ) : b.energy < BULL_MAX_ENERGY ? (
+                <span className="muted sm">Need {BULL_MAX_ENERGY}⚡</span>
               ) : (
                 <button className={`${btn} gold`} onClick={() => api.enterRace(b.id).then(setMe).catch((e) => toast(e.message))}>Enter race</button>
               )}
@@ -421,12 +455,12 @@ function ForgePanel() {
     <div className={panel}>
       <PanelHeader title="The Forge" color="#e07840" onClose={() => setPanel(null)} />
       <div className="panel-body">
-        <p className="muted">Feed ore into the forge. Min 50 ore — more ore = rarer items.</p>
+        <p className="muted">Feed ore into the forge. Min {FORGE_MIN_ORE} ore — 100 ore = guaranteed Common. More ore = rarer items.</p>
         <div className="card">
           <div className="row-between">
             <span>Ore (have {me.mats.ore})</span>
             <div className="row gap">
-              <button className="small-btn" onClick={() => api.settings({ forgeOre: Math.max(50, me.forgeOre - 10) }).then(setMe)}>−</button>
+              <button className="small-btn" onClick={() => api.settings({ forgeOre: Math.max(FORGE_MIN_ORE, me.forgeOre - 10) }).then(setMe)}>−</button>
               <span className="orange lg">{me.forgeOre}</span>
               <button className="small-btn" onClick={() => api.settings({ forgeOre: me.forgeOre + 10 }).then(setMe)}>+</button>
             </div>
@@ -546,7 +580,7 @@ function BuyDenModal() {
         <div className="modal-header">Buy den?</div>
         <div className="panel-body">
           <p className="center" style={{ margin: '8px 0 16px' }}>
-            Are you sure you want to buy <b className="gold">{confirm.label}</b> for <b className="gold">{confirm.price}g</b>?
+            Are you sure you want to buy <b className="gold">{confirm.label}</b> for <b className="gold">{confirm.price}g</b> + <b>5 wood</b>?
           </p>
           <div className="row gap wrap" style={{ justifyContent: 'center' }}>
             <button className={`${btn} green`} onClick={onBuy}>Buy den</button>

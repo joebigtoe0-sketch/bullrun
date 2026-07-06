@@ -1,4 +1,9 @@
-import type { BullTrait } from './types.js';
+import type { BullTrait, BullRarity } from './types.js';
+import {
+  rollBullRarity,
+  traitForRarity,
+  statRangeForRarity,
+} from './bullRarity.js';
 
 export interface PasturePlotDef {
   id: number;
@@ -15,11 +20,13 @@ export const PASTURE_FENCE_MARGIN = 0.42;
 
 /** How close to the fence ring you can be to buy / open the den menu. */
 export const DEN_INTERACT_RANGE = 2.4;
+export const DEN_PRICE = 1000;
+export const MAX_DENS_PER_PLAYER = 1;
 
 const DEN_W = 3.6;
 const DEN_H = 3.5;
-const DEN_GAP = 1.5;
-const MAP = 52;
+const DEN_GAP = 1.2;
+const MAP = 56;
 const EDGE = 1.0;
 
 const leftCy = (i: number) => EDGE + 2.5 + i * (DEN_H + DEN_GAP);
@@ -28,23 +35,22 @@ const bottomCx = (i: number, count: number) => {
   const gap = count > 1 ? (span - count * DEN_W) / (count - 1) : 0;
   return EDGE + i * (DEN_W + gap);
 };
+const topCx = bottomCx;
 const bottomY = MAP - EDGE - DEN_H - PASTURE_FENCE_MARGIN;
+const topY = EDGE;
+const rightCx = MAP - EDGE - DEN_W - PASTURE_FENCE_MARGIN;
+const rightCy = (i: number) => EDGE + 2.5 + i * (DEN_H + DEN_GAP);
 
-/** Dens pinned to the left edge and along the full bottom edge of the map. */
+function den(id: number, cx: number, cy: number, label: string, price: number): PasturePlotDef {
+  return { id, cx, cy, w: DEN_W, h: DEN_H, price, label };
+}
+
+/** Dens along left, bottom, top, and right map edges. */
 export const PASTURE_PLOTS: PasturePlotDef[] = [
-  { id: 0, cx: EDGE, cy: leftCy(0), w: DEN_W, h: DEN_H, price: 120, label: 'Den 1' },
-  { id: 1, cx: EDGE, cy: leftCy(1), w: DEN_W, h: DEN_H, price: 140, label: 'Den 2' },
-  { id: 2, cx: EDGE, cy: leftCy(2), w: DEN_W, h: DEN_H, price: 160, label: 'Den 3' },
-  { id: 3, cx: EDGE, cy: leftCy(3), w: DEN_W, h: DEN_H, price: 180, label: 'Den 4' },
-  ...Array.from({ length: 8 }, (_, i) => ({
-    id: 4 + i,
-    cx: bottomCx(i, 8),
-    cy: bottomY,
-    w: DEN_W,
-    h: DEN_H,
-    price: 200 + i * 20,
-    label: `Den ${5 + i}`,
-  })),
+  ...Array.from({ length: 6 }, (_, i) => den(i, EDGE, leftCy(i), `Den ${i + 1}`, DEN_PRICE)),
+  ...Array.from({ length: 8 }, (_, i) => den(6 + i, bottomCx(i, 8), bottomY, `Den ${7 + i}`, DEN_PRICE)),
+  ...Array.from({ length: 6 }, (_, i) => den(14 + i, topCx(i, 6), topY, `Den ${15 + i}`, DEN_PRICE)),
+  ...Array.from({ length: 6 }, (_, i) => den(20 + i, rightCx, rightCy(i), `Den ${21 + i}`, DEN_PRICE)),
 ];
 
 export const MAX_FOLLOWING_BULLS = 3;
@@ -54,16 +60,21 @@ export function denCapacity(level: number): number {
   return DEN_BASE_CAPACITY + (level - 1) * 2;
 }
 
-export const PASTURE_BASE_SPAWN_MS = 20_000;
-export const PASTURE_WOOD_UPGRADE_COST = 10;
-export const PASTURE_WOOD_PER_LEVEL = 15;
+/** Bulls spawn every 60 minutes per den. */
+export const PASTURE_SPAWN_MS = 60 * 60 * 1000;
+export const PASTURE_WOOD_UPGRADE_COST = 35;
+export const PASTURE_WOOD_PER_LEVEL = 40;
 
-export function pastureSpawnIntervalMs(level: number): number {
-  return Math.max(8_000, Math.floor(PASTURE_BASE_SPAWN_MS / Math.max(1, level)));
+export function pastureSpawnIntervalMs(_level = 1): number {
+  return PASTURE_SPAWN_MS;
 }
 
 export function pastureWoodToNextLevel(level: number, woodInvested: number): number {
   return Math.max(0, PASTURE_WOOD_PER_LEVEL * level - woodInvested);
+}
+
+export function pastureUpgradeGoldCost(level: number): number {
+  return 150 * level * level;
 }
 
 const CALF_NAMES = ['Rowdy', 'Biscuit', 'Comet', 'Waffle', 'Tornado', 'Mocha', 'Zippy', 'Boulder', 'Rusty', 'Nova', 'Bandit', 'Ember', 'Chief', 'Juniper', 'Rocco', 'Sage', 'Nitro', 'Poppy', 'Dusty', 'Marble'];
@@ -82,6 +93,7 @@ export function rollPastureBull(seed: number): {
   name: string;
   coat: string;
   trait: BullTrait;
+  rarity: BullRarity;
   speed: number;
   stamina: number;
   accel: number;
@@ -92,19 +104,19 @@ export function rollPastureBull(seed: number): {
     s = (s * 16807) % 2147483647;
     return s / 2147483647;
   };
-  const r = rng();
-  let trait: BullTrait = 'normal';
-  let coat = COATS[Math.floor(rng() * COATS.length)];
-  if (r < 0.03) trait = 'ghost';
-  else if (r < 0.13) trait = 'rainbow';
+  const rarity = rollBullRarity(rng());
+  const trait = traitForRarity(rarity, rng());
+  const range = statRangeForRarity(rarity);
+  const rollStat = () => range.min + Math.floor(rng() * (range.max - range.min + 1));
 
   return {
     name: CALF_NAMES[Math.floor(rng() * CALF_NAMES.length)],
-    coat,
+    coat: COATS[Math.floor(rng() * COATS.length)],
     trait,
-    speed: 45 + Math.floor(rng() * 35),
-    stamina: 45 + Math.floor(rng() * 35),
-    accel: 45 + Math.floor(rng() * 35),
+    rarity,
+    speed: rollStat(),
+    stamina: rollStat(),
+    accel: rollStat(),
     temper: 1 + Math.floor(rng() * 7),
   };
 }

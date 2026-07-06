@@ -1,5 +1,5 @@
 import type { Bull, GameItem, Interactable, PanelType, StatType } from './types.js';
-import { INTERACT_USE_RANGE } from './constants.js';
+import { ENERGY_REGEN_BASE_PER_MIN, INTERACT_USE_RANGE } from './constants.js';
 import { normalizeStat, statCap, maxBullLevel, matNodeType, TRAIN_STAT_GAIN } from './stats.js';
 
 export { isNearPasturePlot } from './pastures.js';
@@ -33,15 +33,21 @@ export function bullSlots(stableLevel: number): number {
 }
 
 export function stableWoodNeed(level: number): number {
-  return 20 * level;
+  return 35 * level * level;
 }
 
 export function stableGoldNeed(level: number): number {
-  return 50 * level;
+  return 120 * level * level;
 }
 
+/** Energy restored per minute (all bulls). Higher stable level = faster recovery. */
+export function energyPerMinute(stableLevel: number): number {
+  return ENERGY_REGEN_BASE_PER_MIN * (1 + 0.5 * Math.max(0, stableLevel - 1));
+}
+
+/** @deprecated use energyPerMinute — kept for callers dividing per tick */
 export function energyRegen(stableLevel: number): number {
-  return 0.15 * (1 + 0.5 * (stableLevel - 1));
+  return energyPerMinute(stableLevel) / 60;
 }
 
 export function gridToWorld(x: number, y: number): [number, number, number] {

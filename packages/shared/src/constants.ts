@@ -1,10 +1,10 @@
 import type { MatType, NpcBull, RarityKey } from './types.js';
 
-export const WORLD_SIZE = 52;
-export const WORLD_CX = 26;
-export const WORLD_CY = 22;
-export const WORLD_RX = 13;
-export const WORLD_RY = 9;
+export const WORLD_SIZE = 56;
+export const WORLD_CX = 28;
+export const WORLD_CY = 23;
+export const WORLD_RX = 14;
+export const WORLD_RY = 9.5;
 export const WORLD_SEED = 42;
 
 export const TILE_COLORS: Record<string, string> = {
@@ -35,19 +35,22 @@ export const NPC_POOL: Omit<NpcBull, 'id' | 'isNpc'>[] = [
   { name: 'Duchess', owner: 'mlk_2', coat: '#d9cbb8', speed: 64, stamina: 82, accel: 62, temper: 2 },
 ];
 
-export const PURSE = [300, 150, 80, 40];
+export const PURSE = [420, 280, 180, 120, 0, 0];
 export const RACE_ENTRY_FEE = 0;
-export const RACE_ENTRY_ENERGY = 30;
-export const BREED_COST = 200;
-export const BREED_DURATION_MS = 8000;
-export const REST_COST = 40;
-export const REST_ENERGY = 40;
-export const TRAIN_HAY_COST = 6;
+export const RACE_ENTRY_ENERGY = 100;
+export const BULL_MAX_ENERGY = 100;
+export const ENERGY_REGEN_BASE_PER_MIN = 1;
+export const BREED_COST = 500;
+export const BREED_DURATION_MS = 120_000;
+export const REST_COST = 80;
+export const REST_ENERGY = 50;
+export const TRAIN_HAY_COST = 12;
+export const FORGE_MIN_ORE = 100;
 export const GATHER_DURATION_MS = 1500;
 export const NODE_RESPAWN_MS = 15_000;
 export const MARKET_LIST_QUANTITIES = [100, 500, 1000] as const;
 export const MARKET_FEE = 0.05;
-export const DEFAULT_RACE_INTERVAL_SEC = 120;
+export const DEFAULT_RACE_INTERVAL_SEC = 600;
 /** How long finished-race results stay painted on the track center (ms). */
 export const RACE_RESULTS_DISPLAY_MS = 60_000;
 export const DEFAULT_STARTING_GOLD = 0;

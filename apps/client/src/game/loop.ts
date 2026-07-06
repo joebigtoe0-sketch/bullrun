@@ -188,6 +188,11 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       return;
     }
     if (!plot.ownerId) {
+      const alreadyOwns = s.pastures.some((p) => p.ownerId === s.me?.id);
+      if (alreadyOwns) {
+        s.toastMsg('You can only own one den');
+        return;
+      }
       s.setBuyDenConfirm({ plotId: plot.id, label: def.label, price: def.price });
     } else if (plot.ownerId === s.me?.id) {
       s.setDenPlotId(plot.id);

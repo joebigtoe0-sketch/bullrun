@@ -3,6 +3,8 @@ import {
   PASTURE_PLOTS,
   PASTURE_WOOD_UPGRADE_COST,
   PASTURE_WOOD_PER_LEVEL,
+  MAX_DENS_PER_PLAYER,
+  pastureUpgradeGoldCost,
   denCapacity,
   pastureSpawnIntervalMs,
   pastureWoodToNextLevel,
@@ -43,6 +45,7 @@ function mapPlot(
     ownerId: string | null;
     level: number;
     woodInvested: number;
+    nextSpawnAt: Date | null;
     owner?: { displayName: string } | null;
   },
   denCount: number,
@@ -56,6 +59,7 @@ function mapPlot(
     displayBull: null,
     denCount,
     denCapacity: denCapacity(row.level),
+    nextSpawnAt: row.nextSpawnAt?.getTime() ?? null,
   };
 }
 
@@ -81,16 +85,20 @@ export async function buyPasture(userId: string, plotId: number) {
   if (!plot) throw new Error('Plot not found');
   if (plot.ownerId) throw new Error('Plot already owned');
 
+  const owned = await prisma.pasturePlot.count({ where: { ownerId: userId } });
+  if (owned >= MAX_DENS_PER_PLAYER) throw new Error('You can only own one den');
+
   const profile = await prisma.playerProfile.findUnique({ where: { userId } });
   if (!profile) throw new Error('Profile not found');
   if (profile.gold < def.price) throw new Error(`Need ${def.price}g`);
+  if (profile.wood < 5) throw new Error('Need 5 wood to establish a den');
 
   const nextSpawnAt = new Date(Date.now() + pastureSpawnIntervalMs(1));
 
   await prisma.$transaction([
     prisma.playerProfile.update({
       where: { userId },
-      data: { gold: profile.gold - def.price },
+      data: { gold: profile.gold - def.price, wood: profile.wood - 5 },
     }),
     prisma.pasturePlot.update({
       where: { id: plotId },
@@ -110,6 +118,8 @@ export async function upgradePasture(userId: string, plotId: number) {
 
   const profile = await prisma.playerProfile.findUnique({ where: { userId } });
   if (!profile) throw new Error('Profile not found');
+  const goldCost = pastureUpgradeGoldCost(plot.level);
+  if (profile.gold < goldCost) throw new Error(`Need ${goldCost}g`);
   if (profile.wood < PASTURE_WOOD_UPGRADE_COST) throw new Error(`Need ${PASTURE_WOOD_UPGRADE_COST} wood`);
 
   let level = plot.level;
@@ -122,7 +132,7 @@ export async function upgradePasture(userId: string, plotId: number) {
   await prisma.$transaction([
     prisma.playerProfile.update({
       where: { userId },
-      data: { wood: profile.wood - PASTURE_WOOD_UPGRADE_COST },
+      data: { wood: profile.wood - PASTURE_WOOD_UPGRADE_COST, gold: profile.gold - goldCost },
     }),
     prisma.pasturePlot.update({
       where: { id: plotId },
@@ -166,6 +176,7 @@ async function spawnOnPlot(plotId: number) {
       temper: rolled.temper,
       coat: rolled.coat,
       trait: rolled.trait,
+      rarity: rolled.rarity,
       location: 'den',
       denPlotId: plotId,
     },

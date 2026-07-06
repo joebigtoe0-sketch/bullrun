@@ -17,6 +17,8 @@ import {
   RACE_LAPS,
   raceBullAt,
   raceGridPosition,
+  raceFinishPosition,
+  raceElapsedMs,
   formatRaceLapLabel,
   currentLap,
   liveStandings,
@@ -647,7 +649,7 @@ function drawRaceTrackBoard(
   }
 
   if (raceAnim && !raceAnim.frozen) {
-    const el = now - raceAnim.startT;
+    const el = raceElapsedMs(raceAnim, now);
     const laps = raceAnim.laps ?? RACE_LAPS;
     const lap = currentLap(el, raceAnim.bulls[0]?.finishT ?? 1, laps, raceAnim.bulls[0]?.lapTimes);
     const standings = liveStandings(raceAnim.bulls, el);
@@ -694,10 +696,13 @@ export interface DrawState {
   walkDestination: { x: number; y: number } | null;
   worldNodes: SyncedWorldNode[];
   raceAnim: {
+    id?: string;
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
     startT: number;
     laps?: number;
     frozen?: boolean;
+    elapsedMs?: number;
+    elapsedAt?: number;
   } | null;
   raceGrid: {
     bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>;
@@ -910,13 +915,17 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   }
 
   if (raceAnim) {
-    const el = raceAnim.frozen ? Number.MAX_SAFE_INTEGER : now - raceAnim.startT;
+    const el = raceAnim.frozen
+      ? Math.max(...raceAnim.bulls.map((b) => b.finishT ?? 0), 0)
+      : raceElapsedMs(raceAnim, now);
     const laps = raceAnim.laps ?? RACE_LAPS;
     const fieldSize = raceAnim.bulls.length;
     for (let i = 0; i < raceAnim.bulls.length; i++) {
       const b = raceAnim.bulls[i]!;
       const slot = b.pos ?? i + 1;
-      const pos = raceBullAt(el, b.finishT, slot, laps, b.lapTimes, fieldSize);
+      const pos = raceAnim.frozen
+        ? raceFinishPosition(b.pos ?? i + 1, fieldSize)
+        : raceBullAt(el, b.finishT, slot, laps, b.lapTimes, fieldSize, b.pos ?? i + 1);
       list.push({
         d: pos.x + pos.y,
         o: {

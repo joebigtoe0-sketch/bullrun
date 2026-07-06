@@ -39,7 +39,7 @@ interface GameStore {
   worldNodes: SyncedWorldNode[];
   walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string; finished: boolean }[] } | null;
-  raceAnim: { bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number; frozen?: boolean } | null;
+  raceAnim: { id?: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startT: number; endT: number; laps?: number; frozen?: boolean; elapsedMs?: number; elapsedAt?: number } | null;
   raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; finishT: number; lapTimes?: number[]; owner?: string }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;

@@ -49,22 +49,57 @@ export function raceProgressAt(elapsed: number, lapTimes: number[]): number {
   return 1;
 }
 
-/** Hold grid formation briefly after the flag, then blend onto the racing line. */
-const GRID_HOLD_MS = 2000;
+/** Brief grid pose at the flag, then blend lane spread onto the oval. */
+const GRID_HOLD_MS = 800;
+const LANE_BLEND_MS = 1200;
 
-/** Finish-line layout — same geometry as the starting grid (white line on the straight). */
+/** Interpolate server-authoritative race clock between standings ticks. */
+export function raceElapsedMs(
+  anim: { startT: number; elapsedMs?: number; elapsedAt?: number },
+  now: number,
+): number {
+  if (anim.elapsedMs != null && anim.elapsedAt != null) {
+    return Math.max(0, anim.elapsedMs + (now - anim.elapsedAt));
+  }
+  return Math.max(0, now - anim.startT);
+}
+
+/** Side-by-side on the white finish line, ordered by place (1st … last). */
 export function raceFinishPosition(
-  slot: number,
+  place: number,
   fieldSize: number,
 ): { x: number; y: number; facingLeft: boolean } {
+  const a = Math.PI / 2;
+  const erMin = 0.82;
+  const erMax = 1.18;
+  const idx = Math.max(0, Math.min(fieldSize - 1, place - 1));
+  const t = fieldSize <= 1 ? 0.5 : idx / (fieldSize - 1);
+  const er = erMin + t * (erMax - erMin);
+  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er;
+  const by = WORLD_CY + Math.sin(a) * WORLD_RY * er;
+  const tx = -Math.sin(a) * WORLD_RX * er;
+  const ty = Math.cos(a) * WORLD_RY * er;
+  return { x: bx, y: by, facingLeft: (tx - ty) * 32 < 0 };
+}
+
+function raceBullAtProgress(
+  prog: number,
+  slot: number,
+  fieldSize: number,
+  spreadFade: number,
+): { x: number; y: number; facingLeft: boolean } {
+  const p = Math.min(1, Math.max(0, prog));
   const gridAngleOffset = (slot - 1) * 0.035;
   const spread = (slot - (fieldSize + 1) / 2) * 0.28;
   const laneEr = raceStartLane(slot);
-  const a = Math.PI / 2 - gridAngleOffset;
-  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * laneEr + spread;
-  const by = WORLD_CY + Math.sin(a) * WORLD_RY * laneEr + spread * 0.35;
-  const tx = -Math.sin(a) * WORLD_RX * laneEr;
-  const ty = Math.cos(a) * WORLD_RY * laneEr;
+  const er = laneEr + (RACE_TRACK_ER - laneEr) * spreadFade * 0.35;
+  const a = Math.PI / 2 - gridAngleOffset * (1 - spreadFade) + p * Math.PI * 2 * RACE_LAPS;
+  const spreadX = spread * (1 - spreadFade);
+  const spreadY = spread * 0.35 * (1 - spreadFade);
+  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er + spreadX;
+  const by = WORLD_CY + Math.sin(a) * WORLD_RY * er + spreadY;
+  const tx = -Math.sin(a) * WORLD_RX * er;
+  const ty = Math.cos(a) * WORLD_RY * er;
   return { x: bx, y: by, facingLeft: (tx - ty) * 32 < 0 };
 }
 
@@ -75,10 +110,11 @@ export function raceBullAt(
   laps = RACE_LAPS,
   lapTimes?: number[],
   fieldSize = 6,
+  finishPlace?: number,
 ): { x: number; y: number; facingLeft: boolean } {
   const t = Math.max(0, elapsed);
-  if (finishT > 0 && t >= finishT) {
-    return raceFinishPosition(slot, fieldSize);
+  if (finishT > 0 && t >= finishT && finishPlace != null) {
+    return raceFinishPosition(finishPlace, fieldSize);
   }
 
   const totalProg = lapTimes?.length
@@ -86,23 +122,11 @@ export function raceBullAt(
     : Math.min(1, Math.max(0, finishT > 0 ? t / finishT : 0));
   const prog = Math.min(1, Math.max(0, totalProg));
 
-  const gridAngleOffset = (slot - 1) * 0.035;
-  const spread = (slot - (fieldSize + 1) / 2) * 0.28;
-  const spreadFade = t < GRID_HOLD_MS ? 0 : Math.min(1, prog * 40);
-  const laneEr = raceStartLane(slot);
-  const er = laneEr + (RACE_TRACK_ER - laneEr) * spreadFade;
+  const spreadFade = t < GRID_HOLD_MS
+    ? 0
+    : Math.min(1, (t - GRID_HOLD_MS) / LANE_BLEND_MS);
 
-  const a =
-    Math.PI / 2 -
-    gridAngleOffset * (1 - spreadFade) +
-    prog * Math.PI * 2 * laps;
-  const spreadX = spread * (1 - spreadFade);
-  const spreadY = spread * 0.35 * (1 - spreadFade);
-  const bx = WORLD_CX + Math.cos(a) * WORLD_RX * er + spreadX;
-  const by = WORLD_CY + Math.sin(a) * WORLD_RY * er + spreadY;
-  const tx = -Math.sin(a) * WORLD_RX * er;
-  const ty = Math.cos(a) * WORLD_RY * er;
-  return { x: bx, y: by, facingLeft: (tx - ty) * 32 < 0 };
+  return raceBullAtProgress(prog, slot, fieldSize, spreadFade);
 }
 
 /** Staggered grid slots on the start line before the race. */
@@ -110,7 +134,7 @@ export function raceGridPosition(
   slot: number,
   total: number,
 ): { x: number; y: number; facingLeft: boolean } {
-  return raceFinishPosition(slot, total);
+  return raceBullAtProgress(0, slot, total, 0);
 }
 
 export function currentLap(elapsed: number, finishT: number, laps = RACE_LAPS, lapTimes?: number[]): number {

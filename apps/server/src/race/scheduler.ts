@@ -97,20 +97,20 @@ async function startRace(raceId: string) {
 
   activeRaces.set(raceId, { bulls, startT: now, endT: now + endT });
 
-  io?.emit('race_started', { id: raceId, bulls, startT: now, endT: now + endT, laps: RACE_LAPS });
+  io?.emit('race_started', { id: raceId, bulls, startT: now, endT: now + endT, laps: RACE_LAPS, elapsed: 0 });
 
   const standingsIv = setInterval(() => {
     const active = activeRaces.get(raceId);
     if (!active) { clearInterval(standingsIv); return; }
     const elapsed = Date.now() - active.startT;
-    if (elapsed >= active.endT - active.startT + 700) {
+    if (elapsed >= active.endT - active.startT + 2500) {
       clearInterval(standingsIv);
       return;
     }
-    io?.emit('race_standings', { id: raceId, standings: liveStandings(active.bulls, elapsed) });
+    io?.emit('race_standings', { id: raceId, standings: liveStandings(active.bulls, elapsed), elapsed });
   }, 250);
 
-  setTimeout(() => finishRace(raceId), endT + 700);
+  setTimeout(() => finishRace(raceId), endT + 2500);
 }
 
 async function finishRace(raceId: string) {

@@ -97,16 +97,28 @@ export function useSocket() {
       startT: number;
       endT: number;
       laps?: number;
+      elapsed?: number;
     }) => {
+      const now = Date.now();
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceAnim({
         ...data,
         bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
+        elapsedMs: data.elapsed ?? 0,
+        elapsedAt: now,
       });
       useGameStore.getState().setRaceLive({ id: data.id, standings: [] });
     });
-    socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[] }) => {
+    socket.on('race_standings', (data: { id: string; standings: { pos: number; name: string; finished: boolean }[]; elapsed?: number }) => {
       useGameStore.getState().setRaceLive(data);
+      const anim = useGameStore.getState().raceAnim;
+      if (anim && anim.id === data.id && data.elapsed != null) {
+        useGameStore.getState().setRaceAnim({
+          ...anim,
+          elapsedMs: data.elapsed,
+          elapsedAt: Date.now(),
+        });
+      }
     });
     socket.on('race_finished', (data: {
       id: string;

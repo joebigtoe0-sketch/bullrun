@@ -56,7 +56,7 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              <Strong>Bull Run</Strong> is a token-gated bull racing MMO. Connect your Solana wallet, gather materials,
+              <Strong>Bull Run</Strong> is a bull racing MMO. Connect your Solana wallet, gather materials,
               breed and equip bulls, enter global races, bet gold, trade on the market, and explore the ranch with other
               players in real time.
             </P>
@@ -77,7 +77,6 @@ export const GUIDE_GROUPS: GuideGroup[] = [
               what other players see on the ranch and in race results.
             </P>
             <UL>
-              <LI>You must hold enough of the project token to pass the gate (shown on the login screen).</LI>
               <LI>The game only asks for login signatures and marketplace transactions you start — never your seed phrase.</LI>
               <LI>Disconnect anytime from Profile.</LI>
             </UL>
@@ -252,7 +251,7 @@ export const GUIDE_GROUPS: GuideGroup[] = [
             <H3>Why did my bull teleport or results look wrong?</H3>
             <P>Refresh mid-race can desync — try staying connected through the finish. Report persistent bugs to the team.</P>
             <H3>Is this real money?</H3>
-            <P>Gold is in-game. Token gate and gold-for-token listings use your wallet on Solana — only approve transactions you intend.</P>
+            <P>Gold is in-game. Gold-for-token listings use your wallet on Solana — only approve transactions you intend.</P>
             <H3>Mobile?</H3>
             <P>Works in mobile browser; landscape recommended.</P>
           </>

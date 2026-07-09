@@ -24,11 +24,7 @@ interface GameStore {
   user: { id: string; username: string; displayName: string; walletAddress?: string | null; hasDisplayName?: boolean } | null;
   walletAddress: string | null;
   hasDisplayName: boolean;
-  hasAccess: boolean | null;
   tokenBalance: number;
-  accessRequired: number;
-  accessChecking: boolean;
-  tokenGateConfigured: boolean;
   profileOpen: boolean;
   me: MeResponse | null;
   panel: PanelType;
@@ -64,7 +60,7 @@ interface GameStore {
 
   setAuth: (token: string, user: { id: string; username: string; displayName: string; walletAddress?: string | null; hasDisplayName?: boolean }) => void;
   setWallet: (address: string | null) => void;
-  checkAccess: () => Promise<void>;
+  refreshTokenBalance: () => Promise<void>;
   setProfileOpen: (open: boolean) => void;
   setMe: (me: MeResponse) => void;
   setPosition: (x: number, y: number) => void;
@@ -112,11 +108,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   user: null,
   walletAddress: null,
   hasDisplayName: false,
-  hasAccess: null,
   tokenBalance: 0,
-  accessRequired: 1000,
-  accessChecking: false,
-  tokenGateConfigured: true,
   profileOpen: false,
   me: null,
   panel: null,
@@ -161,25 +153,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   setWallet: (walletAddress) => set({ walletAddress }),
   setProfileOpen: (profileOpen) => set({ profileOpen }),
-  checkAccess: async () => {
-    const token = get().token;
-    if (!token) {
-      set({ hasAccess: null });
-      return;
-    }
-    if (get().accessChecking) return;
-    set({ accessChecking: true });
+  refreshTokenBalance: async () => {
+    if (!get().token) return;
     try {
       const data = await api.checkAccess();
-      set({
-        hasAccess: data.hasAccess,
-        tokenBalance: data.balance,
-        accessRequired: data.required,
-        accessChecking: false,
-        tokenGateConfigured: data.configured !== false,
-      });
+      set({ tokenBalance: data.balance });
     } catch {
-      set({ accessChecking: false });
+      /* balance display only — ignore */
     }
   },
   setMe: (me) => {
@@ -345,7 +325,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       user: null,
       walletAddress: null,
       hasDisplayName: false,
-      hasAccess: null,
       tokenBalance: 0,
       profileOpen: false,
       me: null,

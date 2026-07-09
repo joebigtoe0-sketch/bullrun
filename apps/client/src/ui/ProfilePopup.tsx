@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useGameStore } from '../store/gameStore';
 
@@ -7,8 +8,13 @@ export function ProfilePopup() {
   const me = useGameStore((s) => s.me);
   const walletAddress = useGameStore((s) => s.walletAddress);
   const tokenBalance = useGameStore((s) => s.tokenBalance);
+  const refreshTokenBalance = useGameStore((s) => s.refreshTokenBalance);
   const logout = useGameStore((s) => s.logout);
   const { disconnect } = useWallet();
+
+  useEffect(() => {
+    if (profileOpen) void refreshTokenBalance();
+  }, [profileOpen, refreshTokenBalance]);
 
   if (!profileOpen || !me) return null;
 

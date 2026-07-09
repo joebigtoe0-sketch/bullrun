@@ -103,7 +103,7 @@ export function AuthScreen() {
         <OnlineBadge count={playersOnline} />
         <Logo className="auth-logo" />
         <h1>Bull Run</h1>
-        <p>Token-gated bull racing MMO</p>
+        <p>Bull racing MMO</p>
 
         {step === 'displayName' ? (
           <form onSubmit={submitDisplayName}>

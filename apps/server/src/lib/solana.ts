@@ -2,8 +2,6 @@ const HELIUS_RPC_URL = process.env.HELIUS_RPC_URL ?? 'https://mainnet.helius-rpc
 const TOKEN_ADDRESS = process.env.TOKEN_ADDRESS ?? '';
 export const TREASURY_WALLET = process.env.TREASURY_WALLET ?? '';
 export const MINT_ADDRESS = TOKEN_ADDRESS;
-export const MIN_PLAY_TOKENS = Number(process.env.MIN_PLAY_TOKENS ?? '1000');
-
 export function isTokenGateConfigured(): boolean {
   return Boolean(TOKEN_ADDRESS && HELIUS_RPC_URL);
 }
@@ -100,12 +98,6 @@ async function rpc<T>(method: string, params: unknown[]): Promise<T | null> {
     console.warn(`[solana] rpc(${method}) failed:`, err instanceof Error ? err.message : err);
     return null;
   }
-}
-
-export async function walletHasAccess(walletAddress: string): Promise<boolean> {
-  if (!isTokenGateConfigured()) return true;
-  const balance = await getTokenBalance(walletAddress);
-  return balance >= MIN_PLAY_TOKENS;
 }
 
 let cachedDecimals: number | null = null;

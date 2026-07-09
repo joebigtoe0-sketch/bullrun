@@ -4,7 +4,7 @@ import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { prisma } from '../db.js';
 import { createStarterUser } from '../services/player.js';
-import { getTokenBalance, isTokenGateConfigured, MIN_PLAY_TOKENS, walletHasAccess } from '../lib/solana.js';
+import { getTokenBalance, isTokenGateConfigured } from '../lib/solana.js';
 
 function isValidSolanaAddress(addr: string): boolean {
   try {
@@ -127,23 +127,14 @@ export async function walletAuthRoutes(app: FastifyInstance) {
     };
   });
 
+  // No token gate — everyone can play. Kept for the token balance shown in the profile.
   app.get('/auth/access', async (req) => {
     const userId = (req.user as { sub: string }).sub;
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.walletAddress) {
-      return { balance: 0, required: MIN_PLAY_TOKENS, hasAccess: false, configured: isTokenGateConfigured() };
-    }
-    if (!isTokenGateConfigured()) {
-      return { balance: 0, required: MIN_PLAY_TOKENS, hasAccess: true, configured: false };
+    if (!user?.walletAddress || !isTokenGateConfigured()) {
+      return { balance: 0, required: 0, hasAccess: true, configured: isTokenGateConfigured() };
     }
     const balance = await getTokenBalance(user.walletAddress);
-    return {
-      balance,
-      required: MIN_PLAY_TOKENS,
-      hasAccess: balance >= MIN_PLAY_TOKENS,
-      configured: true,
-    };
+    return { balance, required: 0, hasAccess: true, configured: true };
   });
 }
-
-export { walletHasAccess };

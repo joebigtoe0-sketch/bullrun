@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { useGameStore } from './store/gameStore';
 import { api } from './api/client';
 import { AuthScreen } from './ui/AuthScreen';
-import { GateScreen } from './ui/GateScreen';
 import { GameUI } from './ui/GameUI';
 import { CanvasWorld } from './world/CanvasWorld';
 import { useGameLoop } from './game/loop';
@@ -12,12 +11,9 @@ export default function App() {
   const token = useGameStore((s) => s.token);
   const me = useGameStore((s) => s.me);
   const hasDisplayName = useGameStore((s) => s.hasDisplayName);
-  const hasAccess = useGameStore((s) => s.hasAccess);
-  const meId = useGameStore((s) => s.me?.id);
   const setAuth = useGameStore((s) => s.setAuth);
   const setMe = useGameStore((s) => s.setMe);
   const setWallet = useGameStore((s) => s.setWallet);
-  const checkAccess = useGameStore((s) => s.checkAccess);
 
   useEffect(() => {
     if (token && !me) {
@@ -37,13 +33,7 @@ export default function App() {
     }
   }, [token, me, setAuth, setMe, setWallet]);
 
-  useEffect(() => {
-    if (token && meId && hasDisplayName && hasAccess === null) {
-      void checkAccess();
-    }
-  }, [token, meId, hasDisplayName, hasAccess, checkAccess]);
-
-  useGameLoop(hasAccess === true);
+  useGameLoop(Boolean(token && me && hasDisplayName));
 
   if (!token) return <AuthScreen />;
   if (!me) {
@@ -54,14 +44,6 @@ export default function App() {
     );
   }
   if (!hasDisplayName) return <AuthScreen />;
-  if (hasAccess === null) {
-    return (
-      <div className="auth-screen">
-        <div className="auth-card"><p>Checking token balance…</p></div>
-      </div>
-    );
-  }
-  if (!hasAccess) return <GateScreen />;
 
   return (
     <ErrorBoundary>

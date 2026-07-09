@@ -133,6 +133,16 @@ export interface WorldObject {
   mat?: MatType;
   dead?: number;
   big?: boolean;
+  /** rail segment endpoints (fence rails between posts) */
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  /** bridge orientation + span (world units) */
+  dir?: 'x' | 'y';
+  len?: number;
+  /** extra depth-sort bias so tall spans draw over what they cross */
+  dSort?: number;
 }
 
 export interface Interactable {

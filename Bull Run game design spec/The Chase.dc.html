@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script src="./bullrun-art.js"></script>
+<script src="./bullrun-sfx.js"></script>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#0b0906}
+a{color:#f2b23a}a:hover{color:#ffd070}
+@keyframes tc-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes tc-fade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;overflow:hidden;font-family:'Pixelify Sans',system-ui,sans-serif;user-select:none;background:#0b0906" data-screen-label="The Chase — cinematic">
+
+  <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;display:block"></canvas>
+
+  <sc-if value="{{ started }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ onReplay }}" style="position:absolute;top:20px;right:20px;z-index:30;display:inline-flex;align-items:center;gap:8px;background:#2e2318;border:3px solid #17100a;border-radius:11px;padding:8px 15px;box-shadow:0 4px 0 rgba(0,0,0,.4);color:#f3e7cd;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer" style-hover="transform:translateY(-2px)">↻ Replay</button>
+  </sc-if>
+
+  <sc-if value="{{ showPlay }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:rgba(11,9,6,.55);animation:tc-fade .4s ease-out">
+      <div style="text-align:center;line-height:1">
+        <div style="color:#f3e7cd;font-size:15px;font-weight:600;letter-spacing:5px;opacity:.7">A BULL RUN SHORT</div>
+        <div style="color:#f2b23a;font-size:76px;font-weight:700;letter-spacing:2px;text-shadow:0 5px 0 #17100a;margin-top:6px">THE CHASE</div>
+      </div>
+      <button onClick="{{ onPlay }}" style="display:inline-flex;align-items:center;gap:12px;background:#f2b23a;border:4px solid #17100a;border-radius:16px;padding:15px 34px;box-shadow:0 6px 0 rgba(0,0,0,.45);color:#201405;font-family:inherit;font-size:24px;font-weight:700;cursor:pointer;animation:tc-pulse 2s ease-in-out infinite" style-hover="filter:brightness(1.06)">▶ &nbsp;PLAY</button>
+      <div style="color:rgba(243,231,205,.55);font-size:13px;font-weight:600;letter-spacing:1px">sound on · 15 seconds</div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;680px&quot;},&quot;bullCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:8,&quot;min&quot;:3,&quot;max&quot;:10,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Cinematic&quot;},&quot;letterbox&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Cinematic&quot;}}">
+class Component extends DCLogic {
+  state = { started: false };
+  canvasRef = React.createRef();
+
+  // ---- timeline (seconds) ----
+  IDLE_END = 3.0; LISTEN_END = 5.3; RUSH_END = 8.6; BEAT_END = 9.5;
+  STAMP = 11.1; EXIT = 13.3; END = 15.6;
+
+  componentDidMount() {
+    this.startAt = 0; this.prevAt = 0; this.parts = []; this.audio = {}; this._burst = false;
+    this.onResize = () => this.resize();
+    window.addEventListener('resize', this.onResize);
+    this.lastT = performance.now();
+    try { window.__chase = this; } catch (e) {}
+    this.boot();
+  }
+  seek(t) {
+    const now = performance.now() / 1000;
+    this.startAt = now - t; this.prevAt = t; this._burst = t >= this.STAMP; this.parts = [];
+    if (!this.state.started) this.setState({ started: true });
+    if (this.ctx) this.draw(t, now);
+  }
+  boot() {
+    const el = this.canvasRef.current || document.querySelector('canvas');
+    if (!el || !window.BRArt) { this._b = requestAnimationFrame(() => this.boot()); return; }
+    this.canvas = el; this.ctx = el.getContext('2d'); this.resize();
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf); cancelAnimationFrame(this._b);
+    window.removeEventListener('resize', this.onResize);
+  }
+  resize() {
+    const dpr = Math.min(1.75, window.devicePixelRatio || 1);
+    this.canvas.width = innerWidth * dpr; this.canvas.height = innerHeight * dpr;
+    this.canvas.style.width = innerWidth + 'px'; this.canvas.style.height = innerHeight + 'px';
+    this.dpr = dpr;
+  }
+
+  onPlay = () => { window.BRSfx && BRSfx.unlock(); this.reset(); this.setState({ started: true }); };
+  onReplay = () => { this.reset(); };
+  reset() { this.startAt = performance.now() / 1000; this.prevAt = 0; this.audio = {}; this.parts = []; this._burst = false; }
+
+  // ---- easing / math ----
+  ss(x) { x = x < 0 ? 0 : x > 1 ? 1 : x; return x * x * (3 - 2 * x); }
+  lerp(a, b, x) { return a + (b - a) * this.ss(x); }
+
+  // forward position along the +x diagonal (toward the bottom-right corner)
+  fP(at) {
+    const B = this.BEAT_END, S = this.STAMP;
+    if (at <= B) return 0;
+    if (at >= S) return 2.55;              // trampled — stays put
+    const r = (at - B) / (S - B); return 2.55 * r * r;   // ease-in bolt
+  }
+  fHerd(at) {
+    const L = this.LISTEN_END, R = this.RUSH_END, B = this.BEAT_END, S = this.STAMP, E = this.EXIT;
+    if (at < L) return -17;
+    if (at < R) return this.lerp(-17, -3, (at - L) / (R - L));
+    if (at < B) return this.lerp(-3, -1.2, (at - R) / (B - R));
+    if (at < S) return this.lerp(-1.2, 2.9, (at - B) / (S - B));     // surge over him
+    if (at < E) { const r = (at - S) / (E - S); return 2.9 + (16 - 2.9) * r * r; }
+    return 16 + (at - E) * 8;              // gone off bottom-right
+  }
+  shakeAmt(at) {
+    const L = this.LISTEN_END, R = this.RUSH_END, B = this.BEAT_END, S = this.STAMP, E = this.EXIT;
+    if (at < L) return 0;
+    if (at < R) return this.lerp(0, 3, (at - L) / (R - L));
+    if (at < B) return 3.2;
+    if (at < S) return this.lerp(3.2, 6, (at - B) / (S - B));
+    if (at < S + 0.35) return 9.5;         // impact
+    if (at < E + 0.8) { const r = (at - (S + 0.35)) / ((E + 0.8) - (S + 0.35)); return 6 * (1 - r); }
+    return 0;
+  }
+
+  herd() {
+    const n = Math.max(3, Math.min(10, Math.round(this.props.bullCount ?? 8)));
+    const palette = ['#b3352e', '#23201d', '#7d3fb0', '#4e9e3a', '#2f6fb0', '#2fa39a', '#d07a2a', '#c9a05a', '#6e4526', '#9aa0a6'];
+    const H = window.BRArt.hash, out = [];
+    for (let i = 0; i < n; i++) {
+      const t = n === 1 ? 0.5 : i / (n - 1);
+      const lat = (t - 0.5) * 4.4 + (H(i, 7, 3) - 0.5) * 0.9;
+      const du = -H(i, 3, 1) * 2.1 - 0.1;
+      out.push({ coat: palette[i % palette.length], lat, du, ph: i * 0.8 });
+    }
+    return out;
+  }
+
+  wp(f, lat) { return { x: f, y: lat }; }   // forward = +x, spread = +y
+
+  frame(tms) {
+    const now = tms / 1000;
+    const dt = Math.min(0.05, (tms - this.lastT) / 1000); this.lastT = tms;
+    const at = this.state.started ? (now - this.startAt) : 0;
+    this.updateParts(dt, at);
+    this.draw(at, now);
+    if (this.state.started) { this.audioTick(this.prevAt, at); this.prevAt = at; }
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  // ---- particles (dust) ----
+  updateParts(dt, at) {
+    const p = this.parts;
+    for (let i = p.length - 1; i >= 0; i--) {
+      const d = p[i]; d.age += dt;
+      if (d.age >= d.life) { p.splice(i, 1); continue; }
+      d.f += d.vf * dt; d.lat += d.vlat * dt; d.rise += d.vr * dt; d.vr *= 0.96;
+    }
+    if (!this.state.started) return;
+    // trailing dust while the herd charges / chases
+    if (at > this.LISTEN_END + 0.3 && at < this.EXIT + 0.3 && p.length < 220) {
+      const fh = this.fHerd(at), spawn = at > this.RUSH_END ? 4 : 3;
+      for (let s = 0; s < spawn; s++) {
+        p.push({ f: fh - 0.3 - Math.random() * 0.9, lat: (Math.random() - 0.5) * 4.6, vf: -0.7 - Math.random() * 0.8, vlat: (Math.random() - 0.5) * 0.5, rise: 0, vr: 5 + Math.random() * 8, age: 0, life: 0.7 + Math.random() * 0.8, r0: 5 + Math.random() * 10 });
+      }
+    }
+    // impact burst the moment he is trampled
+    if (at >= this.STAMP && !this._burst) {
+      this._burst = true;
+      for (let s = 0; s < 46; s++) {
+        const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 2.6;
+        p.push({ f: 2.55 + Math.cos(a) * 0.2, lat: Math.sin(a) * 0.2, vf: Math.cos(a) * sp, vlat: Math.sin(a) * sp, rise: 2, vr: 10 + Math.random() * 16, age: 0, life: 0.9 + Math.random() * 0.9, r0: 6 + Math.random() * 12 });
+      }
+    }
+  }
+
+  draw(at, now) {
+    const ctx = this.ctx, dpr = this.dpr, cw = innerWidth, ch = innerHeight;
+    const BR = window.BRArt;
+    const fP = this.fP(at), fH = this.fHerd(at);
+    const scale = Math.max(cw / 1180, ch / 620) * 1.85;
+    const sk = this.shakeAmt(at);
+    const shx = sk ? (Math.random() - 0.5) * sk : 0;
+    const shy = sk ? (Math.random() - 0.5) * sk : 0;
+
+    // background
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const g = ctx.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, '#8a6f45'); g.addColorStop(0.5, '#b6996a'); g.addColorStop(1, '#8f7549');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+
+    // camera fixed at world origin
+    const screenOf = (x, y) => ({ x: cw / 2 + shx + scale * (x - y) * BR.TW, y: ch / 2 + shy + scale * (x + y) * BR.TH });
+    const sc = dpr * scale;
+    const setWorld = () => ctx.setTransform(sc, 0, 0, sc, dpr * (cw / 2 + shx), dpr * (ch / 2 + shy));
+    setWorld();
+
+    // ground tiles (fixed window, culled)
+    const R = 17;
+    for (let gx = -R; gx <= R; gx++) {
+      for (let gy = -R; gy <= R; gy++) {
+        const cx = cw / 2 + scale * (gx - gy) * BR.TW, cy = ch / 2 + scale * (gx + gy) * BR.TH;
+        if (cx < -90 || cx > cw + 90 || cy < -90 || cy > ch + 90) continue;
+        BR.tile(ctx, BR.iso, gx, gy, ((gx + gy) & 1) ? 'trk1' : 'trk2');
+      }
+    }
+
+    // rolling dust wall behind the herd
+    if (at > this.LISTEN_END && at < this.EXIT + 0.6) {
+      ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const hs = screenOf(fH - 0.6, 0);
+      const rush = this.ss((at - this.LISTEN_END) / 1.6);
+      const rad = (200 + 150 * rush) * scale;
+      const rg = ctx.createRadialGradient(hs.x, hs.y, 10, hs.x, hs.y, rad);
+      rg.addColorStop(0, 'rgba(206,182,138,' + (0.6 * rush).toFixed(2) + ')');
+      rg.addColorStop(0.55, 'rgba(190,164,120,' + (0.38 * rush).toFixed(2) + ')');
+      rg.addColorStop(1, 'rgba(190,164,120,0)');
+      ctx.fillStyle = rg; ctx.beginPath(); ctx.ellipse(hs.x, hs.y - 22 * scale, rad, rad * 0.72, 0, 0, 7); ctx.fill();
+      ctx.restore(); setWorld();
+    }
+
+    // dust puffs (world space, behind characters)
+    for (const d of this.parts) {
+      const a = 1 - d.age / d.life, s = BR.iso(d.f, d.lat), r = d.r0 * (1 + d.age * 1.5);
+      ctx.fillStyle = 'rgba(211,188,143,' + (a * 0.5).toFixed(2) + ')';
+      ctx.beginPath(); ctx.ellipse(s.x, s.y - d.rise, r, r * 0.7, 0, 0, 7); ctx.fill();
+    }
+
+    // ---- depth-sorted entities ----
+    const ents = [];
+    const SIDE = 4.9;
+    for (let k = -14; k <= 16; k += 2) {
+      for (const side of [-SIDE, SIDE]) {
+        ents.push({ kind: 'post', x: k, y: side });
+        ents.push({ kind: 'rail', x1: k, y1: side, x2: k + 2, y2: side, dep: (k + side + k + 2 + side) / 2 - 0.01 });
+      }
+    }
+    const running = at >= this.LISTEN_END;
+    for (const b of this.herd()) {
+      const f = fH + b.du;
+      if (f > 20) continue;                // left the arena
+      ents.push({ kind: 'bull', x: f, y: b.lat, coat: b.coat, ph: now * (running ? 12 : 3) + b.ph, moving: running, run: at >= this.RUSH_END - 0.4 });
+    }
+    const standing = at < this.STAMP;
+    if (standing) {
+      const sprint = at > this.BEAT_END + 0.05;
+      ents.push({ kind: 'player', x: fP, y: 0, ph: now * (sprint ? 13 : 0), moving: sprint });
+    }
+    ents.sort((a, b) => (a.dep != null ? a.dep : a.x + a.y) - (b.dep != null ? b.dep : b.x + b.y));
+    for (const e of ents) {
+      if (e.kind === 'post') BR.drawObj(ctx, BR.iso, { t: 'post', x: e.x, y: e.y }, { t: now });
+      else if (e.kind === 'rail') BR.drawObj(ctx, BR.iso, { t: 'rail', x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2 }, { t: now });
+      else if (e.kind === 'bull') BR.drawObj(ctx, BR.iso, { t: 'bull', x: e.x, y: e.y, coat: e.coat, ph: e.ph, moving: e.moving, run: e.run }, { t: now });
+      else BR.drawObj(ctx, BR.iso, { t: 'player', x: e.x, y: e.y, ph: e.ph, moving: e.moving, label: 'YOU' }, { t: now });
+    }
+
+    // ================= screen overlay =================
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    // flattened runner (after the herd rolls over him)
+    if (at >= this.STAMP + 0.15) this.drawFlat(ctx, screenOf(2.55, 0), at, scale);
+
+    const head = screenOf(fP, 0); head.y -= 60 * scale;
+
+    // whistle notes (idle)
+    if (at < this.IDLE_END) {
+      const m = screenOf(fP, 0); m.y -= 40 * scale;
+      for (let i = 0; i < 3; i++) {
+        const ph = (at * 0.7 + i * 0.34) % 1, a = Math.sin(ph * Math.PI);
+        ctx.font = (16 + i * 3) + 'px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(243,231,205,' + (a * 0.85).toFixed(2) + ')';
+        ctx.fillText(['♪', '♫', '♪'][i], m.x + 14 * scale + Math.sin(ph * 6 + i) * 12, m.y - ph * 58 * scale);
+      }
+    }
+    // "?" listening
+    if (at >= this.IDLE_END && at < this.RUSH_END) {
+      const a = this.ss((at - this.IDLE_END) / 0.4) * (1 - this.ss((at - (this.RUSH_END - 0.4)) / 0.4));
+      const wob = Math.sin(at * 5) * 4;
+      ctx.font = "700 " + (34 * scale) + "px 'Pixelify Sans', sans-serif";
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(23,16,10,' + (a * 0.9).toFixed(2) + ')';
+      ctx.strokeText('?', head.x + wob, head.y);
+      ctx.fillStyle = 'rgba(243,231,205,' + a.toFixed(2) + ')'; ctx.fillText('?', head.x + wob, head.y);
+    }
+    // "!" spotted → running scared
+    if (at >= this.RUSH_END - 0.15 && at < this.STAMP) {
+      const t0 = at - (this.RUSH_END - 0.15);
+      const pop = Math.min(1, t0 / 0.18), s2 = 0.6 + 0.4 * this.ss(pop);
+      ctx.font = "700 " + (52 * scale * s2) + "px 'Pixelify Sans', sans-serif";
+      ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(23,16,10,.95)'; ctx.strokeText('!', head.x, head.y);
+      ctx.fillStyle = '#e2483a'; ctx.fillText('!', head.x, head.y);
+    }
+    // impact word
+    if (at >= this.STAMP && at < this.STAMP + 0.6) {
+      const a = 1 - (at - this.STAMP) / 0.6, jig = (Math.random() - 0.5) * 8;
+      const p = screenOf(2.55, 0);
+      ctx.font = "700 " + (60 * scale) + "px 'Pixelify Sans', sans-serif";
+      ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(23,16,10,' + a.toFixed(2) + ')';
+      ctx.strokeText('STOMP!', p.x + jig, p.y - 70 * scale + jig);
+      ctx.fillStyle = 'rgba(242,178,58,' + a.toFixed(2) + ')'; ctx.fillText('STOMP!', p.x + jig, p.y - 70 * scale + jig);
+    }
+
+    // speed lines during the chase
+    if (at > this.BEAT_END && at < this.EXIT) {
+      const van = screenOf(fH, 0), inten = Math.min(1, (at - this.BEAT_END) / 0.6);
+      ctx.strokeStyle = 'rgba(255,248,232,' + (0.14 * inten).toFixed(2) + ')'; ctx.lineWidth = 2;
+      const H = BR.hash;
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + H(i, 1, 5) * 0.4;
+        const r0 = 120 + (now * 900 + H(i, 2, 5) * 600) % 500;
+        ctx.beginPath();
+        ctx.moveTo(van.x + Math.cos(ang) * r0, van.y + Math.sin(ang) * r0 * 0.7);
+        ctx.lineTo(van.x + Math.cos(ang) * (r0 + 70), van.y + Math.sin(ang) * (r0 + 70) * 0.7);
+        ctx.stroke();
+      }
+    }
+
+    // vignette
+    const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.32, cw / 2, ch / 2, Math.max(cw, ch) * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,7,4,.5)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+
+    // letterbox
+    let bar = 0;
+    if (this.props.letterbox !== false) { bar = Math.round(ch * 0.075); ctx.fillStyle = '#0b0906'; ctx.fillRect(0, 0, cw, bar); ctx.fillRect(0, ch - bar, cw, bar); }
+
+    // intro title (lower third)
+    if (this.state.started && at < this.IDLE_END + 1.2) {
+      const a = this.ss(at / 0.5) * (1 - this.ss((at - (this.IDLE_END + 0.4)) / 0.7));
+      ctx.textAlign = 'left';
+      ctx.font = "700 44px 'Pixelify Sans', sans-serif";
+      ctx.fillStyle = 'rgba(23,16,10,' + (a * 0.85).toFixed(2) + ')'; ctx.fillText('THE CHASE', 42, ch - bar - 40);
+      ctx.fillStyle = 'rgba(242,178,58,' + a.toFixed(2) + ')'; ctx.fillText('THE CHASE', 40, ch - bar - 42);
+      ctx.font = "600 15px 'Pixelify Sans', sans-serif";
+      ctx.fillStyle = 'rgba(243,231,205,' + (a * 0.8).toFixed(2) + ')'; ctx.fillText('San Fermín Oval · opening morning', 42, ch - bar - 22);
+      ctx.textAlign = 'center';
+    }
+
+    // end card
+    if (at > this.EXIT + 0.4) {
+      const a = this.ss((at - (this.EXIT + 0.4)) / 0.8);
+      ctx.font = "700 " + (58) + "px 'Pixelify Sans', sans-serif";
+      ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(23,16,10,' + (a * 0.9).toFixed(2) + ')';
+      ctx.strokeText('TRAMPLED.', cw / 2, ch * 0.34); ctx.fillStyle = 'rgba(242,178,58,' + a.toFixed(2) + ')'; ctx.fillText('TRAMPLED.', cw / 2, ch * 0.34);
+      ctx.font = "600 16px 'Pixelify Sans', sans-serif";
+      ctx.fillStyle = 'rgba(243,231,205,' + (a * 0.7).toFixed(2) + ')'; ctx.fillText('maybe don\u2019t whistle on the track next year', cw / 2, ch * 0.34 + 46);
+    }
+  }
+
+  // flattened, dizzy runner
+  drawFlat(ctx, p, at, scale) {
+    const a = this.ss((at - (this.STAMP + 0.15)) / 0.3);
+    const s = scale;
+    ctx.save();
+    // settled dust ring
+    ctx.fillStyle = 'rgba(140,110,66,' + (0.22 * a).toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x, p.y, 46 * s, 20 * s, 0, 0, 7); ctx.fill();
+    // pancaked body (gold shirt) + brown pants
+    ctx.fillStyle = 'rgba(90,70,50,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x + 8 * s, p.y + 2 * s, 20 * s, 8 * s, 0.1, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(232,163,61,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x - 6 * s, p.y - 1 * s, 22 * s, 9 * s, -0.05, 0, 7); ctx.fill();
+    // little boots poking out
+    ctx.fillStyle = 'rgba(43,33,24,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x + 24 * s, p.y + 5 * s, 5 * s, 3 * s, 0.3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(p.x + 22 * s, p.y - 4 * s, 5 * s, 3 * s, 0.3, 0, 7); ctx.fill();
+    // squashed straw hat, knocked aside
+    ctx.fillStyle = 'rgba(217,180,90,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x - 26 * s, p.y - 3 * s, 13 * s, 6 * s, -0.2, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(201,164,74,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(p.x - 26 * s, p.y - 4 * s, 6 * s, 3 * s, -0.2, 0, 7); ctx.fill();
+    // dizzy stars orbiting
+    ctx.font = (15 * s) + "px system-ui, sans-serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) {
+      const ang = at * 3 + i * (Math.PI * 2 / 3);
+      const sx = p.x - 4 * s + Math.cos(ang) * 20 * s, sy = p.y - 20 * s + Math.sin(ang) * 7 * s;
+      ctx.fillStyle = 'rgba(255,236,150,' + (a * (0.55 + 0.45 * Math.sin(ang))).toFixed(2) + ')';
+      ctx.fillText('✦', sx, sy);
+    }
+    ctx.restore();
+  }
+
+  audioTick(a, b) {
+    const S = window.BRSfx; if (!S) return;
+    const step = (intv, from, fn) => { if (Math.floor((b - from) / intv) > Math.floor((a - from) / intv)) fn(); };
+    const cross = (th, fn) => { if (a < th && b >= th) fn(); };
+    if (b < this.IDLE_END) step(1.35, 0.25, () => S.chime());                    // whistling
+    if (b >= this.LISTEN_END && b < this.RUSH_END) step(0.5, this.LISTEN_END, () => S.whoosh());
+    cross(this.RUSH_END - 0.15, () => { S.horn(); S.whoosh(); });                 // spotted
+    if (b >= this.RUSH_END && b < this.EXIT) step(0.15, this.RUSH_END, () => S.hammer());  // hooves
+    cross(this.STAMP, () => { S.error(); S.hammer(); S.whoosh(); });              // impact
+  }
+
+  renderVals() {
+    return {
+      canvasRef: this.canvasRef,
+      started: this.state.started,
+      showPlay: !this.state.started,
+      onPlay: this.onPlay,
+      onReplay: this.onReplay
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { ChatPanel } from './ChatPanel';
+import { ItemIcon } from './ItemIcon';
 import { ProfilePopup } from './ProfilePopup';
 import { GameGuide } from './GameGuide';
 import { OnlineBadge } from './OnlineBadge';
@@ -229,7 +230,7 @@ function BullCard({ bull, items, onTrain, onRename, onEquip, onFollow, onDelete 
               <span className="equip-slot-label">{SLOT_LABEL[slot]}</span>
               {item ? (
                 <>
-                  <span className="swatch" style={{ background: item.color }} />
+                  <ItemIcon slot={item.slot} rarity={item.rarity} size={34} />
                   <span className="equip-slot-name">{item.name}</span>
                   {item.bonus && (
                     <span className="muted sm">+{itemBonusAmt(item.bonus.amt)} {item.bonus.stat}</span>
@@ -854,7 +855,7 @@ function InventoryPopup() {
           {equippedOnTarget.map((it) => (
             <div key={it.id} className="row-between" style={{ marginTop: 6 }}>
               <div className="row gap">
-                <span className="swatch" style={{ background: it.color }} />
+                <ItemIcon slot={it.slot} rarity={it.rarity} size={34} />
                 <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
                 <span className="muted sm">{it.slot}</span>
               </div>
@@ -867,10 +868,12 @@ function InventoryPopup() {
       {items.length === 0 && <div className="muted center">No loose items — forge some ore!</div>}
       {items.map((it) => (
         <div key={it.id} className="card row-between">
-          <div>
-            <span className="swatch" style={{ background: it.color }} />
-            <span style={{ color: it.rarityColor }} className="bold">{it.name}</span>
-            <div className="muted sm">{it.slot} · {it.rarity}</div>
+          <div className="row gap">
+            <ItemIcon slot={it.slot} rarity={it.rarity} />
+            <div>
+              <span style={{ color: it.rarityColor }} className="bold">{it.name}</span>
+              <div className="muted sm">{it.slot} · {it.rarity}</div>
+            </div>
           </div>
           <button className={`${btn} green sm`} onClick={() => target && api.equip(it.id, target.id).then(setMe).catch((e) => toast(e.message))}>Equip</button>
         </div>

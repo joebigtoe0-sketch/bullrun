@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script src="bullrun-art.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#241f18}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;font-family:'Pixelify Sans',system-ui,sans-serif;user-select:none;background:#241f18" data-screen-label="Asset sheet">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 6px">
+    <a href="Bull Run Prototype.dc.html" style="display:inline-flex;align-items:center;gap:7px;background:#2e2318;border:3px solid #17100a;border-radius:10px;padding:7px 14px;box-shadow:0 4px 0 rgba(0,0,0,.35);color:#f3e7cd;font-size:14px;font-weight:700;text-decoration:none">← Back to the ranch</a>
+    <div style="text-align:center">
+      <div style="color:#f2b23a;font-size:26px;font-weight:700;letter-spacing:1px">BULL RUN — ASSET SHEET</div>
+      <div style="color:#8f7f63;font-size:13px;font-weight:600">every world asset, drawn live from bullrun-art.js</div>
+    </div>
+    <div style="width:150px"></div>
+  </div>
+  <canvas ref="{{ canvasRef }}" style="display:block;margin:0 auto"></canvas>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;760px&quot;}}">
+class Component extends DCLogic {
+  state = { v: 0 };
+  canvasRef = React.createRef();
+
+  componentDidMount() {
+    this.onResize = () => { this.layout(); };
+    window.addEventListener('resize', this.onResize);
+    this.startLoop();
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    cancelAnimationFrame(this._boot);
+    window.removeEventListener('resize', this.onResize);
+  }
+  startLoop() {
+    const el = this.canvasRef.current || document.querySelector('canvas');
+    if (!el || !window.BRArt) { this._boot = requestAnimationFrame(() => this.startLoop()); return; }
+    this.canvas = el;
+    this.ctx = el.getContext('2d');
+    this.buildEntries();
+    this.layout();
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+
+  buildEntries() {
+    const P = (type, r) => ({ patch: type, r });
+    this.entries = [
+      { label: 'Grass', ...P('g', 1) },
+      { label: 'Dirt path', ...P('dirt', 1) },
+      { label: 'Track surface', ...P('trk', 1) },
+      { label: 'Tree', obj: { t: 'tree', big: true, dead: 0 }, ...P('g', 1), scale: 0.85, lift: 14 },
+      { label: 'Tree (small)', obj: { t: 'tree', dead: 0 }, ...P('g', 1), lift: 10 },
+      { label: 'Stump (chopped)', obj: { t: 'tree', dead: 9e15 }, ...P('g', 1) },
+      { label: 'Ore node', obj: { t: 'rock', dead: 0 }, ...P('g', 1) },
+      { label: 'Ore (mined out)', obj: { t: 'rock', dead: 9e15 }, ...P('g', 1) },
+      { label: 'Hay bale', obj: { t: 'hay', dead: 0 }, ...P('g', 1) },
+      { label: 'Hay (gathered)', obj: { t: 'hay', dead: 9e15 }, ...P('g', 1) },
+      { label: 'Track fence', custom: 'fence', ...P('trk', 1) },
+      { label: 'Race sign', obj: { t: 'sign' }, ...P('dirt', 1), lift: 6 },
+      { label: 'Race booth', obj: { t: 'racebooth' }, ...P('dirt', 2), scale: 0.8, lift: 10 },
+      { label: 'House', obj: { t: 'house' }, ...P('g', 2), scale: 0.62, lift: 16 },
+      { label: 'Stable (barn)', obj: { t: 'stable' }, ...P('g', 2), scale: 0.62, lift: 16 },
+      { label: 'Betting booth', obj: { t: 'booth' }, ...P('g', 2), scale: 0.68, lift: 10 },
+      { label: 'Market stall', obj: { t: 'market' }, ...P('g', 2), scale: 0.68, lift: 10 },
+      { label: 'Forge', obj: { t: 'forge' }, ...P('g', 2), scale: 0.62, lift: 16 },
+      { label: 'Walkover bridge', obj: { t: 'bridge', len: 4.6 }, ...P('trk', 2), scale: 0.62, lift: 10 },
+      { label: 'Bull — Chestnut', obj: { t: 'bull', coat: '#6e4526' }, ...P('g', 1), scale: 1.25, lift: 8 },
+      { label: 'Bull — Midnight', obj: { t: 'bull', coat: '#1d1a17' }, ...P('g', 1), scale: 1.25, lift: 8 },
+      { label: 'Bull — Crimson', obj: { t: 'bull', coat: '#8e2f2f' }, ...P('g', 1), scale: 1.25, lift: 8 },
+      { label: 'Racer (blanket)', obj: { t: 'bull', coat: '#c99a5b', racing: true }, ...P('trk', 1), scale: 1.25, lift: 8 },
+      { label: 'You (rancher)', obj: { t: 'player' }, ...P('g', 1), scale: 1.25, lift: 10 },
+      { label: 'NPC rancher', obj: { t: 'npc', shirt: '#4a72c4', lvl: 27, name: 'jigglz' }, ...P('g', 1), scale: 1.25, lift: 10 }
+    ];
+  }
+  layout() {
+    const cw = Math.min(1160, innerWidth - 24);
+    this.cellW = 224; this.cellH = 210;
+    this.cols = Math.max(2, Math.floor(cw / this.cellW));
+    this.rows = Math.ceil(this.entries.length / this.cols);
+    const w = this.cols * this.cellW, h = this.rows * this.cellH + 20;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+    this.canvas.style.width = w + 'px'; this.canvas.style.height = h + 'px';
+    this.dpr = dpr;
+  }
+
+  frame(tms) {
+    this.draw(tms / 1000);
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+  draw(t) {
+    const A = window.BRArt, ctx = this.ctx, dpr = this.dpr || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = this.cols * this.cellW, H = this.rows * this.cellH + 20;
+    ctx.fillStyle = '#241f18'; ctx.fillRect(0, 0, W, H);
+    const nowMs = Date.now();
+    this.entries.forEach((en, idx) => {
+      const col = idx % this.cols, row = Math.floor(idx / this.cols);
+      const x0 = col * this.cellW, y0 = row * this.cellH + 10;
+      // card
+      ctx.fillStyle = '#2b241b';
+      ctx.strokeStyle = '#17100a'; ctx.lineWidth = 2.5;
+      this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 14, 12);
+      ctx.fill(); ctx.stroke();
+      // asset
+      const sc = en.scale || 1;
+      const cx = x0 + this.cellW / 2;
+      const cy = y0 + (this.cellH - 42) * 0.58 + (en.lift || 0) * sc;
+      ctx.save();
+      ctx.beginPath(); this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 14, 12); ctx.clip();
+      ctx.translate(cx, cy); ctx.scale(sc, sc);
+      const iso = A.iso;
+      const r = en.r || 1;
+      const types = { g: ['g1', 'g2'], dirt: ['dirt', 'dirt'], trk: ['trk1', 'trk2'] }[en.patch || 'g'];
+      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+        A.tile(ctx, iso, dx, dy, types[(dx + dy + 20) % 2]);
+      }
+      // recentre: patch vertical center is at +16px in iso space
+      ctx.translate(0, 16 - 16);
+      if (en.custom === 'fence') {
+        A.drawObj(ctx, iso, { t: 'rail', x1: -1.1, y1: 0.55, x2: 1.1, y2: -0.55, x: 0, y: 0 }, { t, nowMs });
+        A.drawObj(ctx, iso, { t: 'post', x: -1.1, y: 0.55 }, { t, nowMs });
+        A.drawObj(ctx, iso, { t: 'post', x: 0, y: 0 }, { t, nowMs });
+        A.drawObj(ctx, iso, { t: 'post', x: 1.1, y: -0.55 }, { t, nowMs });
+      } else if (en.obj) {
+        const o = Object.assign({ x: 0, y: 0 }, en.obj);
+        A.drawObj(ctx, iso, o, { t, nowMs });
+      }
+      ctx.restore();
+      // label bar (covers any patch overflow at the card bottom)
+      ctx.save();
+      ctx.beginPath(); this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 14, 12); ctx.clip();
+      ctx.fillStyle = '#221c14';
+      ctx.fillRect(x0 + 8, y0 + this.cellH - 42, this.cellW - 16, 32);
+      ctx.strokeStyle = '#17100a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0 + 8, y0 + this.cellH - 42); ctx.lineTo(x0 + this.cellW - 8, y0 + this.cellH - 42); ctx.stroke();
+      ctx.font = "700 14px 'Pixelify Sans', monospace";
+      ctx.fillStyle = '#f2b23a'; ctx.textAlign = 'center';
+      ctx.fillText(en.label, cx, y0 + this.cellH - 21);
+      ctx.textAlign = 'left';
+      ctx.restore();
+    });
+  }
+  rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  renderVals() {
+    return { canvasRef: this.canvasRef };
+  }
+}
+</script>
+</body>
+</html>

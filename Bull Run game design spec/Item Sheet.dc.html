@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script src="bullrun-art.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#241f18}
+a{color:#f2b23a}a:hover{color:#f8c65c}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;font-family:'Pixelify Sans',system-ui,sans-serif;user-select:none;background:#241f18" data-screen-label="Item sheet">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 6px">
+    <a href="Bull Run Prototype.dc.html" style="display:inline-flex;align-items:center;gap:7px;background:rgba(30,23,15,.88);border:1px solid rgba(243,231,205,.14);border-radius:12px;padding:7px 14px;color:#f3e7cd;font-size:14px;font-weight:700;text-decoration:none">← Back to the ranch</a>
+    <div style="text-align:center">
+      <div style="color:#f2b23a;font-size:26px;font-weight:700;letter-spacing:1px">BULL RUN — ITEM SHEET</div>
+      <div style="color:#8f7f63;font-size:13px;font-weight:600">equippable bull gear · 5 slots × 5 rarities · forged from ore</div>
+    </div>
+    <div style="width:150px"></div>
+  </div>
+  <canvas ref="{{ canvasRef }}" style="display:block;margin:0 auto"></canvas>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;760px&quot;}}">
+class Component extends DCLogic {
+  state = { v: 0 };
+  canvasRef = React.createRef();
+
+  componentDidMount() {
+    this.onResize = () => this.layout();
+    window.addEventListener('resize', this.onResize);
+    this.startLoop();
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    cancelAnimationFrame(this._boot);
+    window.removeEventListener('resize', this.onResize);
+  }
+  startLoop() {
+    const el = this.canvasRef.current || document.querySelector('canvas');
+    if (!el || !window.BRArt) { this._boot = requestAnimationFrame(() => this.startLoop()); return; }
+    this.canvas = el;
+    this.ctx = el.getContext('2d');
+    this.slots = [
+      { slot: 'coat', noun: 'Coat' },
+      { slot: 'horns', noun: 'Horns' },
+      { slot: 'hooves', noun: 'Hooves' },
+      { slot: 'tail', noun: 'Tail Wrap' },
+      { slot: 'accessory', noun: 'Harness' }
+    ];
+    this.rarities = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'];
+    this.adj = { Common: 'Plain', Uncommon: 'Sturdy', Rare: 'Polished', Epic: 'Enchanted', Legendary: 'Mythic' };
+    this.layout();
+    this.raf = requestAnimationFrame(() => this.draw());
+  }
+  layout() {
+    if (!this.canvas) return;
+    this.cellW = Math.max(150, Math.min(208, Math.floor((innerWidth - 30) / 5)));
+    this.cellH = Math.round(this.cellW * 0.83);
+    const w = 5 * this.cellW, h = 5 * this.cellH + 50;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = w * dpr; this.canvas.height = h * dpr;
+    this.canvas.style.width = w + 'px'; this.canvas.style.height = h + 'px';
+    this.dpr = dpr;
+    if (this.ctx) this.draw();
+  }
+  draw() {
+    const A = window.BRArt, ctx = this.ctx, dpr = this.dpr || 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = 5 * this.cellW, H = 5 * this.cellH + 50;
+    ctx.fillStyle = '#241f18'; ctx.fillRect(0, 0, W, H);
+    // rarity column headers
+    ctx.font = "700 15px 'Pixelify Sans', monospace"; ctx.textAlign = 'center';
+    this.rarities.forEach((r, c) => {
+      ctx.fillStyle = A.RARC[r];
+      ctx.fillText(r.toUpperCase(), c * this.cellW + this.cellW / 2, 30);
+    });
+    this.slots.forEach((sl, row) => {
+      this.rarities.forEach((rar, col) => {
+        const x0 = col * this.cellW, y0 = row * this.cellH + 42;
+        const acc = A.RARC[rar];
+        // card with rarity border
+        ctx.fillStyle = '#2b241b';
+        ctx.strokeStyle = acc; ctx.globalAlpha = 1;
+        this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 12, 12);
+        ctx.fill();
+        ctx.save(); ctx.globalAlpha = 0.55; ctx.lineWidth = 1.6; ctx.stroke(); ctx.restore();
+        // item
+        ctx.save();
+        ctx.beginPath(); this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 12, 12); ctx.clip();
+        ctx.translate(x0 + this.cellW / 2, y0 + (this.cellH - 12) * 0.56);
+        ctx.scale(1.7, 1.7);
+        A.drawItem(ctx, A.iso, sl.slot, rar);
+        ctx.restore();
+        // label bar
+        ctx.save();
+        ctx.beginPath(); this.rr(ctx, x0 + 8, y0 + 4, this.cellW - 16, this.cellH - 12, 12); ctx.clip();
+        ctx.fillStyle = '#221c14';
+        ctx.fillRect(x0 + 8, y0 + this.cellH - 38, this.cellW - 16, 30);
+        ctx.font = "700 13px 'Pixelify Sans', monospace";
+        ctx.fillStyle = acc; ctx.textAlign = 'center';
+        ctx.fillText(this.adj[rar] + ' ' + sl.noun, x0 + this.cellW / 2, y0 + this.cellH - 18);
+        ctx.restore();
+      });
+    });
+    ctx.textAlign = 'left';
+  }
+  rr(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  renderVals() {
+    return { canvasRef: this.canvasRef };
+  }
+}
+</script>
+</body>
+</html>

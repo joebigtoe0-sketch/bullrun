@@ -3,7 +3,6 @@ import {
   WORLD_CY,
   WORLD_RX,
   WORLD_RY,
-  TILE_COLORS,
   FENCE_RINGS,
   PASTURE_PLOTS,
   pastureCenter,
@@ -32,6 +31,7 @@ import {
   type BullTrait,
 } from '@bullrun/shared';
 import { worldData, type SyncedWorldNode } from '../../store/gameStore';
+import { BRArt, type ArtObj } from './bullrunArt';
 
 const M = worldData.M;
 const CX = WORLD_CX;
@@ -45,12 +45,12 @@ export function iso(x: number, y: number) {
   return { x: (x - y) * 32, y: (x + y) * 16 };
 }
 
-export function shade(hex: string, amt: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, (n >> 16) + amt));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 255) + amt));
-  const b = Math.max(0, Math.min(255, (n & 255) + amt));
-  return `rgb(${r},${g},${b})`;
+/** Follower bull position + walk-cycle state (mutated in place each frame). */
+export interface FollowerPos {
+  x: number;
+  y: number;
+  ph?: number;
+  moving?: boolean;
 }
 
 function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number } {
@@ -61,37 +61,8 @@ function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number
   return { x: c.x + rx, y: c.y + ry };
 }
 
-function cube(
-  ctx: CanvasRenderingContext2D,
-  wx: number, wy: number, wd: number, dd: number, h: number, elev: number,
-  top: string, left: string, right: string,
-) {
-  const c1 = iso(wx, wy), c2 = iso(wx + wd, wy), c3 = iso(wx + wd, wy + dd), c4 = iso(wx, wy + dd);
-  const e = elev, hh = elev + h;
-  ctx.fillStyle = right;
-  ctx.beginPath();
-  ctx.moveTo(c2.x, c2.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c3.x, c3.y - e); ctx.lineTo(c2.x, c2.y - e);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = left;
-  ctx.beginPath();
-  ctx.moveTo(c4.x, c4.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c3.x, c3.y - e); ctx.lineTo(c4.x, c4.y - e);
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle = top;
-  ctx.beginPath();
-  ctx.moveTo(c1.x, c1.y - hh); ctx.lineTo(c2.x, c2.y - hh); ctx.lineTo(c3.x, c3.y - hh); ctx.lineTo(c4.x, c4.y - hh);
-  ctx.closePath(); ctx.fill();
-}
-
 function label(ctx: CanvasRenderingContext2D, wx: number, wy: number, txt: string, yOff: number, color: string) {
-  const s = iso(wx, wy);
-  ctx.font = "600 11px 'Nunito', system-ui, sans-serif";
-  const w = ctx.measureText(txt).width + 10;
-  ctx.fillStyle = 'rgba(23,16,10,.8)';
-  ctx.fillRect(s.x - w / 2, s.y - yOff - 13, w, 16);
-  ctx.fillStyle = color || '#f3e7cd';
-  ctx.textAlign = 'center';
-  ctx.fillText(txt, s.x, s.y - yOff - 1);
-  ctx.textAlign = 'left';
+  BRArt.label(ctx, iso, wx, wy, txt, yOff, color);
 }
 
 function wrapSpeechLines(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
@@ -121,7 +92,7 @@ function drawSpeechBubble(
 ) {
   if (alpha <= 0) return;
   const s = iso(wx, wy);
-  ctx.font = "600 10px 'Nunito', system-ui, sans-serif";
+  ctx.font = "600 10px 'Pixelify Sans', monospace";
   const maxW = 118;
   const lines = wrapSpeechLines(ctx, text, maxW);
   const lineH = 12;
@@ -174,41 +145,24 @@ function drawRing(ctx: CanvasRenderingContext2D, er: number, color: string) {
   ctx.setLineDash([]);
 }
 
-/** Horizontal rails connecting fence posts into a continuous fence. */
-function drawFenceRails(ctx: CanvasRenderingContext2D) {
-  const railHeights = [9, 17];
-
-  for (const { er, n } of FENCE_RINGS) {
-    const posts: { wx: number; wy: number }[] = [];
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2;
-      posts.push({ wx: CX + Math.cos(a) * RX * er, wy: CY + Math.sin(a) * RY * er });
-    }
-
-    for (const rh of railHeights) {
-      ctx.strokeStyle = '#8a6a2e';
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+/** Checkered start/finish strip painted across the track at CX. */
+function drawStartFinishStrip(ctx: CanvasRenderingContext2D) {
+  const sy0 = CY + RY * 0.83;
+  const sy1 = CY + RY * 1.17;
+  const nCk = 7;
+  for (let i = 0; i < nCk; i++) {
+    for (let j = 0; j < 2; j++) {
+      const ya = sy0 + ((sy1 - sy0) * i) / nCk;
+      const yb = sy0 + ((sy1 - sy0) * (i + 1)) / nCk;
+      const xa = CX + (j - 1) * 0.38;
+      const xb = xa + 0.38;
+      ctx.fillStyle = (i + j) % 2 ? '#efe9dc' : '#241a10';
+      const q = [iso(xa, ya), iso(xb, ya), iso(xb, yb), iso(xa, yb)];
       ctx.beginPath();
-      for (let i = 0; i <= n; i++) {
-        const p = posts[i % n];
-        const s = iso(p.wx, p.wy);
-        if (i === 0) ctx.moveTo(s.x, s.y - rh);
-        else ctx.lineTo(s.x, s.y - rh);
-      }
-      ctx.stroke();
-
-      ctx.strokeStyle = '#e0c96a';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      for (let i = 0; i <= n; i++) {
-        const p = posts[i % n];
-        const s = iso(p.wx, p.wy);
-        if (i === 0) ctx.moveTo(s.x, s.y - rh - 1);
-        else ctx.lineTo(s.x, s.y - rh - 1);
-      }
-      ctx.stroke();
+      ctx.moveTo(q[0].x, q[0].y);
+      for (let k = 1; k < 4; k++) ctx.lineTo(q[k].x, q[k].y);
+      ctx.closePath();
+      ctx.fill();
     }
   }
 }
@@ -229,160 +183,32 @@ type DrawObj = WorldObject & {
   gatherMat?: string;
   gatherStart?: number;
   walking?: boolean;
+  ph?: number;
+  moving?: boolean;
+  run?: boolean;
+  racing?: boolean;
   speech?: { text: string; until: number };
 };
-
-function drawArm(
-  ctx: CanvasRenderingContext2D,
-  wx: number,
-  wy: number,
-  wd: number,
-  dd: number,
-  h: number,
-  elev: number,
-  skin: string,
-  skinD: string,
-  skinL: string,
-) {
-  cube(ctx, wx, wy, wd, dd, h, elev, skin, skinD, skinL);
-}
-
-function drawPlayerCharacter(
-  ctx: CanvasRenderingContext2D,
-  o: DrawObj,
-  now: number,
-) {
-  const isMe = o.t === 'player';
-  if (o.speech) {
-    const remain = o.speech.until - now;
-    const fadeMs = CHAT_SPEECH_FADE_MS;
-    const alpha = remain <= fadeMs ? Math.max(0, remain / fadeMs) : 1;
-    if (alpha > 0) drawSpeechBubble(ctx, o.x, o.y, o.speech.text, alpha);
-  }
-  const shirt = isMe ? '#e8a33d' : (o.shirt || '#e8a33d');
-  const skin = '#e8c49a';
-  const skinD = '#b08d64';
-  const skinL = '#cca87d';
-  const hair = '#3a2a1a';
-  const hairD = '#241608';
-  const hairL = '#2f2012';
-
-  const s = iso(o.x, o.y);
-  ctx.fillStyle = 'rgba(0,0,0,.18)';
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y, 10, 5, 0, 0, 7);
-  ctx.fill();
-
-  const gatherMat = o.gatherMat;
-  const gatherT = gatherMat && o.gatherStart ? (now - o.gatherStart) / 1000 : 0;
-  const swing = Math.sin(gatherT * 7);
-  const swing2 = Math.sin(gatherT * 7 + Math.PI);
-
-  let lArmY = 0;
-  let rArmY = 0;
-  let lArmH = 6;
-  let rArmH = 6;
-  let tool: 'axe' | 'pick' | 'pull' | null = null;
-
-  if (gatherMat === 'wood') {
-    lArmH = 7 + swing * 3;
-    rArmH = 7 + swing2 * 3;
-    lArmY = -swing * 0.06;
-    rArmY = swing * 0.06;
-    tool = 'axe';
-  } else if (gatherMat === 'ore') {
-    lArmH = 6 + Math.abs(swing) * 4;
-    rArmH = 5 + Math.abs(swing2) * 2;
-    lArmY = swing * 0.05;
-    tool = 'pick';
-  } else if (gatherMat === 'hay') {
-    lArmY = swing * 0.07;
-    rArmY = swing2 * 0.07;
-    lArmH = 5 + Math.abs(swing) * 2;
-    rArmH = 5 + Math.abs(swing2) * 2;
-    tool = 'pull';
-  } else if (o.walking) {
-    const bob = Math.sin(now / 140) * 0.04;
-    lArmY = bob;
-    rArmY = -bob;
-  }
-
-  // legs
-  cube(ctx, o.x - 0.16, o.y - 0.1, 0.14, 0.12, 5, 0, '#4a3728', '#2e2118', '#3b2c20');
-  cube(ctx, o.x + 0.02, o.y - 0.1, 0.14, 0.12, 5, 0, '#4a3728', '#2e2118', '#3b2c20');
-
-  // arms (behind torso when idle, animated when gathering)
-  drawArm(ctx, o.x - 0.3, o.y - 0.08 + lArmY, 0.11, 0.1, lArmH, 4, skin, skinD, skinL);
-  drawArm(ctx, o.x + 0.19, o.y - 0.08 + rArmY, 0.11, 0.1, rArmH, 4, skin, skinD, skinL);
-
-  // torso + head
-  cube(ctx, o.x - 0.18, o.y - 0.13, 0.36, 0.26, 13, 3, shirt, shade(shirt, -40), shade(shirt, -20));
-  cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 9, 16, skin, skinD, skinL);
-  cube(ctx, o.x - 0.14, o.y - 0.11, 0.28, 0.22, 3, 25, hair, hairD, hairL);
-
-  // simple held tool while gathering
-  if (tool === 'axe') {
-    cube(ctx, o.x - 0.34, o.y - 0.12 + lArmY, 0.06, 0.06, 5 + swing * 2, 8, '#6e4526', '#4a2f18', '#5a3a20');
-    cube(ctx, o.x - 0.38, o.y - 0.14 + lArmY, 0.1, 0.04, 2, 12 + swing * 2, '#8a8a8a', '#5a5a5a', '#707070');
-  } else if (tool === 'pick') {
-    cube(ctx, o.x - 0.32, o.y - 0.1 + lArmY, 0.05, 0.05, 8, 7, '#6e4526', '#4a2f18', '#5a3a20');
-    cube(ctx, o.x - 0.36, o.y - 0.16 + lArmY, 0.12, 0.04, 2, 14, '#7a7a7a', '#4a4a4a', '#606060');
-  } else if (tool === 'pull') {
-    drawArm(ctx, o.x - 0.34, o.y - 0.06 + lArmY, 0.09, 0.08, 4, 10, skin, skinD, skinL);
-    drawArm(ctx, o.x + 0.25, o.y - 0.06 + rArmY, 0.09, 0.08, 4, 10, skin, skinD, skinL);
-  }
-
-  const lbl = isMe ? 'You' : (o.name || 'Player');
-  label(ctx, o.x, o.y, lbl, 40, isMe ? '#f2b23a' : '#fff');
-}
 
 function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: number): string {
   if (trait === 'rainbow') return `hsl(${((now / 18 + wx * 30) % 360)}, 72%, 55%)`;
   return coat || '#33261d';
 }
 
-function drawBullVoxel(
-  ctx: CanvasRenderingContext2D,
-  wx: number,
-  wy: number,
-  now: number,
-  coat: string,
-  trait: BullTrait | undefined,
-  facingLeft: boolean,
-  labelText?: string,
-) {
-  const c = bullCoat(coat, trait, now, wx);
-  const ghost = trait === 'ghost';
-  const head = facingLeft ? -0.28 : 0.28;
-  const horn = facingLeft ? -0.3 : 0.3;
-  const legF = facingLeft ? -0.38 : 0.24;
-  const legB = facingLeft ? 0.24 : -0.38;
-  const s = iso(wx, wy);
-
-  ctx.fillStyle = 'rgba(0,0,0,.18)';
-  ctx.beginPath();
-  ctx.ellipse(s.x, s.y, 14, 6, 0, 0, 7);
-  ctx.fill();
-
-  if (ghost) ctx.globalAlpha = 0.2;
-
-  cube(ctx, wx - 0.45, wy - 0.22, 0.9, 0.44, 11, 5, c, shade(c, -35), shade(c, -18));
-  cube(ctx, wx + head, wy - 0.18, 0.34, 0.36, 9, 10, c, shade(c, -35), shade(c, -18));
-  cube(ctx, wx + horn, wy - 0.3, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
-  cube(ctx, wx + horn, wy + 0.22, 0.1, 0.1, 5, 19, '#e8e4da', '#b0ac9f', '#ccc8bb');
-  cube(ctx, wx + legB, wy - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
-  cube(ctx, wx + legF, wy - 0.16, 0.14, 0.12, 5, 0, shade(c, -25), shade(c, -50), shade(c, -35));
-
-  if (ghost) {
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = 'rgba(255,255,255,.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(s.x, s.y - 12, 16, 8, 0, 0, 7);
-    ctx.stroke();
+/** Per-player walk cycle derived from observed movement (positions come from the server). */
+const walkAnim = new Map<string, { x: number; y: number; ph: number; moving: boolean }>();
+function otherWalkAnim(id: string, x: number, y: number) {
+  let w = walkAnim.get(id);
+  if (!w) {
+    w = { x, y, ph: 0, moving: false };
+    walkAnim.set(id, w);
   }
-
-  if (labelText) label(ctx, wx, wy, labelText, 34, ghost ? '#e8e4ff' : '#fff');
+  const dm = Math.hypot(x - w.x, y - w.y);
+  w.moving = dm > 0.003;
+  if (w.moving) w.ph += Math.min(0.6, dm * 3);
+  w.x = x;
+  w.y = y;
+  return w;
 }
 
 function drawRectPastureFence(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
@@ -392,34 +218,13 @@ function drawRectPastureFence(ctx: CanvasRenderingContext2D, cx: number, cy: num
     { x: cx + w, y: cy + h },
     { x: cx, y: cy + h },
   ];
-  const railHeights = [7, 14];
-
-  for (const rh of railHeights) {
-    ctx.strokeStyle = '#8a6a2e';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let i = 0; i <= corners.length; i++) {
-      const p = corners[i % corners.length];
-      const s = iso(p.x, p.y);
-      if (i === 0) ctx.moveTo(s.x, s.y - rh);
-      else ctx.lineTo(s.x, s.y - rh);
-    }
-    ctx.stroke();
-    ctx.strokeStyle = '#e0c96a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i <= corners.length; i++) {
-      const p = corners[i % corners.length];
-      const s = iso(p.x, p.y);
-      if (i === 0) ctx.moveTo(s.x, s.y - rh - 1);
-      else ctx.lineTo(s.x, s.y - rh - 1);
-    }
-    ctx.stroke();
+  for (let i = 0; i < corners.length; i++) {
+    const p1 = corners[i];
+    const p2 = corners[(i + 1) % corners.length];
+    BRArt.drawObj(ctx, iso, { t: 'rail', x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
   }
-
   for (const p of corners) {
-    cube(ctx, p.x - 0.07, p.y - 0.07, 0.14, 0.14, 11, 0, '#e0c96a', '#a8913c', '#c4ad50');
+    BRArt.drawObj(ctx, iso, { t: 'post', x: p.x, y: p.y });
   }
 }
 
@@ -447,89 +252,61 @@ function drawPasturePlots(
   }
 }
 
-function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number) {
-  if (o.t === 'tree') {
-    if (o.dead && o.dead > now) {
-      cube(ctx, o.x - 0.16, o.y - 0.16, 0.32, 0.32, 6, 0, '#8a6a44', '#5e4527', '#6f5432');
-      return;
+const GATHER_TOOL: Record<string, 'axe' | 'pick' | 'sickle'> = {
+  wood: 'axe',
+  ore: 'pick',
+  hay: 'sickle',
+};
+
+/** Delegate drawing to the shared BRArt library, mapping game state to art objects. */
+function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number, artT: number) {
+  const opts = { t: artT, nowMs: now, stableLevel };
+
+  if (o.t === 'player' || o.t === 'other') {
+    if (o.speech) {
+      const remain = o.speech.until - now;
+      const alpha = remain <= CHAT_SPEECH_FADE_MS ? Math.max(0, remain / CHAT_SPEECH_FADE_MS) : 1;
+      if (alpha > 0) drawSpeechBubble(ctx, o.x, o.y, o.speech.text, alpha);
     }
-    const s = o.big ? 1.25 : 1;
-    cube(ctx, o.x - 0.14, o.y - 0.14, 0.28 * s, 0.28 * s, 10 * s, 0, '#8a6a44', '#5e4527', '#6f5432');
-    cube(ctx, o.x - 0.5 * s, o.y - 0.5 * s, 1 * s, 1 * s, 13 * s, 10 * s, '#4fae3d', '#2e7a22', '#3d942e');
-    cube(ctx, o.x - 0.32 * s, o.y - 0.32 * s, 0.64 * s, 0.64 * s, 10 * s, 23 * s, '#5cbf48', '#37852a', '#47a136');
-  } else if (o.t === 'rock') {
-    if (o.dead && o.dead > now) {
-      cube(ctx, o.x - 0.2, o.y - 0.2, 0.4, 0.4, 4, 0, '#9a9a95', '#6f6f6a', '#84847f');
-      return;
-    }
-    cube(ctx, o.x - 0.4, o.y - 0.3, 0.8, 0.6, 12, 0, '#b0b0aa', '#7c7c76', '#94948e');
-    cube(ctx, o.x + 0.05, o.y - 0.5, 0.45, 0.45, 8, 0, '#a5a59f', '#73736d', '#8a8a84');
-  } else if (o.t === 'hay') {
-    if (o.dead && o.dead > now) return;
-    cube(ctx, o.x - 0.35, o.y - 0.3, 0.7, 0.6, 9, 0, '#e0c96a', '#a8913c', '#c4ad50');
-    cube(ctx, o.x - 0.2, o.y - 0.15, 0.4, 0.35, 6, 9, '#e8d47e', '#b09a48', '#ccb65c');
-  } else if (o.t === 'house') {
-    cube(ctx, o.x - 1, o.y - 1, 2, 2, 26, 0, '#d9c49a', '#8f7a52', '#b8a271');
-    cube(ctx, o.x - 1.15, o.y - 1.15, 2.3, 2.3, 10, 26, '#6b4a33', '#41291a', '#553a26');
-    const d = iso(o.x, o.y + 1);
-    ctx.fillStyle = '#41291a';
-    ctx.fillRect(d.x - 6, d.y - 20, 12, 20);
-    const wn = iso(o.x + 1, o.y);
-    ctx.fillStyle = '#a8d8e8';
-    ctx.fillRect(wn.x - 14, wn.y - 22, 10, 9);
-  } else if (o.t === 'stable') {
-    cube(ctx, o.x - 1.2, o.y - 1, 2.4, 2, 24, 0, '#c9a06a', '#8a6538', '#a8814d');
-    cube(ctx, o.x - 1.35, o.y - 1.15, 2.7, 2.3, 10, 24, '#8e3b2e', '#5e2119', '#762e23');
-    const d = iso(o.x, o.y + 1);
-    ctx.fillStyle = '#41291a';
-    ctx.fillRect(d.x - 9, d.y - 22, 18, 22);
-    ctx.strokeStyle = '#c9a06a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(d.x - 9, d.y - 22);
-    ctx.lineTo(d.x + 9, d.y);
-    ctx.moveTo(d.x + 9, d.y - 22);
-    ctx.lineTo(d.x - 9, d.y);
-    ctx.stroke();
-    if (o.label) label(ctx, o.x, o.y, `${o.label} · Lv ${stableLevel}`, 46, '#f2b23a');
-  } else if (o.t === 'booth') {
-    cube(ctx, o.x - 0.8, o.y - 0.6, 1.6, 1.2, 18, 0, '#3b6ea5', '#22436a', '#2d5787');
-    cube(ctx, o.x - 0.95, o.y - 0.75, 1.9, 1.5, 6, 18, '#e8e0cc', '#b0a88f', '#ccc4ab');
-    if (o.label) label(ctx, o.x, o.y, o.label, 36, '#7ec8e3');
-  } else if (o.t === 'raceBooth') {
-    cube(ctx, o.x - 0.62, o.y - 0.48, 1.24, 0.96, 14, 0, '#a84a20', '#6e321a', '#8a3d18');
-    cube(ctx, o.x - 0.74, o.y - 0.58, 1.48, 1.16, 5, 14, '#f2b23a', '#b57f1d', '#d0991f');
-    const roof = iso(o.x, o.y - 0.2);
-    ctx.fillStyle = '#fff';
-    for (let i = 0; i < 4; i++) {
-      for (let j = 0; j < 2; j++) {
-        if ((i + j) % 2 === 0) ctx.fillStyle = '#fff';
-        else ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(roof.x - 14 + i * 7, roof.y - 30 + j * 5, 7, 5);
-      }
-    }
-    if (o.label) label(ctx, o.x, o.y, o.label, 32, '#f2b23a');
-  } else if (o.t === 'market') {
-    cube(ctx, o.x - 0.9, o.y - 0.6, 1.8, 1.2, 16, 0, '#a5522f', '#6e321a', '#8a4224');
-    cube(ctx, o.x - 1.05, o.y - 0.75, 2.1, 1.5, 6, 16, '#e0c96a', '#a8913c', '#c4ad50');
-    if (o.label) label(ctx, o.x, o.y, o.label, 34, '#e0c96a');
-  } else if (o.t === 'forge') {
-    cube(ctx, o.x - 0.9, o.y - 0.7, 1.8, 1.4, 20, 0, '#6a6a66', '#44443f', '#57574f');
-    cube(ctx, o.x + 0.25, o.y - 0.35, 0.4, 0.4, 10, 20, '#4a4a45', '#2e2e2a', '#3c3c37');
-    const s = iso(o.x + 0.45, o.y - 0.15);
-    ctx.fillStyle = `rgba(240,140,60,${0.5 + 0.3 * Math.sin(now / 250)})`;
-    ctx.beginPath();
-    ctx.arc(s.x, s.y - 34, 4, 0, 7);
-    ctx.fill();
-    if (o.label) label(ctx, o.x, o.y, o.label, 40, '#e07840');
-  } else if (o.t === 'post') {
-    cube(ctx, o.x - 0.08, o.y - 0.08, 0.16, 0.16, 13, 0, '#e0c96a', '#a8913c', '#c4ad50');
-    cube(ctx, o.x - 0.05, o.y - 0.05, 0.1, 0.1, 2, 13, '#f2b23a', '#b57f1d', '#d0991f');
-  } else if (o.t === 'player' || o.t === 'other') {
-    drawPlayerCharacter(ctx, o, now);
-  } else if (o.t === 'bull') {
-    drawBullVoxel(ctx, o.x, o.y, now, o.coat || '#33261d', o.trait, o.facingLeft ?? false, o.label);
+    const chop = o.gatherMat && o.gatherStart
+      ? { tool: GATHER_TOOL[o.gatherMat] ?? 'sickle', ph: (now - o.gatherStart) / 90 }
+      : null;
+    BRArt.drawObj(ctx, iso, {
+      t: o.t === 'player' ? 'player' : 'npc',
+      x: o.x,
+      y: o.y,
+      shirt: o.shirt,
+      name: o.name,
+      lvl: o.lvl,
+      moving: o.walking || o.moving,
+      ph: o.ph ?? now / 111,
+      chop,
+    }, opts);
+    return;
   }
+
+  if (o.t === 'bull') {
+    const ghost = o.trait === 'ghost';
+    if (ghost) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+    }
+    BRArt.drawObj(ctx, iso, {
+      t: 'bull',
+      x: o.x,
+      y: o.y,
+      coat: bullCoat(o.coat || '#33261d', o.trait, now, o.x),
+      label: o.label,
+      ph: o.ph,
+      moving: o.moving,
+      run: o.run,
+      racing: o.racing,
+    }, opts);
+    if (ghost) ctx.restore();
+    return;
+  }
+
+  BRArt.drawObj(ctx, iso, o as ArtObj, opts);
 }
 
 /** Text painted flat on isometric ground tiles (world x/y axes). */
@@ -550,7 +327,7 @@ function drawGroundText(
     ctx.textAlign = 'center';
     ctx.textBaseline = baseline;
     for (const line of lines) {
-      ctx.font = `700 ${line.size}px 'Nunito', system-ui, sans-serif`;
+      ctx.font = `700 ${line.size}px 'Pixelify Sans', monospace`;
       ctx.fillStyle = shadow ? 'rgba(23,16,10,0.85)' : line.color;
       ctx.fillText(line.text, ox + (line.x ?? 0), line.y + oy);
     }
@@ -728,8 +505,8 @@ export interface DrawState {
   pastures: PasturePlotState[];
   gather: { mat?: string; start: number } | null;
   walking: boolean;
-  folPos: Record<number, { x: number; y: number }>;
-  otherFolPos: Record<string, Record<number, { x: number; y: number }>>;
+  folPos: Record<number, FollowerPos>;
+  otherFolPos: Record<string, Record<number, FollowerPos>>;
   speechBubbles: Record<string, { text: string; until: number }>;
   myPlayerId: string | null;
   camOff: { x: number; y: number };
@@ -755,51 +532,36 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   ctx.save();
   ctx.translate(ox, oy);
 
+  const artT = performance.now() / 1000;
+
   for (let x = 0; x < M; x++) {
     for (let y = 0; y < M; y++) {
       const s = iso(x, y);
       if (s.x + ox < -80 || s.x + ox > cw + 80 || s.y + oy < -60 || s.y + oy > ch + 60) continue;
-      ctx.fillStyle = TILE_COLORS[worldData.tiles[x][y]];
-      ctx.beginPath();
-      ctx.moveTo(s.x, s.y);
-      ctx.lineTo(s.x + 32, s.y + 16);
-      ctx.lineTo(s.x, s.y + 32);
-      ctx.lineTo(s.x - 32, s.y + 16);
-      ctx.closePath();
-      ctx.fill();
+      BRArt.tile(ctx, iso, x, y, worldData.tiles[x][y]);
     }
   }
 
+  // track edge lines (subtle) + mid divider + checkered start/finish strip
+  drawRing(ctx, 0.82, 'rgba(96,62,30,.4)');
+  drawRing(ctx, 1.18, 'rgba(96,62,30,.4)');
+  drawRing(ctx, 1.0, 'rgba(245,240,228,.4)');
+  drawStartFinishStrip(ctx);
+
   drawRaceTrackBoard(ctx, now, raceLive, raceGrid, raceAnim, me, results, resultsUntil, betResult);
 
-  drawFenceRails(ctx);
   drawPasturePlots(ctx, pastures, me?.id);
-
-  drawRing(ctx, 0.82, '#f5f0e4');
-  drawRing(ctx, 1.18, '#f5f0e4');
-
-  const p1 = iso(CX, CY + RY * 0.82);
-  const p2 = iso(CX, CY + RY * 1.18);
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 4;
-  ctx.setLineDash([6, 5]);
-  ctx.beginPath();
-  ctx.moveTo(p1.x, p1.y);
-  ctx.lineTo(p2.x, p2.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
 
   const list: { d: number; o: DrawObj }[] = [];
 
   for (const o of worldData.objs) {
     if (o.t === 'tree' || o.t === 'rock' || o.t === 'hay') continue;
     const obj: DrawObj = { ...o };
-    list.push({ d: o.x + o.y, o: obj });
+    list.push({ d: o.x + o.y + (o.dSort ?? 0), o: obj });
   }
 
   for (const n of worldNodes) {
     const dead = nodeDead[n.id];
-    if (dead && dead > now) continue;
     const local = worldData.nodes.find((w) => nodeId(w.x, w.y, w.mat) === n.id);
     const t = matNodeType(n.mat);
     list.push({
@@ -810,11 +572,13 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         y: n.y,
         mat: n.mat,
         big: local?.big,
+        dead: dead && dead > now ? dead : undefined,
       },
     });
   }
 
   for (const p of otherPlayers) {
+    const walk = otherWalkAnim(p.id, p.x, p.y);
     list.push({
       d: p.x + p.y,
       o: {
@@ -823,11 +587,13 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         y: p.y,
         shirt: p.shirt,
         name: p.displayName,
+        lvl: p.stableLevel,
+        moving: walk.moving,
+        ph: walk.ph,
         speech: speechBubbles[p.id],
       },
     });
     const pf = otherFolPos[p.id] ?? {};
-    let prev = { x: p.x, y: p.y };
     for (const b of p.bulls ?? []) {
       let f = pf[b.id];
       if (!f) f = { x: p.x + 1.5, y: p.y + 1.5 };
@@ -840,10 +606,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           coat: b.coat,
           trait: b.trait,
           label: b.name,
-          facingLeft: f.x > prev.x,
+          ph: f.ph,
+          moving: f.moving,
         },
       });
-      prev = f;
     }
   }
 
@@ -880,7 +646,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           coat: coatOf(b, me.items),
           trait: b.trait,
           label: b.name,
-          facingLeft: f.x > me.position.x,
+          ph: f.ph,
+          moving: f.moving,
         },
       });
     }
@@ -927,7 +694,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           coat: b.coat,
           trait: b.trait as BullTrait | undefined,
           label: b.name,
-          facingLeft: pos.facingLeft,
+          racing: true,
         },
       });
     });
@@ -955,7 +722,10 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           coat: b.coat,
           trait: b.trait as BullTrait | undefined,
           label: b.name,
-          facingLeft: pos.facingLeft,
+          racing: true,
+          moving: !raceAnim.frozen,
+          run: !raceAnim.frozen,
+          ph: el / 60,
         },
       });
     }
@@ -972,18 +742,18 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
 
   list.sort((a, b) => a.d - b.d);
   const stableLevel = me?.stable.level ?? 1;
-  for (const it of list) drawObj(ctx, it.o, stableLevel, now);
+  for (const it of list) drawObj(ctx, it.o, stableLevel, now, artT);
 
   ctx.restore();
 }
 
 export function stepFollowers(
-  folPos: Record<number, { x: number; y: number }>,
+  folPos: Record<number, FollowerPos>,
   me: MeResponse,
   dt: number,
   racingIds: Set<number | string> = new Set(),
 ) {
-  let prev = me.position;
+  let prev: { x: number; y: number } = me.position;
   const followIds = new Set(me.followingBullIds ?? []);
   for (const b of me.bulls) {
     if (!followIds.has(b.id)) continue;
@@ -995,6 +765,10 @@ export function stepFollowers(
       const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
       f.x += ((prev.x - f.x) / d) * spd * dt;
       f.y += ((prev.y - f.y) / d) * spd * dt;
+      f.moving = true;
+      f.ph = (f.ph ?? 0) + spd * dt * 2.4;
+    } else {
+      f.moving = false;
     }
     applyWorldCollision(f);
     prev = f;
@@ -1002,7 +776,7 @@ export function stepFollowers(
 }
 
 export function stepOtherFollowers(
-  otherFolPos: Record<string, Record<number, { x: number; y: number }>>,
+  otherFolPos: Record<string, Record<number, FollowerPos>>,
   players: OtherPlayer[],
   dt: number,
 ) {
@@ -1018,6 +792,10 @@ export function stepOtherFollowers(
         const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
         f.x += ((prev.x - f.x) / d) * spd * dt;
         f.y += ((prev.y - f.y) / d) * spd * dt;
+        f.moving = true;
+        f.ph = (f.ph ?? 0) + spd * dt * 2.4;
+      } else {
+        f.moving = false;
       }
       applyWorldCollision(f);
       prev = f;

@@ -6,14 +6,15 @@ import {
   stepFollowers,
   stepOtherFollowers,
   screenToGrid,
+  type FollowerPos,
 } from './canvas/drawWorld';
 
 /** Canvas 2D world renderer — ported directly from the prototype spec. */
 export function CanvasWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const camOffRef = useRef({ x: 0, y: 0 });
-  const folPosRef = useRef<Record<number, { x: number; y: number }>>({});
-  const otherFolPosRef = useRef<Record<string, Record<number, { x: number; y: number }>>>({});
+  const folPosRef = useRef<Record<number, FollowerPos>>({});
+  const otherFolPosRef = useRef<Record<string, Record<number, FollowerPos>>>({});
 
   useEffect(() => {
     const canvas = canvasRef.current;

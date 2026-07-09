@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS, raceElapsedMs, raceMaxDurationMs } from '@bullrun/shared';
 import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrun/shared';
 import { api } from '../api/client';
+import { BRSfx } from '../lib/sfx';
 
 export interface SyncedWorldNode {
   id: string;
@@ -194,6 +195,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
       return;
     }
+    // celebrate level-ups and newborn calves
+    const prevLevels = new Map(prev.bulls.map((b) => [b.id, b.level]));
+    const leveled =
+      me.stable.level > prev.stable.level ||
+      me.bulls.some((b) => {
+        const was = prevLevels.get(b.id);
+        return was !== undefined && b.level > was;
+      });
+    const newCalf = me.bulls.some((b) => !prevLevels.has(b.id));
+    if (leveled || newCalf) BRSfx.chime();
     set({
       me: { ...me, position: prev.position },
       shopBulls: me.shopBulls,
@@ -205,10 +216,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (me.position.x === x && me.position.y === y) return;
     set({ me: { ...me, position: { x, y } } });
   },
-  setPanel: (p) => set({ panel: p, denPlotId: p === 'den' ? get().denPlotId : null }),
+  setPanel: (p) => {
+    if (p !== get().panel) BRSfx.click();
+    set({ panel: p, denPlotId: p === 'den' ? get().denPlotId : null });
+  },
   setInvOpen: (v) => set({ invOpen: v, equipTarget: v ? get().equipTarget : null }),
   setEquipTarget: (id) => set({ equipTarget: id }),
   toastMsg: (msg) => {
+    BRSfx.pop();
     clearTimeout(toastTimer);
     set({ toast: msg });
     toastTimer = setTimeout(() => set({ toast: '' }), 2600);
@@ -265,15 +280,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ raceAnim: { ...anim, frozen: true }, raceLive: null });
     }
   },
-  setRaceGrid: (r) => set({ raceGrid: r }),
-  setResults: (r, betResult = null, until) =>
+  setRaceGrid: (r) => {
+    if (r && !get().raceGrid) BRSfx.horn();
+    set({ raceGrid: r });
+  },
+  setResults: (r, betResult = null, until) => {
+    if (r && !get().results) BRSfx.fanfare();
     set({
       results: r,
       betResult: betResult ?? null,
       resultsUntil: r ? (until ?? Date.now() + RACE_RESULTS_DISPLAY_MS) : null,
-    }),
+    });
+  },
   clearResults: () => set({ results: null, resultsUntil: null, betResult: null, raceAnim: null }),
-  setForgeResult: (s) => set({ forgeResult: s }),
+  setForgeResult: (s) => {
+    if (s) BRSfx.hammer();
+    set({ forgeResult: s });
+  },
   setMoveTarget: (t) => set({ moveTarget: t }),
   setMovePath: (path) =>
     set({ movePath: path, moveTarget: path && path.length > 0 ? path[0] : null }),

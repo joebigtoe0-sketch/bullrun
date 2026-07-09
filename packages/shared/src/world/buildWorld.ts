@@ -35,6 +35,7 @@ export function buildWorld(npcWanderers = 0): WorldData {
       const e = ell(x + 0.5, y + 0.5);
       let t: TileType = rng() < 0.5 ? 'g1' : 'g2';
       if (e >= 0.82 && e <= 1.18) t = (Math.floor(x + y) % 2 === 0) ? 'trk1' : 'trk2';
+      else if (e < 0.24) t = 'stone';
       tiles[x][y] = t;
     }
   }
@@ -50,11 +51,19 @@ export function buildWorld(npcWanderers = 0): WorldData {
   const objs: WorldObject[] = [];
   const nodes: WorldNode[] = [];
 
+  // fences around the track: rails between posts (the walkover bridge arches over them)
   const fence = (er: number, n: number) => {
+    const pts: { x: number; y: number }[] = [];
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
-      objs.push({ t: 'post', x: CX + Math.cos(a) * RX * er, y: CY + Math.sin(a) * RY * er });
+      pts.push({ x: CX + Math.cos(a) * RX * er, y: CY + Math.sin(a) * RY * er });
     }
+    for (let i = 0; i < n; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % n];
+      objs.push({ t: 'rail', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 });
+    }
+    for (const p of pts) objs.push({ t: 'post', x: p.x, y: p.y });
   };
   for (const { er, n } of FENCE_RINGS) fence(er, n);
 
@@ -62,7 +71,14 @@ export function buildWorld(npcWanderers = 0): WorldData {
   objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
   objs.push({ t: 'market', x: 9, y: 35.5, label: 'MARKET' });
   objs.push({ t: 'stable', x: 38, y: 37.5, label: 'YOUR STABLE' });
-  objs.push({ t: 'raceBooth', x: 24, y: 37.5, label: 'RACE SIGNUP' });
+  objs.push({ t: 'racebooth', x: 24, y: 37.5, label: 'RACE SIGNUP' });
+
+  // cosmetic homesteads in the corners between the pasture rings and the track
+  for (const [hx, hy] of [[10, 9.5], [45, 9.5], [10.5, 44], [45, 44]] as const) {
+    objs.push({ t: 'house', x: hx, y: hy });
+  }
+  // walkover footbridge arching across the bottom track band
+  objs.push({ t: 'bridge', x: 21.5, y: 31.3, dir: 'y', len: 8, dSort: 4.5 });
 
   const occupied = (x: number, y: number, r: number) =>
     objs.some((o) => Math.hypot(o.x - x, o.y - y) < r);

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script src="./bullrun-art.js"></script>
+<style>
+html,body{margin:0;padding:0;overflow:hidden;background:#2a2118}
+@keyframes bs-in{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;overflow:hidden;font-family:'Pixelify Sans',system-ui,sans-serif;user-select:none" data-screen-label="Bull showcase">
+
+  <canvas ref="{{ canvasRef }}" style="position:absolute;inset:0;display:block"></canvas>
+
+  <!-- back link -->
+  <a href="Bull Run Prototype.dc.html" style="position:absolute;top:16px;left:16px;z-index:20;display:inline-flex;align-items:center;gap:7px;background:#2e2318;border:3px solid #17100a;border-radius:10px;padding:7px 14px;box-shadow:0 4px 0 rgba(0,0,0,.35);color:#f3e7cd;font-size:14px;font-weight:700;text-decoration:none">← Back to the ranch</a>
+
+  <!-- name plate -->
+  <div style="position:absolute;top:18px;left:50%;transform:translateX(-50%);z-index:20;display:flex;flex-direction:column;align-items:center;gap:6px;animation:bs-in .3s ease-out">
+    <div style="background:#2e2318;border:3px solid #17100a;border-radius:12px;padding:8px 26px;box-shadow:0 4px 0 rgba(0,0,0,.35);text-align:center">
+      <div style="color:#f2b23a;font-size:28px;font-weight:700;line-height:1.1">{{ bullName }}</div>
+      <div style="color:#c9b896;font-size:13px;font-weight:600;letter-spacing:1px">{{ subTxt }}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <sc-for list="{{ statChips }}" as="s" hint-placeholder-count="4">
+        <div style="background:rgba(23,16,10,.85);border:2px solid #17100a;border-radius:8px;padding:3px 10px;color:#f3e7cd;font-size:13px;font-weight:600">{{ s.label }} <span style="color:#f2b23a">{{ s.val }}</span></div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- cosmetic controls -->
+  <div style="position:absolute;bottom:18px;left:0;right:0;z-index:20;display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;justify-content:center;animation:bs-in .3s ease-out;pointer-events:none">
+    <div style="background:#2e2318;border:3px solid #17100a;border-radius:12px;padding:9px 14px;box-shadow:0 4px 0 rgba(0,0,0,.35);display:flex;flex-direction:column;gap:7px;pointer-events:auto">
+      <div style="color:#8f7f63;font-size:11px;font-weight:700;letter-spacing:1.5px">COAT</div>
+      <div style="display:flex;gap:7px">
+        <sc-for list="{{ coatSwatches }}" as="c" hint-placeholder-count="5">
+          <button onClick="{{ c.onPick }}" title="{{ c.name }}" style="width:30px;height:30px;border-radius:8px;background:{{ c.color }};border:3px solid {{ c.border }};cursor:pointer;padding:0" style-hover="transform:translateY(-2px)"></button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:#2e2318;border:3px solid #17100a;border-radius:12px;padding:9px 14px;box-shadow:0 4px 0 rgba(0,0,0,.35);display:flex;flex-direction:column;gap:7px;pointer-events:auto">
+      <div style="color:#8f7f63;font-size:11px;font-weight:700;letter-spacing:1.5px">ANIMATION</div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ animBtns }}" as="ab" hint-placeholder-count="3">
+          <button onClick="{{ ab.onPick }}" style="font-family:inherit;background:{{ ab.bg }};color:{{ ab.fg }};border:3px solid #17100a;border-radius:8px;padding:4px 11px;font-weight:700;font-size:13px;cursor:pointer" style-hover="transform:translateY(-2px)">{{ ab.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:#2e2318;border:3px solid #17100a;border-radius:12px;padding:9px 14px;box-shadow:0 4px 0 rgba(0,0,0,.35);display:flex;flex-direction:column;gap:7px;pointer-events:auto">
+      <div style="color:#8f7f63;font-size:11px;font-weight:700;letter-spacing:1.5px">BLANKET</div>
+      <div style="display:flex;gap:6px">
+        <sc-for list="{{ blanketBtns }}" as="bb" hint-placeholder-count="2">
+          <button onClick="{{ bb.onPick }}" style="font-family:inherit;background:{{ bb.bg }};color:{{ bb.fg }};border:3px solid #17100a;border-radius:8px;padding:4px 11px;font-weight:700;font-size:13px;cursor:pointer" style-hover="transform:translateY(-2px)">{{ bb.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;720px&quot;},&quot;bullName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:null,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Bull&quot;},&quot;coatColor&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#c99a5b&quot;,&quot;options&quot;:[&quot;#6e4526&quot;,&quot;#1d1a17&quot;,&quot;#8e2f2f&quot;,&quot;#e8e4da&quot;,&quot;#c99a5b&quot;],&quot;section&quot;:&quot;Bull&quot;},&quot;racing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bull&quot;}}">
+class Component extends DCLogic {
+  state = { coat: null, anim: 'idle', racing: null };
+  canvasRef = React.createRef();
+
+  componentDidMount() {
+    this.saveBull = null;
+    try {
+      const s = JSON.parse(localStorage.getItem('bullrun.save.v2'));
+      if (s && s.bulls && s.bulls[0]) this.saveBull = s.bulls[0];
+    } catch (e) {}
+    this.ph = 0;
+    this.onResize = () => this.resize();
+    window.addEventListener('resize', this.onResize);
+    this.lastT = performance.now();
+    this.startLoop();
+  }
+  startLoop() {
+    const el = this.canvasRef.current || document.querySelector('canvas');
+    if (!el || !window.BRArt) { this._boot = requestAnimationFrame(() => this.startLoop()); return; }
+    this.canvas = el;
+    this.ctx = el.getContext('2d');
+    this.resize();
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+  componentWillUnmount() {
+    cancelAnimationFrame(this.raf);
+    cancelAnimationFrame(this._boot);
+    window.removeEventListener('resize', this.onResize);
+  }
+  resize() {
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = innerWidth * dpr; this.canvas.height = innerHeight * dpr;
+    this.canvas.style.width = innerWidth + 'px'; this.canvas.style.height = innerHeight + 'px';
+    this.dpr = dpr;
+  }
+
+  coat() { return this.state.coat ?? this.props.coatColor ?? (this.saveBull ? this.saveBull.coat : '#6e4526'); }
+  racing() { return this.state.racing ?? this.props.racing ?? false; }
+
+  frame(tms) {
+    const dt = Math.min(0.05, (tms - this.lastT) / 1000); this.lastT = tms;
+    const anim = this.state.anim;
+    if (anim === 'walk') this.ph += dt * 7;
+    else if (anim === 'run') this.ph += dt * 13;
+    this.draw(tms / 1000);
+    this.raf = requestAnimationFrame((t) => this.frame(t));
+  }
+  draw(t) {
+    const ctx = this.ctx, dpr = this.dpr || 1, cw = innerWidth, ch = innerHeight;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // backdrop
+    const grad = ctx.createLinearGradient(0, 0, 0, ch);
+    grad.addColorStop(0, '#3a2d1f');
+    grad.addColorStop(0.55, '#2a2118');
+    grad.addColorStop(1, '#201812');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, cw, ch);
+    // glow behind bull
+    const cx = cw / 2, cy = ch / 2 + 30;
+    const rg = ctx.createRadialGradient(cx, cy - 40, 20, cx, cy - 40, Math.min(cw, ch) * 0.42);
+    rg.addColorStop(0, 'rgba(242,178,58,.16)');
+    rg.addColorStop(1, 'rgba(242,178,58,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, cw, ch);
+    const s = Math.min(cw, ch) / 24;
+    // pedestal
+    const ped = (rx, ry, col) => { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx, cy + 2.1 * s, rx, ry, 0, 0, 7); ctx.fill(); };
+    ped(8.2 * s, 2.05 * s, '#3d2f20');
+    ped(7.6 * s, 1.9 * s, '#4a3a27');
+    // dust ring ticks
+    ctx.strokeStyle = 'rgba(243,231,205,.14)'; ctx.lineWidth = 2; ctx.setLineDash([10, 14]);
+    ctx.beginPath(); ctx.ellipse(cx, cy + 2.1 * s, 7.0 * s, 2.95 * s, 0, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+
+    // the shared isometric bull, scaled up
+    const k = Math.max(4, Math.min(cw, ch) / 110);
+    ctx.save();
+    ctx.translate(cx, cy + 1.3 * s);
+    ctx.scale(k, k);
+    ctx.imageSmoothingEnabled = false;
+    const anim = this.state.anim;
+    BRArt.drawObj(ctx, BRArt.iso, {
+      t: 'bull', x: 0, y: 0,
+      coat: this.coat(),
+      moving: anim !== 'idle',
+      run: anim === 'run',
+      ph: this.ph,
+      racing: this.racing()
+    }, { t });
+    ctx.restore();
+
+    // vignette
+    const vg = ctx.createRadialGradient(cx, ch / 2, Math.min(cw, ch) * 0.35, cx, ch / 2, Math.max(cw, ch) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,.45)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+  }
+
+  renderVals() {
+    const sb = this.saveBull;
+    const coats = [
+      { name: 'Chestnut', color: '#6e4526' },
+      { name: 'Midnight', color: '#1d1a17' },
+      { name: 'Crimson', color: '#8e2f2f' },
+      { name: 'Snow', color: '#e8e4da' },
+      { name: 'Slate', color: '#3d3d45' },
+      { name: 'Palomino', color: '#c99a5b' }
+    ];
+    const cur = this.coat();
+    const anims = [['idle', 'Idle'], ['walk', 'Walk'], ['run', 'Run']];
+    const stats = sb || { speed: 7, stamina: 6, accel: 6, temper: 4, level: 1 };
+    const racing = this.racing();
+    return {
+      canvasRef: this.canvasRef,
+      bullName: this.props.bullName ?? (sb ? sb.name : 'Tank'),
+      subTxt: 'LV ' + (stats.level || 1) + ' · CHAMPION OF THE OVAL',
+      statChips: [
+        { label: 'SPD', val: stats.speed }, { label: 'STA', val: stats.stamina },
+        { label: 'ACC', val: stats.accel }, { label: 'TMP', val: stats.temper }
+      ],
+      coatSwatches: coats.map(c => ({
+        name: c.name, color: c.color,
+        border: c.color === cur ? '#f2b23a' : '#17100a',
+        onPick: () => this.setState({ coat: c.color })
+      })),
+      animBtns: anims.map(([k, label]) => ({
+        label,
+        bg: this.state.anim === k ? '#f2b23a' : '#4c3b2a',
+        fg: this.state.anim === k ? '#201405' : '#f3e7cd',
+        onPick: () => this.setState({ anim: k })
+      })),
+      blanketBtns: [[false, 'Off'], [true, 'On']].map(([v, label]) => ({
+        label,
+        bg: racing === v ? '#f2b23a' : '#4c3b2a',
+        fg: racing === v ? '#201405' : '#f3e7cd',
+        onPick: () => this.setState({ racing: v })
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>

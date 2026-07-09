@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<script src="bullrun-sfx.js"></script>
+<style>
+html,body{margin:0;padding:0;background:#241f18}
+a{color:#f2b23a}a:hover{color:#f8c65c}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#241f18;font-family:'Pixelify Sans',system-ui,sans-serif;color:#f3e7cd;padding:26px 30px 60px;box-sizing:border-box" data-screen-label="Style guide">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:26px">
+    <a href="Bull Run Prototype.dc.html" style="display:inline-flex;align-items:center;gap:7px;background:rgba(30,23,15,.88);border:1px solid rgba(243,231,205,.14);border-radius:12px;padding:7px 14px;color:#f3e7cd;font-size:14px;font-weight:700;text-decoration:none">← Back to the ranch</a>
+    <div style="text-align:center">
+      <div style="color:#f2b23a;font-size:28px;font-weight:700;letter-spacing:1px">BULL RUN — STYLE GUIDE</div>
+      <div style="color:#8f7f63;font-size:13px;font-weight:600">UI tokens · buttons · type · panels · sound</div>
+    </div>
+    <div style="width:150px"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;max-width:1200px;margin:0 auto">
+
+    <!-- Colors -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Color palette</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px">
+        <sc-for list="{{ colors }}" as="c" hint-placeholder-count="8">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="height:44px;border-radius:10px;border:1px solid rgba(23,16,10,.55);background:{{ c.hex }}"></div>
+            <div style="font-size:12px;font-weight:700">{{ c.name }}</div>
+            <div style="font-size:11px;color:#8f7f63">{{ c.hex }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- Typography -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Typography — Pixelify Sans</div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="font-size:28px;font-weight:700;color:#f2b23a">Display 28 / 700 — BULL RUN</div>
+        <div style="font-size:22px;font-weight:700">Panel title 22 / 700 — Your Stable</div>
+        <div style="font-size:15px;font-weight:600">Body 15 / 600 — Train your bull with hay</div>
+        <div style="font-size:13px;font-weight:600;color:#c9b896">Secondary 13 / 600 — Entry: 50g + 30⚡</div>
+        <div style="font-size:11px;font-weight:600;color:#8f7f63;letter-spacing:1.5px">LABEL 11 / 600 / TRACKED — FIELD · WIN BETS</div>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Buttons</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px">
+        <button style="font-family:inherit;background:linear-gradient(180deg,#f8c65c,#eda72e);color:#241605;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28)" style-hover="transform:translateY(-2px)" style-active="transform:translateY(1px)">Primary</button>
+        <button style="font-family:inherit;background:linear-gradient(180deg,#8bcf5e,#6cb03f);color:#14260c;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28)" style-hover="transform:translateY(-2px)">Success</button>
+        <button style="font-family:inherit;background:linear-gradient(180deg,#72c3e4,#4fa3c9);color:#0d2430;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28)" style-hover="transform:translateY(-2px)">Info</button>
+        <button style="font-family:inherit;background:linear-gradient(180deg,#ea8a52,#d0632c);color:#2a1205;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28)" style-hover="transform:translateY(-2px)">Forge</button>
+        <button style="font-family:inherit;background:linear-gradient(180deg,#d381de,#b556c2);color:#2a0e2e;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28)" style-hover="transform:translateY(-2px)">Breed</button>
+        <button style="font-family:inherit;background:rgba(243,231,205,.1);color:#f3e7cd;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:8px 16px;font-weight:700;font-size:15px;cursor:pointer" style-hover="background:rgba(243,231,205,.2)">Secondary</button>
+      </div>
+      <div style="font-size:12px;color:#8f7f63;line-height:1.5">Gradient fill + 1px dark border + soft drop shadow + inner top highlight. Hover lifts −2px; press sinks +1px. Small variant: padding 4–5px 11px, 12–13px text.</div>
+    </div>
+
+    <!-- Surfaces -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Surfaces</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="background:rgba(30,23,15,.88);border:1px solid rgba(243,231,205,.14);border-radius:12px;padding:8px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(0,0,0,.35);width:fit-content">
+          <span style="width:14px;height:14px;border-radius:50%;background:#f2b23a;border:1px solid rgba(23,16,10,.6);display:inline-block"></span>
+          <span style="color:#f2b23a;font-weight:700;font-size:16px">1,250</span>
+          <span style="font-size:12px;color:#8f7f63">HUD chip — glassy, blur 8px</span>
+        </div>
+        <div style="background:rgba(23,16,10,.5);border:1px solid rgba(243,231,205,.08);border-radius:12px;padding:12px 14px">
+          <div style="font-weight:700;font-size:15px">Panel card</div>
+          <div style="font-size:12px;color:#c9b896;margin-top:2px">rgba(23,16,10,.5) on a blurred panel · 1px cream 8% border</div>
+        </div>
+        <div style="background:rgba(23,16,10,.92);border:1px solid rgba(243,231,205,.15);border-radius:12px;padding:8px 16px;font-size:14px;font-weight:600;width:fit-content">Toast — +3 wood</div>
+        <div style="background:rgba(29,42,20,.75);border:1px solid rgba(125,194,79,.25);border-radius:12px;padding:8px 14px;font-size:13px;color:#bfe3a4;width:fit-content">Success note — bet placed / item forged</div>
+      </div>
+    </div>
+
+    <!-- Bars -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Meters</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#c9b896;width:60px">Energy</span><div style="flex:1;height:12px;background:#17100a;border-radius:6px;overflow:hidden"><div style="height:100%;width:72%;background:#5fb4d8"></div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#c9b896;width:60px">Stable</span><div style="flex:1;height:12px;background:#17100a;border-radius:6px;overflow:hidden"><div style="height:100%;width:45%;background:#8a5a2b"></div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:#c9b896;width:60px">Gather</span><div style="flex:1;height:12px;background:#17100a;border-radius:6px;overflow:hidden"><div style="height:100%;width:60%;background:#7dc24f"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Sound -->
+    <div style="background:rgba(34,26,17,.94);border:1px solid rgba(242,178,58,.22);border-radius:16px;padding:18px 20px">
+      <div style="color:#f2b23a;font-size:18px;font-weight:700;margin-bottom:12px">Sound effects <span style="font-size:12px;color:#8f7f63;font-weight:600">— synthesized, click to play</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:9px">
+        <sc-for list="{{ sounds }}" as="s" hint-placeholder-count="9">
+          <button onClick="{{ s.onPlay }}" style="font-family:inherit;background:rgba(243,231,205,.1);color:#f3e7cd;border:1px solid rgba(23,16,10,.55);border-radius:12px;padding:7px 13px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:rgba(243,231,205,.2)">▶ {{ s.name }}</button>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;color:#8f7f63;margin-top:10px;line-height:1.5">click — panel open/close · pop — toast/gather/train · coin — gold spent/earned · error — invalid action · chime — level up/forge result · hammer — forging · horn — race start · fanfare — race finish</div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;760px&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const colors = [
+      { name: 'Amber', hex: '#f2b23a' }, { name: 'Amber lt', hex: '#f8c65c' },
+      { name: 'Forge', hex: '#e07840' }, { name: 'Grass', hex: '#7dc24f' },
+      { name: 'Sky', hex: '#5fb4d8' }, { name: 'Breed', hex: '#c86ad4' },
+      { name: 'Cream', hex: '#f3e7cd' }, { name: 'Tan', hex: '#c9b896' },
+      { name: 'Faded', hex: '#8f7f63' }, { name: 'Panel', hex: '#221a11' },
+      { name: 'Ink', hex: '#17100a' }, { name: 'Barn red', hex: '#9e3d2c' }
+    ];
+    const sounds = ['click', 'pop', 'coin', 'error', 'chime', 'hammer', 'horn', 'fanfare', 'whoosh'].map(n => ({
+      name: n,
+      onPlay: () => { try { window.BRSfx && window.BRSfx[n](); } catch (e) {} }
+    }));
+    return { colors, sounds };
+  }
+}
+</script>
+</body>
+</html>

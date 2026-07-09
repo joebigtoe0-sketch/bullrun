@@ -24,6 +24,10 @@ export interface ArtObj {
   run?: boolean;
   racing?: boolean;
   coat?: string;
+  /** bull trait — resolves coat + decorations inside the art */
+  trait?: string;
+  /** stable per-bull seed for trait variations (e.g. unicorn color) */
+  seed?: number;
   shirt?: string;
   hair?: string;
   name?: string;

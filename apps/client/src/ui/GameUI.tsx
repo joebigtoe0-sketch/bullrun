@@ -47,6 +47,9 @@ import {
   itemBonusAmt,
   STORE_CATALOG,
   CHAR_STAT_LABEL,
+  xpNeedForLevel,
+  maxFollowingForLevel,
+  MAX_CHAR_LEVEL,
   WHEEL_MIN_TOKENS,
   WHEEL_GOLD_TIERS,
 } from '@bullrun/shared';
@@ -1289,6 +1292,18 @@ export function GameUI() {
           <WoodIcon />
           <span className="hud-mat-val">{me.mats.wood}</span>
         </div>
+        <div className="hud-chip hud-level" title={`${me.xp.toLocaleString()} / ${xpNeedForLevel(me.level).toLocaleString()} XP — gather resources to level up`}>
+          <span className="hud-lvl-badge">Lv {me.level}</span>
+          <div className="xp-bar">
+            <div
+              className="xp-fill"
+              style={{ width: me.level >= MAX_CHAR_LEVEL ? '100%' : `${Math.min(100, (me.xp / xpNeedForLevel(me.level)) * 100)}%` }}
+            />
+          </div>
+          <span className="hud-xp-text">
+            {me.level >= MAX_CHAR_LEVEL ? 'MAX' : `${me.xp.toLocaleString()}/${xpNeedForLevel(me.level).toLocaleString()}`}
+          </span>
+        </div>
       </div>
       <div className="hud-tc">
         <div className="hud-chip">{raceLive ? '🏁 RACE' : 'NEXT RACE'} <span className="gold bold lg">{raceLive ? 'LIVE' : cd}</span></div>
@@ -1302,7 +1317,7 @@ export function GameUI() {
       </div>
       <div className="hud-tr">
         <OnlineBadge count={playersOnline} />
-        <span className="hud-tr-meta">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{MAX_FOLLOWING_BULLS} following</span>
+        <span className="hud-tr-meta">You · Stable Lv {me.stable.level} · {me.bulls.filter((b) => (b.location ?? 'stable') === 'stable').length}/{slots} stable · {me.followingBullIds?.length ?? 0}/{maxFollowingForLevel(me.level)} following</span>
       </div>
 
       <GatherBar />

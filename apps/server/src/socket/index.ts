@@ -14,6 +14,7 @@ type OnlinePlayer = {
   x: number;
   y: number;
   stableLevel: number;
+  level: number;
   shirt: string;
   bulls: OtherPlayerBull[];
 };
@@ -44,6 +45,7 @@ function toPresence(id: string, p: OnlinePlayer): OtherPlayer {
     x: p.x,
     y: p.y,
     stableLevel: p.stableLevel,
+    level: p.level,
     shirt: p.shirt,
     bulls: p.bulls,
   };
@@ -83,6 +85,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
       x: user.profile.posX,
       y: user.profile.posY,
       stableLevel: user.profile.stableLevel,
+      level: user.profile.level ?? 1,
       shirt: '#e8a33d',
       bulls,
     };

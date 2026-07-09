@@ -10,7 +10,21 @@ export type RarityKey = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
 export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'shop' | 'wheel' | 'help' | 'results' | null;
 export type BullLocation = 'stable' | 'den' | 'following';
-export type BullTrait = 'normal' | 'rainbow' | 'ghost';
+export type BullTrait =
+  | 'normal'
+  // uncommon
+  | 'spotted'
+  | 'longhorn'
+  // rare
+  | 'golden'
+  | 'zebra'
+  | 'shadow'
+  | 'rainbow'
+  // legendary
+  | 'ghost'
+  | 'skeleton'
+  | 'unicorn'
+  | 'inferno';
 export type BullRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 
 export interface Materials {
@@ -237,6 +251,8 @@ export interface OtherPlayer {
   x: number;
   y: number;
   stableLevel: number;
+  /** character level shown next to the name */
+  level: number;
   shirt: string;
   bulls: OtherPlayerBull[];
 }
@@ -329,6 +345,9 @@ export interface UserProfile {
   gold: number;
   mats: Materials;
   stable: Stable;
+  /** character level (1–25) + xp into the current level */
+  level: number;
+  xp: number;
   helpSeen: boolean;
   position: PlayerPosition;
   bulls: Bull[];

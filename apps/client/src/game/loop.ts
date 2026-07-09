@@ -20,6 +20,13 @@ import {
   isBuildingPanel,
 } from '@bullrun/shared';
 import { worldData } from '../store/gameStore';
+import { addFloatText } from '../world/canvas/drawWorld';
+import { BRSfx } from '../lib/sfx';
+import { MAT_SWATCHES } from '@bullrun/shared';
+
+let lastStepSfx = 0;
+let lastSwingSfx = 0;
+let lastGallopSfx = 0;
 
 const M = worldData.M;
 const MOVE_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -139,6 +146,22 @@ export function useGameLoop(active = true) {
         }
       }
 
+      // action sounds: footsteps, tool swings, race gallop
+      if (s.moveTarget && now - lastStepSfx > 320) {
+        lastStepSfx = now;
+        BRSfx.step();
+      }
+      if (s.gather && now - lastSwingSfx > 480) {
+        lastSwingSfx = now;
+        if (s.gather.mat === 'wood') BRSfx.axeHit();
+        else if (s.gather.mat === 'ore') BRSfx.pickHit();
+        else BRSfx.forkHit();
+      }
+      if (s.raceAnim && !s.raceAnim.frozen && now - lastGallopSfx > 300) {
+        lastGallopSfx = now;
+        BRSfx.gallop();
+      }
+
       if (s.gather) {
         const dur = Math.max(1, s.gather.dur ?? GATHER_DURATION_MS);
         const pct = Math.min(100, ((now - s.gather.start) / dur) * 100);
@@ -151,13 +174,24 @@ export function useGameLoop(active = true) {
 
       if (s.gather && now - s.gather.start >= (s.gather.dur ?? GATHER_DURATION_MS)) {
         const nodeIdStr = s.gather.nodeId;
+        const fxX = s.gather.nodeX;
+        const fxY = s.gather.nodeY;
         const pos = s.me?.position;
         s.setGather(null);
         api.gatherComplete(nodeIdStr, pos?.x, pos?.y).then((res) => {
-          const r = res as { qty: number; mat: string; me: import('@bullrun/shared').MeResponse };
+          const r = res as { qty: number; mat: string; xp?: number; leveledUp?: boolean; me: import('@bullrun/shared').MeResponse };
           useGameStore.getState().setNodeDead(nodeIdStr, Date.now() + NODE_RESPAWN_MS);
           useGameStore.getState().setMe(r.me);
-          useGameStore.getState().toastMsg(`+${r.qty} ${r.mat}`);
+          const px = fxX ?? pos?.x ?? 0;
+          const py = fxY ?? pos?.y ?? 0;
+          addFloatText(px, py, `+${r.qty} ${r.mat}`, MAT_SWATCHES[r.mat as 'hay'] ?? '#f3e7cd', true);
+          setTimeout(() => addFloatText(px, py, `+${r.xp ?? r.qty} XP`, '#7ec8e3'), 260);
+          if (r.leveledUp) {
+            BRSfx.levelup();
+            useGameStore.getState().toastMsg(`⭐ LEVEL UP! You are now level ${r.me.level}`);
+          } else {
+            BRSfx.pop();
+          }
         }).catch((e) => useGameStore.getState().toastMsg(e.message));
       }
     };

@@ -24,10 +24,57 @@ export function rollBullRarity(rand: number): BullRarity {
   return 'common';
 }
 
+/** Trait pools per rarity — commons are always plain. */
+export const TRAIT_POOLS: Record<BullRarity, BullTrait[]> = {
+  common: [],
+  uncommon: ['spotted', 'longhorn'],
+  rare: ['golden', 'zebra', 'shadow', 'rainbow'],
+  legendary: ['ghost', 'skeleton', 'unicorn', 'inferno'],
+};
+
+export const BULL_TRAIT_LABEL: Record<BullTrait, string> = {
+  normal: 'Plain',
+  spotted: 'Spotted',
+  longhorn: 'Longhorn',
+  golden: 'Golden',
+  zebra: 'Zebra',
+  shadow: 'Shadow',
+  rainbow: 'Rainbow',
+  ghost: 'Ghost',
+  skeleton: 'Skeleton',
+  unicorn: 'Unicorn',
+  inferno: 'Inferno',
+};
+
+export const BULL_TRAIT_DESC: Record<BullTrait, string> = {
+  normal: 'A good honest bull.',
+  spotted: 'Painted with dark patches.',
+  longhorn: 'Sweeping oversized horns.',
+  golden: 'Gilded coat that glints in the sun.',
+  zebra: 'Striped like the savanna.',
+  shadow: 'Wreathed in gloom, eyes glowing violet.',
+  rainbow: 'Coat cycles through every color.',
+  ghost: 'Translucent — you can see right through it.',
+  skeleton: 'Bare bones and still running.',
+  unicorn: 'A pastel legend with a spiral horn — each one its own color.',
+  inferno: 'Smolders as it runs, flames licking its back.',
+};
+
+/** Chance of rolling any trait at all, per rarity. */
+const TRAIT_CHANCE: Record<BullRarity, number> = {
+  common: 0,
+  uncommon: 0.45,
+  rare: 0.75,
+  legendary: 1,
+};
+
 export function traitForRarity(rarity: BullRarity, rand: number): BullTrait {
-  if (rarity === 'legendary') return 'ghost';
-  if (rarity === 'rare' && rand < 0.55) return 'rainbow';
-  return 'normal';
+  const pool = TRAIT_POOLS[rarity];
+  const chance = TRAIT_CHANCE[rarity];
+  if (!pool.length || rand >= chance) return 'normal';
+  // reuse the roll's fraction inside the trait window to pick from the pool
+  const idx = Math.min(pool.length - 1, Math.floor((rand / chance) * pool.length));
+  return pool[idx];
 }
 
 export function statRangeForRarity(rarity: BullRarity): { min: number; max: number } {
@@ -41,7 +88,9 @@ export function statRangeForRarity(rarity: BullRarity): { min: number; max: numb
 
 export function inferBullRarity(trait?: BullTrait, rarity?: BullRarity): BullRarity {
   if (rarity) return rarity;
-  if (trait === 'ghost') return 'legendary';
-  if (trait === 'rainbow') return 'rare';
+  if (!trait || trait === 'normal') return 'common';
+  for (const r of ['legendary', 'rare', 'uncommon'] as BullRarity[]) {
+    if (TRAIT_POOLS[r].includes(trait)) return r;
+  }
   return 'common';
 }

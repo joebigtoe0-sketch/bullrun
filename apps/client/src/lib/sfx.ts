@@ -72,6 +72,13 @@ export const BRSfx = {
   horn() { tone(392, 0.18, 'sawtooth', 0.1); tone(523, 0.18, 'sawtooth', 0.1, null, 0.18); tone(659, 0.34, 'sawtooth', 0.12, null, 0.36); },
   fanfare() { tone(523, 0.13, 'square', 0.1); tone(659, 0.13, 'square', 0.1, null, 0.13); tone(784, 0.13, 'square', 0.1, null, 0.26); tone(1046, 0.4, 'square', 0.12, null, 0.4); },
   whoosh() { noise(0.25, 0.14, 0, 600); },
+  /* --- world/action sounds --- */
+  step() { noise(0.04, 0.04, 0, 340); },
+  axeHit() { noise(0.09, 0.18, 0, 760); tone(110, 0.08, 'square', 0.05, 70); },
+  pickHit() { tone(1400, 0.045, 'square', 0.045, 950); noise(0.05, 0.13, 0, 2600); },
+  forkHit() { noise(0.13, 0.11, 0, 1450); },
+  gallop() { noise(0.05, 0.09, 0, 230); noise(0.05, 0.07, 0.09, 180); },
+  levelup() { tone(523, 0.11, 'square', 0.1); tone(659, 0.11, 'square', 0.1, null, 0.11); tone(784, 0.11, 'square', 0.1, null, 0.22); tone(1046, 0.2, 'square', 0.11, null, 0.33); tone(1318, 0.34, 'square', 0.12, null, 0.44); },
 };
 
 // unlock audio on the first user gesture

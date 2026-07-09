@@ -173,6 +173,8 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     gold: p.gold,
     mats: { hay: p.hay, ore: p.ore, wood: p.wood },
     stable: { level: p.stableLevel, wood: p.stableWood },
+    level: p.level ?? 1,
+    xp: p.xp ?? 0,
     helpSeen: p.helpSeen,
     position: { x: p.posX, y: p.posY },
     bulls: user.bulls.map(mapBull),

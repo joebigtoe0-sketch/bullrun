@@ -13,6 +13,7 @@ import {
   stableGoldNeed,
 } from '@bullrun/shared';
 import type { ReactNode } from 'react';
+import { BullGallery, GearGallery } from './GuideGalleries';
 
 export interface GuideSection {
   id: string;
@@ -127,6 +128,24 @@ export const GUIDE_GROUPS: GuideGroup[] = [
               Nodes respawn after depletion. Clothing from the <Strong>General Store</Strong> speeds up gathering and
               walking — see the next section.
             </P>
+          </>
+        ),
+      },
+      {
+        id: 'leveling',
+        title: 'Character Level',
+        body: (
+          <>
+            <P>
+              Every resource you gather gives <Strong>1 XP</Strong>. Your level (shown next to your name and in the
+              top-left bar) unlocks perks — leveling is slow and the climb gets much steeper, capping at{' '}
+              <Strong>level 25</Strong> for now.
+            </P>
+            <UL>
+              <LI><Strong>More yield</Strong> — +1 resource per gather every 5 levels.</LI>
+              <LI><Strong>Level 10</Strong> — a second bull can follow you.</LI>
+              <LI><Strong>Level 25</Strong> — a third bull can follow you.</LI>
+            </UL>
           </>
         ),
       },
@@ -291,6 +310,34 @@ export const GUIDE_GROUPS: GuideGroup[] = [
               Gold comes from race prizes, selling on the market, betting wins, and the daily wheel. Spend it on
               breeding, resting, dens, training, store clothing, and NPC shop bundles.
             </P>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    label: 'Gallery',
+    sections: [
+      {
+        id: 'bull-gallery',
+        title: 'All Bulls & Traits',
+        body: (
+          <>
+            <P>
+              Every bull trait in the game, live. Traits are rolled when a bull is born (breeding, den spawns, shop) —
+              rarer bulls roll from cooler pools.
+            </P>
+            <BullGallery />
+          </>
+        ),
+      },
+      {
+        id: 'gear-gallery',
+        title: 'All Gear & Clothing',
+        body: (
+          <>
+            <P>Everything equippable — bull gear from the forge, clothing from the store, and wheel exclusives.</P>
+            <GearGallery />
           </>
         ),
       },

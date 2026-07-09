@@ -1,5 +1,6 @@
 import {
   MAX_FOLLOWING_BULLS,
+  maxFollowingForLevel,
   PASTURE_PLOTS,
   bullSlots,
   denCapacity,
@@ -76,8 +77,11 @@ export async function takeBullFollow(userId: string, bullId: number) {
   if (loc === 'following') throw new Error('Already following');
 
   const following = await getFollowingIds(userId);
-  if (following.length >= MAX_FOLLOWING_BULLS) {
-    throw new Error(`Max ${MAX_FOLLOWING_BULLS} bulls can follow you`);
+  const profile = await prisma.playerProfile.findUnique({ where: { userId } });
+  const cap = Math.min(MAX_FOLLOWING_BULLS, maxFollowingForLevel(profile?.level ?? 1));
+  if (following.length >= cap) {
+    const next = cap === 1 ? 'Reach level 10 for a second' : cap === 2 ? 'Reach level 25 for a third' : 'No more';
+    throw new Error(`Max ${cap} bull${cap > 1 ? 's' : ''} can follow you — ${next.toLowerCase()} slot`);
   }
 
   if (loc === 'stable') {

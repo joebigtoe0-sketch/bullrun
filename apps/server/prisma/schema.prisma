@@ -39,6 +39,8 @@ model PlayerProfile {
   posX        Float    @default(28)
   posY        Float    @default(25)
   lastWheelSpinAt DateTime?
+  level       Int      @default(1)
+  xp          Int      @default(0)
   helpSeen    Boolean  @default(false)
   betAmount   Int      @default(50)
   forgeOre    Int      @default(100)

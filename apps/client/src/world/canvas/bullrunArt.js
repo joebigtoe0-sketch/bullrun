@@ -607,8 +607,18 @@ function person(ctx, iso, o) {
 }
 
 function bull(ctx, iso, o, t) {
-  const gx = o.x, gy = o.y, c = o.coat || '#6e4526';
-  const belly = mix(c, '#e8d9b8', 0.3);
+  const gx = o.x, gy = o.y;
+  const trait = o.trait || 'normal';
+  const seed = o.seed != null ? o.seed : Math.abs(Math.floor(gx * 31 + gy * 17)) % 997;
+  // trait coats
+  let c = o.coat || '#6e4526';
+  if (trait === 'rainbow') c = 'hsl(' + (((t || 0) * 40 + seed * 37) % 360) + ', 72%, 55%)';
+  else if (trait === 'golden') c = '#dfa32e';
+  else if (trait === 'shadow') c = '#2c2438';
+  else if (trait === 'skeleton') c = '#e6e1d3';
+  else if (trait === 'inferno') c = '#3a2018';
+  else if (trait === 'unicorn') c = 'hsl(' + ((seed * 47) % 360) + ', 50%, 78%)';
+  const belly = trait === 'skeleton' ? mul(c, 0.92) : mix(c, '#e8d9b8', 0.3);
   const ph = o.ph || 0;
   const moving = !!o.moving;
   const amp = o.run ? 1.7 : 1;
@@ -622,43 +632,80 @@ function bull(ctx, iso, o, t) {
   shadow(ctx, iso, gx, gy, 16, 7);
   const anchor = iso(gx, gy);
   if (o.flip) { ctx.save(); ctx.translate(2 * anchor.x, 0); ctx.scale(-1, 1); }
+  if (trait === 'ghost') { ctx.save(); ctx.globalAlpha = 0.4; }
+  // shadow trait: gloomy pulsing aura under the bull
+  if (trait === 'shadow') {
+    const a = 0.3 + 0.12 * Math.sin((t || 0) * 3 + seed);
+    ctx.fillStyle = 'rgba(60,30,90,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(anchor.x, anchor.y - 6, 24, 11, 0, 0, 7); ctx.fill();
+  }
+  // inferno: ember glow under the body
+  if (trait === 'inferno') {
+    const a = 0.22 + 0.1 * Math.sin((t || 0) * 5);
+    ctx.fillStyle = 'rgba(240,120,40,' + a.toFixed(2) + ')';
+    ctx.beginPath(); ctx.ellipse(anchor.x, anchor.y - 4, 22, 10, 0, 0, 7); ctx.fill();
+  }
   // painter's order: whatever ends up on the -x side (screen up-left) must
   // draw first. Facing camera the tail is behind and the head in front;
   // facing away (back) it's the opposite, so the two groups swap order.
   const drawTail = () => {
+    const tuft = trait === 'inferno' ? '#f2842c' : '#241608';
     cube(ctx, iso, hx(-0.64, 0.12), gy - 0.05 + swish, 0.12, 0.1, 7, 8.5 + bob, mul(c, 0.85));
-    cube(ctx, iso, hx(-0.68, 0.13), gy - 0.06 + swish * 2, 0.13, 0.12, 4, 4.5 + bob, '#241608');
+    cube(ctx, iso, hx(-0.68, 0.13), gy - 0.06 + swish * 2, 0.13, 0.12, 4, 4.5 + bob, tuft);
   };
   const drawHead = () => {
     // head (extra bob out of phase with the body)
     cube(ctx, iso, hx(0.42, 0.34), gy - 0.19, 0.34, 0.38, 9, 8 + hb, c);
     // forehead tuft
-    cube(ctx, iso, hx(0.44, 0.28), gy - 0.15, 0.28, 0.3, 1.6, 17 + hb, mul(c, 0.85));
+    const tuftC = trait === 'unicorn' ? 'hsl(' + ((seed * 47 + 60) % 360) + ', 55%, 68%)' : mul(c, 0.85);
+    cube(ctx, iso, hx(0.44, 0.28), gy - 0.15, 0.28, 0.3, 1.6, 17 + hb, tuftC);
     // snout
-    cube(ctx, iso, hx(0.72, 0.17), gy - 0.13, 0.17, 0.26, 5, 8 + hb, '#d8b58a');
+    const snoutC = trait === 'skeleton' ? '#d6d0bf' : '#d8b58a';
+    cube(ctx, iso, hx(0.72, 0.17), gy - 0.13, 0.17, 0.26, 5, 8 + hb, snoutC);
     // eyes + nostrils — on the head front face; hidden when facing away
     if (!back) {
-      decal(ctx, iso, gx + 0.761, gy - 0.15, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
-      decal(ctx, iso, gx + 0.761, gy + 0.06, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
+      const eyeC = trait === 'shadow' ? '#c07ef0' : trait === 'skeleton' ? '#111009' : '#17100a';
+      const eyeH = trait === 'skeleton' ? 2.6 : 1.9;
+      decal(ctx, iso, gx + 0.761, gy - 0.15, 0.09, 'y', 13.5 + hb, eyeH, eyeC);
+      decal(ctx, iso, gx + 0.761, gy + 0.06, 0.09, 'y', 13.5 + hb, eyeH, eyeC);
       decal(ctx, iso, gx + 0.891, gy - 0.095, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
       decal(ctx, iso, gx + 0.891, gy + 0.04, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
     }
     // ears
     cube(ctx, iso, hx(0.44, 0.1), gy - 0.32, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
     cube(ctx, iso, hx(0.44, 0.1), gy + 0.22, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
-    // horns
-    cube(ctx, iso, hx(0.5, 0.08), gy - 0.36, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
-    cube(ctx, iso, hx(0.52, 0.06), gy - 0.4, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
-    cube(ctx, iso, hx(0.5, 0.08), gy + 0.24, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
-    cube(ctx, iso, hx(0.52, 0.06), gy + 0.33, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
+    if (trait === 'unicorn') {
+      // single spiral horn instead of the usual pair
+      cube(ctx, iso, hx(0.54, 0.1), gy - 0.06, 0.1, 0.12, 3, 18 + hb, '#ffffff');
+      cube(ctx, iso, hx(0.56, 0.07), gy - 0.04, 0.07, 0.08, 3, 21 + hb, '#ffd9ec');
+      cube(ctx, iso, hx(0.575, 0.045), gy - 0.025, 0.045, 0.05, 2.6, 24 + hb, '#ffffff');
+      // sparkle
+      const sp = iso(gx + (back ? -0.6 : 0.6), gy);
+      const a2 = 0.4 + 0.5 * Math.abs(Math.sin((t || 0) * 2.6 + seed));
+      ctx.strokeStyle = 'rgba(255,235,250,' + a2.toFixed(2) + ')'; ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(sp.x - 3, sp.y - 32 - hb); ctx.lineTo(sp.x - 3, sp.y - 26 - hb);
+      ctx.moveTo(sp.x - 6, sp.y - 29 - hb); ctx.lineTo(sp.x, sp.y - 29 - hb);
+      ctx.stroke();
+    } else {
+      // horns — longhorns sweep way out
+      const hornBone = trait === 'skeleton' ? '#cfc9b6' : '#efe8d8';
+      const hornTip = trait === 'skeleton' ? '#dfd9c6' : '#f5efe2';
+      const L = trait === 'longhorn' ? 2.1 : 1;
+      cube(ctx, iso, hx(0.5, 0.08), gy - 0.24 - 0.12 * L, 0.08, 0.12 * L, 2, 15.5 + hb, hornBone);
+      cube(ctx, iso, hx(0.52, 0.06), gy - 0.26 - 0.14 * L, 0.06, 0.07 * L, 3.5 + (L > 1 ? 1.5 : 0), 16.5 + hb, hornTip);
+      cube(ctx, iso, hx(0.5, 0.08), gy + 0.24, 0.08, 0.12 * L, 2, 15.5 + hb, hornBone);
+      cube(ctx, iso, hx(0.52, 0.06), gy + 0.26 + 0.07 * L, 0.06, 0.07 * L, 3.5 + (L > 1 ? 1.5 : 0), 16.5 + hb, hornTip);
+    }
   };
   if (back) drawHead();
   else drawTail();
   // legs — diagonal pairs lift alternately (walk) / faster+higher (run)
   const liftA = moving ? Math.max(0, s1) * 2.6 * amp : 0;
   const liftB = moving ? Math.max(0, -s1) * 2.6 * amp : 0;
+  const hoofC = trait === 'skeleton' ? '#b8b2a0' : '#2b2118';
   const leg = (lx, ly, lift) => {
-    cube(ctx, iso, lx, ly, 0.13, 0.13, 2, lift, '#2b2118');
+    cube(ctx, iso, lx, ly, 0.13, 0.13, 2, lift, hoofC);
     cube(ctx, iso, lx, ly, 0.13, 0.13, 3.5, 2 + lift, mul(c, 0.8));
   };
   leg(hx(0.26, 0.13), gy - 0.2, liftA); leg(hx(-0.42, 0.13), gy + 0.07, liftA);
@@ -669,6 +716,42 @@ function bull(ctx, iso, o, t) {
   cube(ctx, iso, hx(-0.48, 0.96), gy - 0.24, 0.96, 0.48, 10, 5.5 + bob, c);
   // shoulder hump
   cube(ctx, iso, hx(0.04, 0.3), gy - 0.2, 0.3, 0.4, 3, 15.5 + bob, c);
+  // ---- trait body decorations (sit on top of the body) ----
+  if (trait === 'spotted') {
+    const spot = mul(c, 0.5);
+    cube(ctx, iso, hx(-0.34, 0.22), gy - 0.22, 0.22, 0.2, 0.8, 15.6 + bob, spot);
+    cube(ctx, iso, hx(0.02, 0.18), gy + 0.02, 0.18, 0.2, 0.8, 15.6 + bob, spot);
+    cube(ctx, iso, hx(-0.12, 0.16), gy - 0.18, 0.16, 0.16, 0.8, 15.6 + bob, spot);
+  } else if (trait === 'zebra') {
+    for (let i = 0; i < 4; i++) {
+      cube(ctx, iso, hx(-0.4 + i * 0.24, 0.1), gy - 0.235, 0.1, 0.47, 0.8, 15.6 + bob, '#241d15');
+    }
+  } else if (trait === 'golden') {
+    // roaming sheen band + sparkle
+    const sx = -0.42 + (((t || 0) * 0.35 + seed * 0.1) % 1) * 0.68;
+    cube(ctx, iso, hx(sx, 0.14), gy - 0.23, 0.14, 0.46, 0.6, 15.7 + bob, '#f7d97c');
+    const gp = iso(gx, gy);
+    const ga = 0.35 + 0.5 * Math.abs(Math.sin((t || 0) * 2.2 + seed));
+    ctx.strokeStyle = 'rgba(255,245,215,' + ga.toFixed(2) + ')'; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(gp.x + 6, gp.y - 26 - bob); ctx.lineTo(gp.x + 6, gp.y - 20 - bob);
+    ctx.moveTo(gp.x + 3, gp.y - 23 - bob); ctx.lineTo(gp.x + 9, gp.y - 23 - bob);
+    ctx.stroke();
+  } else if (trait === 'skeleton') {
+    // rib shadows along the flank (front face) — skipped when facing away
+    if (!back) {
+      for (let i = 0; i < 3; i++) {
+        decal(ctx, iso, gx - 0.28 + i * 0.22, gy + 0.241, 0.09, 'x', 7 + bob, 6.5, 'rgba(96,86,68,.5)');
+      }
+      decal(ctx, iso, gx - 0.3, gy + 0.241, 0.62, 'x', 12.5 + bob, 1.2, 'rgba(96,86,68,.4)');
+    }
+  } else if (trait === 'inferno') {
+    // flames flickering along the spine
+    for (let i = 0; i < 3; i++) {
+      const fh = 2.5 + 2.2 * Math.abs(Math.sin((t || 0) * 7 + i * 2.1 + seed));
+      cube(ctx, iso, hx(-0.3 + i * 0.26, 0.12), gy - 0.12, 0.12, 0.22, fh, 15.6 + bob, i % 2 ? '#f2842c' : '#f7c948');
+    }
+  }
   if (back) drawTail();
   else drawHead();
   // racing blanket
@@ -676,8 +759,9 @@ function bull(ctx, iso, o, t) {
     cube(ctx, iso, hx(-0.18, 0.38), gy - 0.26, 0.38, 0.52, 2, 15.7 + bob, '#f2b23a');
     cube(ctx, iso, hx(-0.16, 0.34), gy - 0.27, 0.34, 0.54, 0.8, 15.4 + bob, '#8e3b2e');
   }
+  if (trait === 'ghost') ctx.restore();
   if (o.flip) ctx.restore();
-  if (o.label) label(ctx, iso, gx, gy, o.label, 38, '#fff');
+  if (o.label) label(ctx, iso, gx, gy, o.label, 38, trait === 'ghost' ? '#e8e4ff' : '#fff');
 }
 
 /* ================= general store + daily wheel ================= */

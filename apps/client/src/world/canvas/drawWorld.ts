@@ -184,6 +184,7 @@ type DrawObj = WorldObject & {
   name?: string;
   coat?: string;
   trait?: BullTrait;
+  seed?: number;
   facingLeft?: boolean;
   isMe?: boolean;
   gatherMat?: string;
@@ -200,9 +201,61 @@ type DrawObj = WorldObject & {
   speech?: { text: string; until: number };
 };
 
-function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: number): string {
-  if (trait === 'rainbow') return `hsl(${((now / 18 + wx * 30) % 360)}, 72%, 55%)`;
-  return coat || '#33261d';
+/** Stable numeric seed from a bull id (number or string). */
+function bullSeed(id: number | string | undefined): number | undefined {
+  if (id == null) return undefined;
+  if (typeof id === 'number') return id;
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return Math.abs(h) % 9973;
+}
+
+/* ---- floating gather feedback ("+3 wood", "+3 XP", sparks) ---- */
+interface FloatFx {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  start: number;
+  sparks: boolean;
+}
+
+const floatFx: FloatFx[] = [];
+
+export function addFloatText(x: number, y: number, text: string, color = '#bfe3a4', sparks = false) {
+  floatFx.push({ x, y, text, color, start: performance.now(), sparks });
+}
+
+function drawFloatFx(ctx: CanvasRenderingContext2D) {
+  const now = performance.now();
+  for (let i = floatFx.length - 1; i >= 0; i--) {
+    const f = floatFx[i];
+    const t = (now - f.start) / 1200;
+    if (t >= 1) {
+      floatFx.splice(i, 1);
+      continue;
+    }
+    const s = iso(f.x, f.y);
+    const rise = t * 30;
+    ctx.save();
+    ctx.globalAlpha = 1 - t * t;
+    if (f.sparks) {
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2 + f.start % 7;
+        const r = 6 + t * 22;
+        ctx.fillStyle = k % 2 ? '#f2c94c' : '#bfe3a4';
+        ctx.fillRect(s.x + Math.cos(a) * r - 1.2, s.y - 14 - rise * 0.7 + Math.sin(a) * r * 0.5 - 1.2, 2.4, 2.4);
+      }
+    }
+    ctx.font = "700 13px 'Pixelify Sans', monospace";
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(23,16,10,.85)';
+    ctx.fillText(f.text, s.x + 1.5, s.y - 34 - rise + 1.5);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, s.x, s.y - 34 - rise);
+    ctx.restore();
+    ctx.textAlign = 'left';
+  }
 }
 
 /*
@@ -351,16 +404,13 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
   }
 
   if (o.t === 'bull') {
-    const ghost = o.trait === 'ghost';
-    if (ghost) {
-      ctx.save();
-      ctx.globalAlpha = 0.35;
-    }
     BRArt.drawObj(ctx, iso, {
       t: 'bull',
       x: o.x,
       y: o.y,
-      coat: bullCoat(o.coat || '#33261d', o.trait, now, o.x),
+      coat: o.coat || '#33261d',
+      trait: o.trait,
+      seed: o.seed,
       label: o.label,
       ph: o.ph,
       moving: o.moving,
@@ -369,7 +419,6 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       flip: o.flip,
       back: o.back,
     }, opts);
-    if (ghost) ctx.restore();
     return;
   }
 
@@ -658,7 +707,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         y: p.y,
         shirt: p.shirt,
         name: p.displayName,
-        lvl: p.stableLevel,
+        lvl: p.level ?? 1,
         moving: walk.moving,
         ph: walk.ph,
         flip: personFlip(walk.flip, walk.back),
@@ -680,6 +729,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           y: f.y,
           coat: b.coat,
           trait: b.trait,
+          seed: bullSeed(b.id),
           label: b.name,
           ph: f.ph,
           moving: f.moving,
@@ -722,6 +772,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         t: 'player',
         x: me.position.x,
         y: me.position.y,
+        label: `Lv ${me.level ?? 1} · You`,
         gatherMat: gather?.mat,
         gatherStart: gather?.start,
         walking: walking && !gather,
@@ -752,6 +803,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           y: f.y,
           coat: coatOf(b, me.items),
           trait: b.trait,
+          seed: bullSeed(b.id),
           label: b.name,
           ph: f.ph,
           moving: f.moving,
@@ -783,8 +835,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           y: pos.y,
           coat: b.coat,
           trait: b.trait,
+          seed: bullSeed(b.id),
           label: b.name,
-          facingLeft: false,
         },
       });
     }
@@ -803,6 +855,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           y: pos.y,
           coat: b.coat,
           trait: b.trait as BullTrait | undefined,
+          seed: bullSeed(b.id),
           label: b.name,
           racing: true,
           flip: pos.facingLeft,
@@ -842,6 +895,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           y: pos.y,
           coat: b.coat,
           trait: b.trait as BullTrait | undefined,
+          seed: bullSeed(b.id),
           label: b.name,
           racing: true,
           moving: !raceAnim.frozen,
@@ -866,6 +920,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   list.sort((a, b) => a.d - b.d);
   const stableLevel = me?.stable.level ?? 1;
   for (const it of list) drawObj(ctx, it.o, stableLevel, now, artT);
+
+  drawFloatFx(ctx);
 
   ctx.restore();
 }

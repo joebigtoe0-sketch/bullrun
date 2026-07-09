@@ -28,6 +28,8 @@ import {
   stableWoodNeed,
   type MatType,
   type StatType,
+  gatherBonusQty,
+  applyXpGain,
 } from '@bullrun/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
@@ -324,20 +326,30 @@ export async function completeGather(userId: string, nodeIdStr: string, nearX?: 
 
   const resolvedId = node.id;
 
-  const qty = 2 + Math.floor(Math.random() * 3);
+  const p = await getProfile(userId);
+  const qty = 2 + Math.floor(Math.random() * 3) + gatherBonusQty(p.level ?? 1);
   const mat = node.mat as MatType;
   const deadUntil = new Date(Date.now() + NODE_RESPAWN_MS);
 
-  const p = await getProfile(userId);
   const matField = mat === 'hay' ? 'hay' : mat === 'ore' ? 'ore' : 'wood';
+
+  // 1 XP per resource gathered
+  const gained = applyXpGain(p.level ?? 1, p.xp ?? 0, qty);
 
   await prisma.$transaction([
     prisma.worldNode.update({ where: { id: resolvedId }, data: { deadUntil } }),
-    prisma.playerProfile.update({ where: { userId }, data: { [matField]: (p[matField as 'hay'] as number) + qty } }),
+    prisma.playerProfile.update({
+      where: { userId },
+      data: {
+        [matField]: (p[matField as 'hay'] as number) + qty,
+        level: gained.level,
+        xp: gained.xp,
+      },
+    }),
   ]);
 
   broadcast('node_depleted', { id: resolvedId, deadUntil: deadUntil.getTime() });
-  return { qty, mat, me: await getMeResponse(userId) };
+  return { qty, mat, xp: qty, leveledUp: gained.leveledUp, me: await getMeResponse(userId) };
 }
 
 export async function enterRace(userId: string, bullId: number, clientX?: number, clientY?: number) {

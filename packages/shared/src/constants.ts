@@ -89,6 +89,15 @@ export const MAT_RATES: Record<MatType, number> = { hay: 3, ore: 8, wood: 5 };
 export const MAT_SWATCHES: Record<MatType, string> = { hay: '#d9c65a', ore: '#9aa0a6', wood: '#8a5a2b' };
 
 export const NPC_SHIRT_COLORS = ['#4a72c4', '#c4574a', '#4ac47e', '#c4a94a', '#8a4ac4', '#4ac4bb'];
+
+/** Default rancher shirt colors — picked per account so new players don't all match. */
+export const PLAYER_SHIRT_COLORS = ['#e8a33d', '#4a72c4', '#c4574a', '#4ac47e', '#8a4ac4', '#c9a04a', '#4ac4bb', '#d46a9e'];
+
+export function shirtColorForId(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return PLAYER_SHIRT_COLORS[Math.abs(h) % PLAYER_SHIRT_COLORS.length];
+}
 export const COAT_COLORS = ['#8e2f2f', '#e8e4da', '#14141a', '#3b6ea5', '#c99a5b', '#7a5296'];
 export const SHOP_BULL_NAMES = ['Bandit', 'Ember', 'Chief', 'Juniper', 'Rocco', 'Sage', 'Nitro', 'Poppy'];
 export const SHOP_COATS = ['#1d1a17', '#6e4526', '#8e2f2f', '#c99a5b', '#3d3d45', '#d9cbb8'];

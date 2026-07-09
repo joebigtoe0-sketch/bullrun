@@ -50,7 +50,6 @@ export function buildWorld(npcWanderers = 0): WorldData {
   // bridge approaches: outside (down to the y=37 road) and inside (up into the hub)
   for (let y = 33; y <= 37; y++) path(21, y);
   for (let y = 22; y <= 30; y++) path(21, y);
-  for (let x = 22; x <= 27; x++) path(x, 25);
 
   const objs: WorldObject[] = [];
   const nodes: WorldNode[] = [];
@@ -71,10 +70,10 @@ export function buildWorld(npcWanderers = 0): WorldData {
   };
   for (const { er, n } of FENCE_RINGS) fence(er, n);
 
-  // central hub inside the track, upper-left by the bridge path
-  objs.push({ t: 'racebooth', x: 23.5, y: 20.5, label: 'RACE SIGNUP' });
-  objs.push({ t: 'booth', x: 20.5, y: 23.5, label: 'BETS' });
-  objs.push({ t: 'wheel', x: 22, y: 22, label: 'DAILY WHEEL' });
+  // central hub inside the track — buildings lined along the west road
+  objs.push({ t: 'racebooth', x: 19.8, y: 21.2, label: 'RACE SIGNUP' });
+  objs.push({ t: 'wheel', x: 19.6, y: 23.8, label: 'DAILY WHEEL' });
+  objs.push({ t: 'booth', x: 19.4, y: 26.4, label: 'BETS' });
 
   objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
   objs.push({ t: 'market', x: 9, y: 35.5, label: 'MARKET' });
@@ -132,12 +131,12 @@ export function buildWorld(npcWanderers = 0): WorldData {
 
   const interactables: Interactable[] = [
     { t: 'stable', x: 38, y: 37.5, label: 'Stable' },
-    { t: 'bet', x: 20.5, y: 23.5, label: 'Betting booth' },
+    { t: 'bet', x: 19.4, y: 26.4, label: 'Betting booth' },
     { t: 'forge', x: 9, y: 32, label: 'Forge' },
     { t: 'market', x: 9, y: 35.5, label: 'Market' },
-    { t: 'race', x: 23.5, y: 20.5, label: 'Race signup' },
+    { t: 'race', x: 19.8, y: 21.2, label: 'Race signup' },
     { t: 'shop', x: 45, y: 9.5, label: 'General store' },
-    { t: 'wheel', x: 22, y: 22, label: 'Daily wheel' },
+    { t: 'wheel', x: 19.6, y: 23.8, label: 'Daily wheel' },
   ];
 
   const names: [string, number][] = [

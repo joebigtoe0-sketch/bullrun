@@ -4,7 +4,7 @@ import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
-import { CHAT_MAX_LEN, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
+import { CHAT_MAX_LEN, shirtColorForId, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
 import { syncRunningRaceToSocket, joinRunningRaceToSocket } from '../race/scheduler.js';
 
 type OnlinePlayer = {
@@ -86,7 +86,7 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
       y: user.profile.posY,
       stableLevel: user.profile.stableLevel,
       level: user.profile.level ?? 1,
-      shirt: '#e8a33d',
+      shirt: shirtColorForId(userId),
       bulls,
     };
 

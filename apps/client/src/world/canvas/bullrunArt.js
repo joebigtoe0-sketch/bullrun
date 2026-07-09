@@ -525,7 +525,7 @@ function person(ctx, iso, o) {
   const gx = o.x, gy = o.y;
   const isMe = o.t === 'player';
   const gear = o.gear || {};
-  const shirt = gear.outfit || (isMe ? '#e8a33d' : (o.shirt || '#4a72c4'));
+  const shirt = gear.outfit || o.shirt || (isMe ? '#e8a33d' : '#4a72c4');
   const skin = '#e8c49a';
   const hands = gear.gloves || skin;
   const pants = isMe ? '#5a4632' : '#3f3542';

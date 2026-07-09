@@ -24,7 +24,10 @@ import {
   liveStandings,
   formatLiveStandingLine,
   CHAT_SPEECH_FADE_MS,
+  shirtColorForId,
   isOnBridge,
+  isTrackBlocked,
+  BRIDGE_X,
   BRIDGE_Y,
   BRIDGE_LEN,
   type MeResponse,
@@ -363,8 +366,8 @@ function bridgeElevAt(x: number, y: number): number {
   return Math.max(0, arch) + 2.4;
 }
 
-/** Depth bias so entities on the deck paint over the bridge span (dSort 4.5). */
-const BRIDGE_RIDER_DSORT = 6;
+/** Sort key for anyone standing on the deck — always paints over the bridge span (dSort 4.5). */
+const BRIDGE_RIDER_D = BRIDGE_X + BRIDGE_Y + 5.5;
 
 /** Delegate drawing to the shared BRArt library, mapping game state to art objects. */
 function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number, artT: number) {
@@ -696,11 +699,15 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     });
   }
 
+  const racingBullIds = new Set<string>(
+    [...(raceAnim?.bulls ?? []), ...(raceGrid?.bulls ?? [])].map((b) => String(b.id)),
+  );
+
   for (const p of otherPlayers) {
     const walk = otherWalkAnim(p.id, p.x, p.y);
     const pElev = bridgeElevAt(p.x, p.y);
     list.push({
-      d: p.x + p.y + (pElev > 0 ? BRIDGE_RIDER_DSORT : 0),
+      d: pElev > 0 ? BRIDGE_RIDER_D : p.x + p.y,
       o: {
         t: 'other',
         x: p.x,
@@ -718,11 +725,12 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     });
     const pf = otherFolPos[p.id] ?? {};
     for (const b of p.bulls ?? []) {
+      if (racingBullIds.has(String(b.id))) continue;
       let f = pf[b.id];
       if (!f) f = { x: p.x + 1.5, y: p.y + 1.5 };
       const fElev = bridgeElevAt(f.x, f.y);
       list.push({
-        d: f.x + f.y + (fElev > 0 ? BRIDGE_RIDER_DSORT : 0),
+        d: fElev > 0 ? BRIDGE_RIDER_D : f.x + f.y,
         o: {
           t: 'bull',
           x: f.x,
@@ -767,11 +775,12 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     const myFlip = personFlip(myLeft, myBack);
     const myElev = bridgeElevAt(me.position.x, me.position.y);
     list.push({
-      d: me.position.x + me.position.y + (myElev > 0 ? BRIDGE_RIDER_DSORT : 0),
+      d: myElev > 0 ? BRIDGE_RIDER_D : me.position.x + me.position.y,
       o: {
         t: 'player',
         x: me.position.x,
         y: me.position.y,
+        shirt: myPlayerId ? shirtColorForId(myPlayerId) : undefined,
         label: `Lv ${me.level ?? 1} · You`,
         gatherMat: gather?.mat,
         gatherStart: gather?.start,
@@ -796,7 +805,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       }
       const fElev = bridgeElevAt(f.x, f.y);
       list.push({
-        d: f.x + f.y + (fElev > 0 ? BRIDGE_RIDER_DSORT : 0),
+        d: fElev > 0 ? BRIDGE_RIDER_D : f.x + f.y,
         o: {
           t: 'bull',
           x: f.x,
@@ -858,7 +867,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           seed: bullSeed(b.id),
           label: b.name,
           racing: true,
-          flip: pos.facingLeft,
+          // lap 1 launches toward -x: away from the camera, no mirror
+          back: true,
+          flip: false,
         },
       });
     });
@@ -878,7 +889,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         ? raceFinishPosition(place, fieldSize)
         : raceBullAt(el, b.finishT, gridSlot, laps, b.lapTimes, fieldSize, place);
       let left = pos.facingLeft;
-      let back = false;
+      let back = !!raceAnim.frozen; // finish line-up faces the direction of travel (up-left)
+      if (raceAnim.frozen) left = true;
       if (!raceAnim.frozen) {
         const ahead = raceBullAt(el + 80, b.finishT, gridSlot, laps, b.lapTimes, fieldSize, place);
         const sdx = (ahead.x - pos.x) - (ahead.y - pos.y);
@@ -926,6 +938,59 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   ctx.restore();
 }
 
+/** Where a follower should head: straight at the owner, or via the bridge when the track is in the way. */
+function chasePoint(f: { x: number; y: number }, owner: { x: number; y: number }): { x: number; y: number } {
+  const blocked =
+    isTrackBlocked((f.x + owner.x) / 2, (f.y + owner.y) / 2) ||
+    isTrackBlocked(f.x * 0.25 + owner.x * 0.75, f.y * 0.25 + owner.y * 0.75) ||
+    isTrackBlocked(f.x * 0.75 + owner.x * 0.25, f.y * 0.75 + owner.y * 0.25);
+  if (!blocked) return owner;
+  const endIn = { x: BRIDGE_X, y: BRIDGE_Y - BRIDGE_LEN / 2 - 0.2 };
+  const endOut = { x: BRIDGE_X, y: BRIDGE_Y + BRIDGE_LEN / 2 + 0.2 };
+  if (isOnBridge(f.x, f.y)) {
+    // already on the deck — cross toward the end nearer the owner
+    const dIn = Math.hypot(owner.x - endIn.x, owner.y - endIn.y);
+    const dOut = Math.hypot(owner.x - endOut.x, owner.y - endOut.y);
+    return dIn < dOut ? endIn : endOut;
+  }
+  // approach the bridge from my own side first
+  const dIn = Math.hypot(f.x - endIn.x, f.y - endIn.y);
+  const dOut = Math.hypot(f.x - endOut.x, f.y - endOut.y);
+  return dIn < dOut ? endIn : endOut;
+}
+
+function stepFollowerToward(f: FollowerPos, owner: { x: number; y: number }, dt: number) {
+  const d = Math.hypot(owner.x - f.x, owner.y - f.y);
+  if (d > 16) {
+    // hopelessly separated (e.g. desync) — catch up instantly
+    f.x = owner.x + 1.2;
+    f.y = owner.y + 1.2;
+    f.moving = false;
+    applyWorldCollision(f);
+    return;
+  }
+  if (d > 1.5) {
+    const target = chasePoint(f, owner);
+    const td = Math.hypot(target.x - f.x, target.y - f.y);
+    if (td > 0.05) {
+      const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
+      const stepX = ((target.x - f.x) / td) * spd * dt;
+      const stepY = ((target.y - f.y) / td) * spd * dt;
+      f.x += stepX;
+      f.y += stepY;
+      f.moving = true;
+      f.ph = (f.ph ?? 0) + spd * dt * 2.4;
+      const screenDx = stepX - stepY;
+      const screenDy = stepX + stepY;
+      if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
+      if (Math.abs(screenDy) > 0.0005) f.back = screenDy < 0;
+    }
+  } else {
+    f.moving = false;
+  }
+  applyWorldCollision(f);
+}
+
 export function stepFollowers(
   folPos: Record<number, FollowerPos>,
   me: MeResponse,
@@ -939,23 +1004,7 @@ export function stepFollowers(
     if (me.entered.includes(b.id) || racingIds.has(b.id)) continue;
     let f = folPos[b.id];
     if (!f) f = folPos[b.id] = { x: me.position.x + 1.5, y: me.position.y + 1.5 };
-    const d = Math.hypot(prev.x - f.x, prev.y - f.y);
-    if (d > 1.5) {
-      const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
-      const stepX = ((prev.x - f.x) / d) * spd * dt;
-      const stepY = ((prev.y - f.y) / d) * spd * dt;
-      f.x += stepX;
-      f.y += stepY;
-      f.moving = true;
-      f.ph = (f.ph ?? 0) + spd * dt * 2.4;
-      const screenDx = stepX - stepY;
-      const screenDy = stepX + stepY;
-      if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
-      if (Math.abs(screenDy) > 0.0005) f.back = screenDy < 0;
-    } else {
-      f.moving = false;
-    }
-    applyWorldCollision(f);
+    stepFollowerToward(f, prev, dt);
     prev = f;
   }
 }
@@ -972,23 +1021,7 @@ export function stepOtherFollowers(
     for (const b of p.bulls ?? []) {
       let f = folPos[b.id];
       if (!f) f = folPos[b.id] = { x: p.x + 1.5, y: p.y + 1.5 };
-      const d = Math.hypot(prev.x - f.x, prev.y - f.y);
-      if (d > 1.5) {
-        const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
-        const stepX = ((prev.x - f.x) / d) * spd * dt;
-        const stepY = ((prev.y - f.y) / d) * spd * dt;
-        f.x += stepX;
-        f.y += stepY;
-        f.moving = true;
-        f.ph = (f.ph ?? 0) + spd * dt * 2.4;
-        const screenDx = stepX - stepY;
-        const screenDy = stepX + stepY;
-        if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
-        if (Math.abs(screenDy) > 0.0005) f.back = screenDy < 0;
-      } else {
-        f.moving = false;
-      }
-      applyWorldCollision(f);
+      stepFollowerToward(f, prev, dt);
       prev = f;
     }
   }

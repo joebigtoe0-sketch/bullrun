@@ -553,9 +553,11 @@ function person(ctx, iso, o) {
   };
   const drawNearArm = () => {
     if (o.chop) {
-      cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 2.5, 12, hands);
-      cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 5, 9, mul(shirt, 0.92));
-      const sp = iso(gx + 0.26, gy - 0.02);
+      // working arm + tool on the front-left — the side the character faces
+      // (the whole sprite mirrors via flip when facing right)
+      cube(ctx, iso, gx - 0.14, gy + 0.19, 0.18, 0.09, 2.5, 12, hands);
+      cube(ctx, iso, gx - 0.14, gy + 0.19, 0.18, 0.09, 5, 9, mul(shirt, 0.92));
+      const sp = iso(gx - 0.02, gy + 0.26);
       const tool = o.chop.tool;
       let ang, jab = 0;
       if (tool === 'pick') {
@@ -569,7 +571,8 @@ function person(ctx, iso, o) {
         // axe: chopping swing
         ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
       }
-      toolDraw(ctx, sp.x + 2, sp.y - 13, ang, tool, jab);
+      // mirror the swing to the left side (screen angle -> PI - angle)
+      toolDraw(ctx, sp.x - 2, sp.y - 13, Math.PI - ang, tool, jab);
     } else {
       cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
       cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));

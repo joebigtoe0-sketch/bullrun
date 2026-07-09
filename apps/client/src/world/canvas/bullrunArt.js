@@ -490,18 +490,31 @@ function rail(ctx, iso, o) {
 }
 
 /* ================= characters ================= */
-function toolDraw(ctx, sx, sy, ang, tool) {
+function toolDraw(ctx, sx, sy, ang, tool, jab) {
+  const j = jab || 0;
+  const x0 = sx + Math.cos(ang) * j, y0 = sy + Math.sin(ang) * j;
   const len = 15;
-  const ex = sx + Math.cos(ang) * len, ey = sy + Math.sin(ang) * len;
+  const ex = x0 + Math.cos(ang) * len, ey = y0 + Math.sin(ang) * len;
   ctx.strokeStyle = '#8a6a44'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(ex, ey); ctx.stroke();
   if (tool === 'axe') {
     ctx.save(); ctx.translate(ex, ey); ctx.rotate(ang + Math.PI / 2);
     ctx.fillStyle = '#b8bcc0'; ctx.fillRect(-1.5, -5.5, 5, 10);
     ctx.restore();
-  } else if (tool === 'pick') {
+  } else if (tool === 'pick') { // double-headed pickaxe
     ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.arc(ex, ey, 5.5, ang + 0.7, ang + 2.45); ctx.stroke();
+    ctx.beginPath(); ctx.arc(ex, ey, 5.5, ang - 2.45, ang - 0.7); ctx.stroke();
+  } else if (tool === 'pitchfork') { // crossbar + three tines
+    const px = Math.cos(ang + Math.PI / 2), py = Math.sin(ang + Math.PI / 2);
+    ctx.strokeStyle = '#c9ccd0'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(ex - px * 4.5, ey - py * 4.5); ctx.lineTo(ex + px * 4.5, ey + py * 4.5); ctx.stroke();
+    for (const i of [-4, 0, 4]) {
+      ctx.beginPath();
+      ctx.moveTo(ex + px * i, ey + py * i);
+      ctx.lineTo(ex + px * i + Math.cos(ang) * 6.5, ey + py * i + Math.sin(ang) * 6.5);
+      ctx.stroke();
+    }
   } else { // sickle
     ctx.strokeStyle = '#c9ccd0'; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(ex, ey, 5.5, ang - 2.45, ang - 0.7); ctx.stroke();
@@ -511,32 +524,52 @@ function toolDraw(ctx, sx, sy, ang, tool) {
 function person(ctx, iso, o) {
   const gx = o.x, gy = o.y;
   const isMe = o.t === 'player';
-  const shirt = isMe ? '#e8a33d' : (o.shirt || '#4a72c4');
+  const gear = o.gear || {};
+  const shirt = gear.outfit || (isMe ? '#e8a33d' : (o.shirt || '#4a72c4'));
   const skin = '#e8c49a';
+  const hands = gear.gloves || skin;
   const pants = isMe ? '#5a4632' : '#3f3542';
   const ph = o.ph || 0;
   const walking = !!o.moving;
   const sw = walking ? Math.sin(ph) : 0;
   const bob = walking ? Math.abs(Math.cos(ph)) * 1.2 : 0;
   shadow(ctx, iso, gx, gy, 9, 4.5);
-  // legs — alternate lift while walking
+  const anchor = iso(gx, gy);
+  if (o.flip) { ctx.save(); ctx.translate(2 * anchor.x, 0); ctx.scale(-1, 1); }
+  // legs — alternate lift while walking (+ boots)
   cube(ctx, iso, gx - 0.16 + sw * 0.03, gy - 0.11, 0.13, 0.2, 5, Math.max(0, sw) * 2.2, pants);
   cube(ctx, iso, gx + 0.03 - sw * 0.03, gy - 0.11, 0.13, 0.2, 5, Math.max(0, -sw) * 2.2, pants);
+  if (gear.boots) {
+    cube(ctx, iso, gx - 0.17 + sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, sw) * 2.2, gear.boots);
+    cube(ctx, iso, gx + 0.02 - sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, -sw) * 2.2, gear.boots);
+  }
   // torso + belt
   cube(ctx, iso, gx - 0.195, gy - 0.145, 0.39, 0.29, 2, 5 + bob, '#2e2318');
   cube(ctx, iso, gx - 0.19, gy - 0.14, 0.38, 0.28, 8, 7 + bob, shirt);
   // arms — swing opposite the legs; working arm raised while gathering
   const armSw = walking ? sw * 0.045 : 0;
-  cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, skin);
+  cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
   cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
   if (o.chop) {
-    cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 2.5, 12, skin);
+    cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 2.5, 12, hands);
     cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 5, 9, mul(shirt, 0.92));
     const sp = iso(gx + 0.26, gy - 0.02);
-    const ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
-    toolDraw(ctx, sp.x + 2, sp.y - 13, ang, o.chop.tool);
+    const tool = o.chop.tool;
+    let ang, jab = 0;
+    if (tool === 'pick') {
+      // mining: big overhead arc slamming down
+      ang = -2.15 + (Math.sin(o.chop.ph) + 1) * 0.95;
+    } else if (tool === 'pitchfork') {
+      // hay: forward-down digging jabs
+      ang = 0.5;
+      jab = Math.max(0, Math.sin(o.chop.ph)) * 5.5;
+    } else {
+      // axe: chopping swing
+      ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
+    }
+    toolDraw(ctx, sp.x + 2, sp.y - 13, ang, tool, jab);
   } else {
-    cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, skin);
+    cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
     cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
   }
   // head
@@ -546,15 +579,15 @@ function person(ctx, iso, o) {
   ctx.fillStyle = '#241608';
   ctx.fillRect(fc.x - 4, fc.y - 20 - bob, 2.2, 3);
   ctx.fillRect(fc.x + 2, fc.y - 20 - bob, 2.2, 3);
-  if (isMe) { // straw hat — brim, red band, then crown on top
-    cube(ctx, iso, gx - 0.23, gy - 0.19, 0.46, 0.38, 1.8, 22.4 + bob, '#d9b45a');
-    cube(ctx, iso, gx - 0.125, gy - 0.105, 0.25, 0.21, 1.5, 24.2 + bob, '#8e3b2e');
-    cube(ctx, iso, gx - 0.12, gy - 0.1, 0.24, 0.2, 3.6, 25.5 + bob, '#c9a44a');
-  } else { // hair (seeded by name so it doesn't flicker while walking)
+  if (gear.hat) { // worn hat — brim, then crown
+    cube(ctx, iso, gx - 0.23, gy - 0.19, 0.46, 0.38, 1.8, 22.4 + bob, gear.hat);
+    cube(ctx, iso, gx - 0.12, gy - 0.1, 0.24, 0.2, 3.6, 24.2 + bob, mul(gear.hat, 0.88));
+  } else { // plain hair (seeded by name so it doesn't flicker while walking)
     const seed = o.name ? o.name.length : 1;
-    const hairC = ['#3a2a1a', '#241608', '#5e4527', '#1d1a17'][seed % 4];
+    const hairC = isMe ? '#3a2a1a' : ['#3a2a1a', '#241608', '#5e4527', '#1d1a17'][seed % 4];
     cube(ctx, iso, gx - 0.145, gy - 0.115, 0.29, 0.23, 2.8, 23 + bob, o.hair || hairC);
   }
+  if (o.flip) ctx.restore();
   const txt = isMe ? (o.label || 'You') : ('Lvl ' + (o.lvl || 1) + ' ' + (o.name || ''));
   label(ctx, iso, gx, gy, txt, 42, isMe ? '#f2b23a' : '#fff');
 }
@@ -570,6 +603,8 @@ function bull(ctx, iso, o, t) {
   const hb = bob + (moving ? Math.sin(ph + 0.6) * 0.9 * amp : 0);
   const swish = Math.sin((t || 0) * 2.2 + gx * 2) * 0.05;
   shadow(ctx, iso, gx, gy, 16, 7);
+  const anchor = iso(gx, gy);
+  if (o.flip) { ctx.save(); ctx.translate(2 * anchor.x, 0); ctx.scale(-1, 1); }
   // tail FIRST — it hangs off the rear (-x) so the body must paint over its root
   cube(ctx, iso, gx - 0.56, gy - 0.04 + swish, 0.08, 0.08, 5, 9 + bob, mul(c, 0.85));
   cube(ctx, iso, gx - 0.58, gy - 0.05 + swish * 2, 0.1, 0.1, 3, 6 + bob, '#241608');
@@ -612,14 +647,109 @@ function bull(ctx, iso, o, t) {
     cube(ctx, iso, gx - 0.18, gy - 0.26, 0.38, 0.52, 2, 15.7 + bob, '#f2b23a');
     cube(ctx, iso, gx - 0.16, gy - 0.27, 0.34, 0.54, 0.8, 15.4 + bob, '#8e3b2e');
   }
+  if (o.flip) ctx.restore();
   if (o.label) label(ctx, iso, gx, gy, o.label, 38, '#fff');
+}
+
+/* ================= general store + daily wheel ================= */
+function store(ctx, iso, o, t) {
+  const gx = o.x, gy = o.y;
+  shadow(ctx, iso, gx, gy + 0.4, 44, 18);
+  // stone footing + cream walls with timber posts
+  cube(ctx, iso, gx - 1.05, gy - 1.05, 2.1, 2.1, 6, 0, '#9a9182');
+  cube(ctx, iso, gx - 1, gy - 1, 2, 2, 20, 6, '#ead9b0');
+  for (const [px, py] of [[-1.02, -1.02], [0.92, -1.02], [-1.02, 0.92], [0.92, 0.92]]) {
+    cube(ctx, iso, gx + px, gy + py, 0.1, 0.1, 20, 6, '#6b4a33');
+  }
+  const FY = gy + 1.001;
+  // door + step
+  decal(ctx, iso, gx - 0.25, FY, 0.5, 'x', 6, 15, '#5e3d26');
+  decalFrame(ctx, iso, gx - 0.25, FY, 0.5, 'x', 6, 15, '#41291a', 1.6);
+  cube(ctx, iso, gx - 0.27, gy + 1.0, 0.54, 0.2, 2, 0, '#9a9182');
+  // shop windows either side
+  decal(ctx, iso, gx - 0.85, FY, 0.45, 'x', 9, 8, '#bfe3ef');
+  decalFrame(ctx, iso, gx - 0.85, FY, 0.45, 'x', 9, 8, '#6b4a33', 1.5);
+  decal(ctx, iso, gx + 0.4, FY, 0.45, 'x', 9, 8, '#bfe3ef');
+  decalFrame(ctx, iso, gx + 0.4, FY, 0.45, 'x', 9, 8, '#6b4a33', 1.5);
+  // striped awning across the front
+  for (let i = 0; i < 4; i++) {
+    decal(ctx, iso, gx - 1 + i * 0.5, FY, 0.5, 'x', 19, 4, i % 2 ? '#e8e0cc' : '#3f7d4e');
+  }
+  // roof tiers (green — distinct from homes)
+  cube(ctx, iso, gx - 1.22, gy - 1.22, 2.44, 2.44, 5, 26, '#3f6e46');
+  cube(ctx, iso, gx - 0.92, gy - 0.92, 1.84, 1.84, 5, 31, '#498052');
+  cube(ctx, iso, gx - 0.52, gy - 0.52, 1.04, 1.04, 4.5, 36, '#549260');
+  // chimney
+  cube(ctx, iso, gx + 0.42, gy - 0.72, 0.32, 0.32, 11, 34, '#8a8078');
+  const ch = iso(gx + 0.58, gy - 0.56);
+  smoke(ctx, ch.x, ch.y - 46, t || 0, 0.35);
+  if (o.label) label(ctx, iso, gx, gy, o.label, 52, '#7dc24f');
+}
+
+function wheelObj(ctx, iso, o, t) {
+  const gx = o.x, gy = o.y;
+  const s = iso(gx, gy);
+  shadow(ctx, iso, gx, gy, 14, 6);
+  // post + base
+  cube(ctx, iso, gx - 0.22, gy - 0.16, 0.44, 0.32, 3, 0, '#6b4a33');
+  cube(ctx, iso, gx - 0.07, gy - 0.07, 0.14, 0.14, 26, 3, '#8a6538');
+  // wheel disc — slow idle turn
+  const cy0 = s.y - 44, R = 15;
+  const rot = ((t || 0) * 0.5) % (Math.PI * 2);
+  const cols = ['#c9573f', '#e8e0cc', '#f2b23a', '#3b6ea5', '#7dc24f', '#c86ad4', '#e07840', '#5fb4d8'];
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = cols[i];
+    ctx.beginPath();
+    ctx.moveTo(s.x, cy0);
+    ctx.arc(s.x, cy0, R, rot + (i * Math.PI) / 4, rot + ((i + 1) * Math.PI) / 4);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.strokeStyle = '#41291a'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.arc(s.x, cy0, R, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#f2b23a';
+  ctx.beginPath(); ctx.arc(s.x, cy0, 3, 0, 7); ctx.fill();
+  // pointer
+  ctx.fillStyle = '#e8e0cc';
+  ctx.beginPath();
+  ctx.moveTo(s.x - 4, cy0 - R - 6); ctx.lineTo(s.x + 4, cy0 - R - 6); ctx.lineTo(s.x, cy0 - R + 2);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#41291a'; ctx.lineWidth = 1.4; ctx.stroke();
+  if (o.label) label(ctx, iso, gx, gy, o.label, 66, '#f2c94c');
 }
 
 /* ================= equippable item assets ================= */
 const RARC = { Common: '#c9b896', Uncommon: '#7dc24f', Rare: '#5fb4d8', Epic: '#c86ad4', Legendary: '#f2b23a' };
-function drawItem(ctx, iso, slot, rarity) {
+function drawItem(ctx, iso, slot, rarity, color) {
   const acc = RARC[rarity] || '#c9b896';
-  if (slot === 'coat') { // folded blanket stack
+  const main = color || acc;
+  if (slot === 'hat') { // wide-brim hat
+    shadow(ctx, iso, 0, 0, 13, 5.5);
+    cube(ctx, iso, -0.4, -0.34, 0.8, 0.68, 2.2, 2, main);
+    cube(ctx, iso, -0.2, -0.17, 0.4, 0.34, 5.5, 4.2, mul(main, 0.88));
+    decal(ctx, iso, -0.2, 0.171, 0.4, 'x', 4.2, 1.6, acc);
+  } else if (slot === 'outfit') { // folded shirt with collar
+    shadow(ctx, iso, 0, 0, 13, 5.5);
+    cube(ctx, iso, -0.35, -0.26, 0.7, 0.52, 4.5, 0, main);
+    cube(ctx, iso, -0.3, -0.21, 0.6, 0.42, 3.5, 4.5, mul(main, 0.9));
+    cube(ctx, iso, -0.12, -0.1, 0.24, 0.2, 1.8, 8, '#efe8d8');
+    decal(ctx, iso, -0.3, 0.261, 0.6, 'x', 1.2, 1.2, acc);
+  } else if (slot === 'boots') { // pair of boots
+    shadow(ctx, iso, 0, 0, 13, 5.5);
+    const boot = (x) => {
+      cube(ctx, iso, x, -0.1, 0.16, 0.2, 6.5, 0, main);
+      cube(ctx, iso, x, 0.08, 0.17, 0.14, 2.4, 0, mul(main, 0.8));
+      cube(ctx, iso, x - 0.01, -0.11, 0.18, 0.22, 1.4, 6.5, acc);
+    };
+    boot(-0.26); boot(0.08);
+  } else if (slot === 'gloves') { // pair of mitts
+    shadow(ctx, iso, 0, 0, 12, 5);
+    const mitt = (x) => {
+      cube(ctx, iso, x, -0.08, 0.18, 0.18, 4.5, 0, main);
+      cube(ctx, iso, x + 0.13, 0.02, 0.07, 0.09, 2.6, 2, main);
+      cube(ctx, iso, x - 0.01, -0.09, 0.2, 0.2, 1.2, 4.5, acc);
+    };
+    mitt(-0.28); mitt(0.08);
+  } else if (slot === 'coat') { // folded blanket stack
     shadow(ctx, iso, 0, 0, 14, 6);
     cube(ctx, iso, -0.35, -0.28, 0.7, 0.56, 5, 0, acc);
     cube(ctx, iso, -0.3, -0.23, 0.6, 0.46, 4, 5, mul(acc, 0.85));
@@ -672,6 +802,8 @@ function drawObj(ctx, iso, o, opts) {
     case 'forge': return forge(ctx, iso, o, t);
     case 'racebooth': return racebooth(ctx, iso, o, t);
     case 'sign': return sign(ctx, iso, o);
+    case 'store': return store(ctx, iso, o, t);
+    case 'wheel': return wheelObj(ctx, iso, o, t);
     case 'post': return post(ctx, iso, o);
     case 'rail': return rail(ctx, iso, o);
     case 'bridge': return bridge(ctx, iso, o);

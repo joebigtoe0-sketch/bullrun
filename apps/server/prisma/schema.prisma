@@ -36,8 +36,9 @@ model PlayerProfile {
   wood        Int      @default(0)
   stableLevel Int      @default(1)
   stableWood  Int      @default(0)
-  posX        Float    @default(33)
-  posY        Float    @default(41)
+  posX        Float    @default(28)
+  posY        Float    @default(25)
+  lastWheelSpinAt DateTime?
   helpSeen    Boolean  @default(false)
   betAmount   Int      @default(50)
   forgeOre    Int      @default(100)
@@ -78,6 +79,8 @@ model Item {
   id          Int     @id @default(autoincrement())
   ownerId     String
   owner       User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  kind        String  @default("bull")
+  equippedChar Boolean @default(false)
   slot        String
   rarity      String
   rarityColor String

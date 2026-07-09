@@ -25,6 +25,7 @@ import {
   formatLiveStandingLine,
   CHAT_SPEECH_FADE_MS,
   type MeResponse,
+  type GameItem,
   type OtherPlayer,
   type PasturePlotState,
   type WorldObject,
@@ -51,6 +52,7 @@ export interface FollowerPos {
   y: number;
   ph?: number;
   moving?: boolean;
+  flip?: boolean;
 }
 
 function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number } {
@@ -187,6 +189,8 @@ type DrawObj = WorldObject & {
   moving?: boolean;
   run?: boolean;
   racing?: boolean;
+  flip?: boolean;
+  gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
   speech?: { text: string; until: number };
 };
 
@@ -196,16 +200,22 @@ function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: n
 }
 
 /** Per-player walk cycle derived from observed movement (positions come from the server). */
-const walkAnim = new Map<string, { x: number; y: number; ph: number; moving: boolean }>();
+const walkAnim = new Map<string, { x: number; y: number; ph: number; moving: boolean; flip: boolean }>();
 function otherWalkAnim(id: string, x: number, y: number) {
   let w = walkAnim.get(id);
   if (!w) {
-    w = { x, y, ph: 0, moving: false };
+    w = { x, y, ph: 0, moving: false, flip: false };
     walkAnim.set(id, w);
   }
-  const dm = Math.hypot(x - w.x, y - w.y);
+  const dx = x - w.x;
+  const dy = y - w.y;
+  const dm = Math.hypot(dx, dy);
   w.moving = dm > 0.003;
-  if (w.moving) w.ph += Math.min(0.6, dm * 3);
+  if (w.moving) {
+    w.ph += Math.min(0.6, dm * 3);
+    const screenDx = dx - dy;
+    if (Math.abs(screenDx) > 0.002) w.flip = screenDx < 0;
+  }
   w.x = x;
   w.y = y;
   return w;
@@ -252,11 +262,23 @@ function drawPasturePlots(
   }
 }
 
-const GATHER_TOOL: Record<string, 'axe' | 'pick' | 'sickle'> = {
+const GATHER_TOOL: Record<string, 'axe' | 'pick' | 'sickle' | 'pitchfork'> = {
   wood: 'axe',
   ore: 'pick',
-  hay: 'sickle',
+  hay: 'pitchfork',
 };
+
+/** Equipped character clothing → render colors by slot. */
+function gearFromItems(items: GameItem[] | undefined): { hat?: string; outfit?: string; boots?: string; gloves?: string } {
+  const gear: Record<string, string> = {};
+  for (const it of items ?? []) {
+    if (it.kind === 'char' && it.equipped) gear[it.slot] = it.color;
+  }
+  return gear;
+}
+
+/** Own player's facing, tracked from frame-to-frame movement. */
+const myWalk = { x: 0, y: 0, flip: false, init: false };
 
 /** Delegate drawing to the shared BRArt library, mapping game state to art objects. */
 function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number, artT: number) {
@@ -269,7 +291,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       if (alpha > 0) drawSpeechBubble(ctx, o.x, o.y, o.speech.text, alpha);
     }
     const chop = o.gatherMat && o.gatherStart
-      ? { tool: GATHER_TOOL[o.gatherMat] ?? 'sickle', ph: (now - o.gatherStart) / 90 }
+      ? { tool: GATHER_TOOL[o.gatherMat] ?? 'pitchfork', ph: (now - o.gatherStart) / 90 }
       : null;
     BRArt.drawObj(ctx, iso, {
       t: o.t === 'player' ? 'player' : 'npc',
@@ -281,6 +303,8 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       moving: o.walking || o.moving,
       ph: o.ph ?? now / 111,
       chop,
+      flip: o.flip,
+      gear: o.gear,
     }, opts);
     return;
   }
@@ -301,6 +325,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       moving: o.moving,
       run: o.run,
       racing: o.racing,
+      flip: o.flip,
     }, opts);
     if (ghost) ctx.restore();
     return;
@@ -503,7 +528,7 @@ export interface DrawState {
   resultsUntil: number | null;
   betResult: string | null;
   pastures: PasturePlotState[];
-  gather: { mat?: string; start: number } | null;
+  gather: { mat?: string; start: number; nodeX?: number; nodeY?: number } | null;
   walking: boolean;
   folPos: Record<number, FollowerPos>;
   otherFolPos: Record<string, Record<number, FollowerPos>>;
@@ -590,6 +615,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         lvl: p.stableLevel,
         moving: walk.moving,
         ph: walk.ph,
+        flip: walk.flip,
         speech: speechBubbles[p.id],
       },
     });
@@ -608,12 +634,30 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           label: b.name,
           ph: f.ph,
           moving: f.moving,
+          flip: f.flip,
         },
       });
     }
   }
 
   if (me) {
+    // facing: follow movement direction; face the node while gathering
+    if (!myWalk.init) {
+      myWalk.x = me.position.x;
+      myWalk.y = me.position.y;
+      myWalk.init = true;
+    }
+    const mdx = me.position.x - myWalk.x;
+    const mdy = me.position.y - myWalk.y;
+    const mScreenDx = mdx - mdy;
+    if (Math.abs(mScreenDx) > 0.002) myWalk.flip = mScreenDx < 0;
+    myWalk.x = me.position.x;
+    myWalk.y = me.position.y;
+    let myFlip = myWalk.flip;
+    if (gather && gather.nodeX != null && gather.nodeY != null) {
+      const nodeScreenDx = (gather.nodeX - gather.nodeY) - (me.position.x - me.position.y);
+      if (Math.abs(nodeScreenDx) > 0.01) myFlip = nodeScreenDx < 0;
+    }
     list.push({
       d: me.position.x + me.position.y,
       o: {
@@ -623,6 +667,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         gatherMat: gather?.mat,
         gatherStart: gather?.start,
         walking: walking && !gather,
+        flip: myFlip,
+        gear: gearFromItems(me.items),
         speech: myPlayerId ? speechBubbles[myPlayerId] : undefined,
       },
     });
@@ -648,6 +694,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           label: b.name,
           ph: f.ph,
           moving: f.moving,
+          flip: f.flip,
         },
       });
     }
@@ -695,6 +742,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           trait: b.trait as BullTrait | undefined,
           label: b.name,
           racing: true,
+          flip: pos.facingLeft,
         },
       });
     });
@@ -726,6 +774,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           moving: !raceAnim.frozen,
           run: !raceAnim.frozen,
           ph: el / 60,
+          flip: pos.facingLeft,
         },
       });
     }
@@ -763,10 +812,14 @@ export function stepFollowers(
     const d = Math.hypot(prev.x - f.x, prev.y - f.y);
     if (d > 1.5) {
       const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
-      f.x += ((prev.x - f.x) / d) * spd * dt;
-      f.y += ((prev.y - f.y) / d) * spd * dt;
+      const stepX = ((prev.x - f.x) / d) * spd * dt;
+      const stepY = ((prev.y - f.y) / d) * spd * dt;
+      f.x += stepX;
+      f.y += stepY;
       f.moving = true;
       f.ph = (f.ph ?? 0) + spd * dt * 2.4;
+      const screenDx = stepX - stepY;
+      if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
     } else {
       f.moving = false;
     }
@@ -790,10 +843,14 @@ export function stepOtherFollowers(
       const d = Math.hypot(prev.x - f.x, prev.y - f.y);
       if (d > 1.5) {
         const spd = Math.min(6.5, 3.6 + (d - 1.5) * 1.5);
-        f.x += ((prev.x - f.x) / d) * spd * dt;
-        f.y += ((prev.y - f.y) / d) * spd * dt;
+        const stepX = ((prev.x - f.x) / d) * spd * dt;
+        const stepY = ((prev.y - f.y) / d) * spd * dt;
+        f.x += stepX;
+        f.y += stepY;
         f.moving = true;
         f.ph = (f.ph ?? 0) + spd * dt * 2.4;
+        const screenDx = stepX - stepY;
+        if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
       } else {
         f.moving = false;
       }

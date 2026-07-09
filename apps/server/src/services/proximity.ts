@@ -5,7 +5,7 @@ const { interactables } = buildWorld(0);
 
 async function resolvePosition(
   userId: string,
-  type: 'stable' | 'bet' | 'market' | 'forge' | 'race',
+  type: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel',
   clientX?: number,
   clientY?: number,
 ): Promise<{ x: number; y: number } | null> {
@@ -33,7 +33,7 @@ async function resolvePosition(
 
 export async function requireNearInteractable(
   userId: string,
-  type: 'stable' | 'bet' | 'market' | 'forge' | 'race',
+  type: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel',
   clientX?: number,
   clientY?: number,
 ) {

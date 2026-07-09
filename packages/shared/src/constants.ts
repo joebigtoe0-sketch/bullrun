@@ -7,6 +7,17 @@ export const WORLD_RX = 14;
 export const WORLD_RY = 9.5;
 export const WORLD_SEED = 42;
 
+/** Player spawn point — the central hub inside the race track. */
+export const SPAWN_X = 28;
+export const SPAWN_Y = 25;
+
+/** Walkover bridge across the track (dir 'y' span centered here). */
+export const BRIDGE_X = 21.5;
+export const BRIDGE_Y = 31.3;
+export const BRIDGE_LEN = 8;
+/** Walkable corridor half-width around the bridge centerline. */
+export const BRIDGE_HALF_W = 0.55;
+
 export const TILE_COLORS: Record<string, string> = {
   g1: '#7cbf54',
   g2: '#74b64d',

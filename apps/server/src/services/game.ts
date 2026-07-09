@@ -680,6 +680,7 @@ export async function buyListing(userId: string, listingId: string) {
       await tx.item.create({
         data: {
           ownerId: userId,
+          kind: String(item.kind ?? 'bull'),
           slot: String(item.slot),
           rarity: String(item.rarity),
           rarityColor: String(item.rarityColor),

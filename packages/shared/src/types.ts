@@ -1,9 +1,14 @@
 export type MatType = 'hay' | 'ore' | 'wood';
 export type StatType = 'speed' | 'stamina' | 'accel';
 export type ItemSlot = 'coat' | 'horns' | 'hooves' | 'tail' | 'accessory';
+/** Character clothing slots. */
+export type CharSlot = 'hat' | 'outfit' | 'boots' | 'gloves';
+/** Character item bonus targets: walk speed or gather speed per material (all in %). */
+export type CharStatType = 'speed' | 'wood' | 'ore' | 'hay';
+export type ItemKind = 'bull' | 'char';
 export type RarityKey = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
-export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'help' | 'results' | null;
+export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'shop' | 'wheel' | 'help' | 'results' | null;
 export type BullLocation = 'stable' | 'den' | 'following';
 export type BullTrait = 'normal' | 'rainbow' | 'ghost';
 export type BullRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -14,20 +19,31 @@ export interface Materials {
   wood: number;
 }
 
+export interface CharItemBonus {
+  stat: CharStatType;
+  /** percent bonus (e.g. 15 = +15%) */
+  amt: number;
+}
+
 export interface ItemBonus {
-  stat: StatType;
+  /** bull stat, or a character bonus target (%) for kind === 'char' items */
+  stat: StatType | CharStatType;
   amt: number;
 }
 
 export interface GameItem {
   id: number;
-  slot: ItemSlot;
+  /** bull gear slot, or a character clothing slot when kind === 'char' */
+  slot: ItemSlot | CharSlot;
   rarity: RarityKey;
   rarityColor: string;
   name: string;
   color: string;
   bonus: ItemBonus | null;
   equippedTo: number | null;
+  kind?: ItemKind;
+  /** char items: currently worn */
+  equipped?: boolean;
 }
 
 export interface Bull {
@@ -146,7 +162,7 @@ export interface WorldObject {
 }
 
 export interface Interactable {
-  t: 'stable' | 'bet' | 'market' | 'forge' | 'race';
+  t: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel';
   x: number;
   y: number;
   label: string;
@@ -339,6 +355,8 @@ export interface AuthResponse {
 }
 
 export interface MeResponse extends UserProfile {
+  /** epoch ms when the daily wheel can next be spun (0 = available now) */
+  wheelAvailableAt: number;
   race: {
     id: string;
     status: string;

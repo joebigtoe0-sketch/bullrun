@@ -45,8 +45,10 @@ export function buildWorld(npcWanderers = 0): WorldData {
   };
   for (let x = 3; x < 53; x++) { path(x, 40); path(x, 6); }
   for (let y = 6; y < 41; y++) { path(6, y); path(49, y); }
-  for (let y = 35; y < 41; y++) path(24, y);
   for (let x = 6; x <= 32; x++) path(x, 37);
+  // hub approach: bridge landing up into the infield, then east to the stone hub
+  for (let y = 24; y <= 30; y++) path(21, y);
+  for (let x = 22; x <= 27; x++) path(x, 24);
 
   const objs: WorldObject[] = [];
   const nodes: WorldNode[] = [];
@@ -67,17 +69,19 @@ export function buildWorld(npcWanderers = 0): WorldData {
   };
   for (const { er, n } of FENCE_RINGS) fence(er, n);
 
-  objs.push({ t: 'booth', x: 31, y: 37.2, label: 'BETS' });
+  // central hub inside the track: race signup + bets + daily wheel around the stone plaza
+  objs.push({ t: 'racebooth', x: 25.3, y: 25.6, label: 'RACE SIGNUP' });
+  objs.push({ t: 'booth', x: 30.7, y: 25.6, label: 'BETS' });
+  objs.push({ t: 'wheel', x: 28, y: 27.2, label: 'DAILY WHEEL' });
+
   objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
   objs.push({ t: 'market', x: 9, y: 35.5, label: 'MARKET' });
   objs.push({ t: 'stable', x: 38, y: 37.5, label: 'YOUR STABLE' });
-  objs.push({ t: 'racebooth', x: 24, y: 37.5, label: 'RACE SIGNUP' });
 
-  // cosmetic homesteads in the corners between the pasture rings and the track
-  for (const [hx, hy] of [[10, 9.5], [45, 9.5], [10.5, 44], [45, 44]] as const) {
-    objs.push({ t: 'house', x: hx, y: hy });
-  }
-  // walkover footbridge arching across the bottom track band
+  // general store — the old top-right homestead, now sells character clothing
+  objs.push({ t: 'store', x: 45, y: 9.5, label: 'GENERAL STORE' });
+
+  // walkover footbridge arching across the track — the way in and out of the hub
   objs.push({ t: 'bridge', x: 21.5, y: 31.3, dir: 'y', len: 8, dSort: 4.5 });
 
   const occupied = (x: number, y: number, r: number) =>
@@ -126,10 +130,12 @@ export function buildWorld(npcWanderers = 0): WorldData {
 
   const interactables: Interactable[] = [
     { t: 'stable', x: 38, y: 37.5, label: 'Stable' },
-    { t: 'bet', x: 31, y: 37.2, label: 'Betting booth' },
+    { t: 'bet', x: 30.7, y: 25.6, label: 'Betting booth' },
     { t: 'forge', x: 9, y: 32, label: 'Forge' },
     { t: 'market', x: 9, y: 35.5, label: 'Market' },
-    { t: 'race', x: 24, y: 37.5, label: 'Race signup' },
+    { t: 'race', x: 25.3, y: 25.6, label: 'Race signup' },
+    { t: 'shop', x: 45, y: 9.5, label: 'General store' },
+    { t: 'wheel', x: 28, y: 27.2, label: 'Daily wheel' },
   ];
 
   const names: [string, number][] = [

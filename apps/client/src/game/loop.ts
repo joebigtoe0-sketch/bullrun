@@ -3,8 +3,10 @@ import { api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { useSocket, gameSocketRef } from '../hooks/useSocket';
 import {
-  GATHER_DURATION_MS,
   NODE_RESPAWN_MS,
+  GATHER_DURATION_MS,
+  gatherDurationFor,
+  moveSpeedFor,
   INTERACT_USE_RANGE,
   PASTURE_PLOTS,
   pastureApproachPoint,
@@ -91,8 +93,9 @@ export function useGameLoop(active = true) {
             if (s.pending) execPending(s.pending);
           }
         } else {
-          p.x += ((mt.x - p.x) / d) * 4.4 * dt;
-          p.y += ((mt.y - p.y) / d) * 4.4 * dt;
+          const spd = moveSpeedFor(s.me!.items);
+          p.x += ((mt.x - p.x) / d) * spd * dt;
+          p.y += ((mt.y - p.y) / d) * spd * dt;
         }
       }
 
@@ -196,8 +199,10 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
     s.setGather({
       nodeId: pending.nodeId,
       start: Date.now(),
-      dur: GATHER_DURATION_MS,
+      dur: gatherDurationFor(s.me?.items ?? [], node?.mat),
       mat: node?.mat,
+      nodeX: node?.x,
+      nodeY: node?.y,
     });
   } else if (pending.type === 'pasture' && pending.plotId !== undefined) {
     const plot = s.pastures.find((p) => p.id === pending.plotId);
@@ -218,9 +223,9 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       s.setDenPlotId(plot.id);
       s.setPanel('den');
     }
-  } else if (['stable', 'bet', 'market', 'forge', 'race'].includes(pending.type)) {
+  } else if (['stable', 'bet', 'market', 'forge', 'race', 'shop', 'wheel'].includes(pending.type)) {
     const pos = s.me?.position;
-    if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race', worldData.interactables)) {
+    if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel', worldData.interactables)) {
       s.toastMsg('Get closer to use that');
       return;
     }
@@ -304,7 +309,7 @@ export function handleWorldClick(wx: number, wy: number) {
   }
 }
 
-export function navigateToBuilding(p: 'stable' | 'race' | 'bet' | 'market' | 'forge') {
+export function navigateToBuilding(p: 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'shop' | 'wheel') {
   const s = useGameStore.getState();
   const me = s.me;
   if (!me) return;

@@ -120,6 +120,8 @@ export function mapBull(b: {
 
 function mapItem(it: {
   id: number;
+  kind?: string;
+  equippedChar?: boolean;
   slot: string;
   rarity: string;
   rarityColor: string;
@@ -137,9 +139,11 @@ function mapItem(it: {
     name: it.name,
     color: it.color,
     bonus: it.bonusStat && it.bonusAmt != null
-      ? { stat: it.bonusStat as 'speed' | 'stamina' | 'accel', amt: it.bonusAmt }
+      ? { stat: it.bonusStat as NonNullable<GameItem['bonus']>['stat'], amt: it.bonusAmt }
       : null,
     equippedTo: it.equippedTo,
+    kind: (it.kind ?? 'bull') as GameItem['kind'],
+    equipped: it.equippedChar ?? false,
   };
 }
 
@@ -188,6 +192,12 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
   const profile = await getUserProfile(userId);
   if (!profile) return null;
 
+  const rawProfile = await prisma.playerProfile.findUnique({
+    where: { userId },
+    select: { lastWheelSpinAt: true },
+  });
+  const { nextWheelSpinAt } = await import('./charShop.js');
+
   const currentRace = await prisma.race.findFirst({
     where: { status: { in: ['scheduled', 'running'] } },
     orderBy: { startAt: 'asc' },
@@ -211,6 +221,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
 
   return {
     ...profile,
+    wheelAvailableAt: nextWheelSpinAt(rawProfile?.lastWheelSpinAt ?? null),
     entered: myEntries,
     bet: myBet
       ? { bullId: myBet.targetBullId, name: myBet.targetName, amount: myBet.amount, odds: myBet.odds }

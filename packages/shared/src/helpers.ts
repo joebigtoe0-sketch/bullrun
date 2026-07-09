@@ -117,16 +117,16 @@ export function nodeId(x: number, y: number, mat: string): string {
   return `${mat}:${x.toFixed(2)}:${y.toFixed(2)}`;
 }
 
-const BUILDING_PANELS = new Set<PanelType>(['stable', 'bet', 'market', 'forge', 'race', 'den']);
+const BUILDING_PANELS = new Set<PanelType>(['stable', 'bet', 'market', 'forge', 'race', 'den', 'shop', 'wheel']);
 
-export function isBuildingPanel(panel: PanelType | null): panel is 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'den' {
+export function isBuildingPanel(panel: PanelType | null): panel is 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'den' | 'shop' | 'wheel' {
   return panel !== null && BUILDING_PANELS.has(panel);
 }
 
 export function isNearInteractable(
   px: number,
   py: number,
-  type: 'stable' | 'bet' | 'market' | 'forge' | 'race',
+  type: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel',
   interactables: Interactable[],
   range = INTERACT_USE_RANGE,
 ): boolean {

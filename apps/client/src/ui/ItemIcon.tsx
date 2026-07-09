@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { BRArt } from '../world/canvas/bullrunArt';
 
 /** Canvas icon for an equippable item, drawn with the shared BRArt item art. */
-export function ItemIcon({ slot, rarity, size = 44 }: { slot: string; rarity: string; size?: number }) {
+export function ItemIcon({ slot, rarity, color, size = 44 }: { slot: string; rarity: string; color?: string; size?: number }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -20,9 +20,9 @@ export function ItemIcon({ slot, rarity, size = 44 }: { slot: string; rarity: st
     const scale = size / 52;
     ctx.translate(size / 2, size * 0.68);
     ctx.scale(scale, scale);
-    BRArt.drawItem(ctx, BRArt.iso, slot, rarity);
+    BRArt.drawItem(ctx, BRArt.iso, slot, rarity, color);
     ctx.restore();
-  }, [slot, rarity, size]);
+  }, [slot, rarity, color, size]);
 
   return (
     <canvas

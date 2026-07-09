@@ -47,7 +47,7 @@ interface GameStore {
   moveTarget: { x: number; y: number } | null;
   movePath: { x: number; y: number }[] | null;
   pending: { type: string; nodeId?: string; plotId?: number; x: number; y: number } | null;
-  gather: { nodeId: string; start: number; dur: number; mat?: string } | null;
+  gather: { nodeId: string; start: number; dur: number; mat?: string; nodeX?: number; nodeY?: number } | null;
   gatherPct: number;
   buyDenConfirm: { plotId: number; label: string; price: number } | null;
   keys: Record<string, boolean>;
@@ -134,7 +134,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   buyDenConfirm: null,
   keys: {},
   chatInputFocused: false,
-  cam: { x: 33, y: 41 },
+  cam: { x: 28, y: 25 },
   freeCamUntil: 0,
   shopBulls: [],
   pastures: [],

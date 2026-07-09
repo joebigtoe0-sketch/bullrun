@@ -45,13 +45,19 @@ import {
   bullBaseStat,
   bullItemBonus,
   itemBonusAmt,
+  STORE_CATALOG,
+  CHAR_STAT_LABEL,
+  WHEEL_MIN_TOKENS,
+  WHEEL_GOLD_TIERS,
 } from '@bullrun/shared';
-import type { Bull, BullRarity, ItemSlot, MatType, MeResponse, PastureDisplayBull, StatType } from '@bullrun/shared';
+import type { Bull, BullRarity, CharStatType, ItemSlot, MatType, MeResponse, PastureDisplayBull, StatType } from '@bullrun/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 import { useWallet } from '@solana/wallet-adapter-react';
 import bs58 from 'bs58';
 import { useGoldTokenBuy } from '../hooks/useGoldTokenBuy';
+import { useRef } from 'react';
+import { BRSfx } from '../lib/sfx';
 
 const btn = 'br-btn';
 
@@ -499,6 +505,7 @@ function MarketPanel() {
   const { phase: buyPhase, message: buyMsg, error: buyErr, buyGoldListing } = useGoldTokenBuy();
   const [bullPrice, setBullPrice] = useState(5);
   const [tokenPrice, setTokenPrice] = useState('10');
+  const [itemPrice, setItemPrice] = useState(100);
   const [listLoading, setListLoading] = useState(false);
 
   const mats: MatType[] = ['hay', 'ore', 'wood'];
@@ -533,6 +540,9 @@ function MarketPanel() {
     }
     if (l.type === 'bull' && l.bull) {
       return `${l.bull.name} Lv${l.bull.level ?? 1} — ${l.sellerName}`;
+    }
+    if (l.type === 'item' && l.item) {
+      return `${l.item.name} (${l.item.rarity}) — ${l.sellerName}`;
     }
     return `${l.qty} ${l.mat} — ${l.sellerName}`;
   };
@@ -691,6 +701,41 @@ function MarketPanel() {
           </div>
         )}
 
+        <div className="muted sm" style={{ marginTop: 12 }}>SELL GEAR & CLOTHING · 5% FEE ON SALE</div>
+        {(() => {
+          const loose = me.items.filter((it) => !it.equippedTo && !it.equipped);
+          if (!loose.length) return <div className="card muted sm">No unequipped items to sell.</div>;
+          return (
+            <>
+              <div className="card row-between">
+                <span className="muted">Sale price</span>
+                <div className="row gap">
+                  <button className="small-btn" onClick={() => setItemPrice((p) => Math.max(1, p - 25))}>−</button>
+                  <span className="gold stat-num">{itemPrice}g</span>
+                  <button className="small-btn" onClick={() => setItemPrice((p) => p + 25)}>+</button>
+                </div>
+              </div>
+              {loose.map((it) => (
+                <div key={it.id} className="card row-between">
+                  <div className="row gap">
+                    <ItemIcon slot={it.slot} rarity={it.rarity} color={it.color} size={34} />
+                    <div>
+                      <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
+                      <div className="muted sm">{it.kind === 'char' ? 'clothing' : 'bull gear'} · {it.rarity}</div>
+                    </div>
+                  </div>
+                  <button
+                    className={`${btn} green sm`}
+                    onClick={() => api.listItem(it.id, itemPrice).then(setMe).catch((e) => toast(e.message))}
+                  >
+                    List {itemPrice}g
+                  </button>
+                </div>
+              ))}
+            </>
+          );
+        })()}
+
         <div className="muted sm" style={{ marginTop: 12 }}>LIST MATERIALS · GOLD PER 100 UNITS</div>
         {mats.map((m) => (
           <div key={m} className="card">
@@ -758,6 +803,13 @@ function MarketPanel() {
                     <button
                       className={`${btn} sm`}
                       onClick={() => api.cancelBullListing(l.id).then(setMe).catch((e) => toast(e.message))}
+                    >
+                      Cancel
+                    </button>
+                  ) : l.type === 'item' ? (
+                    <button
+                      className={`${btn} sm`}
+                      onClick={() => api.cancelItemListing(l.id).then(setMe).catch((e) => toast(e.message))}
                     >
                       Cancel
                     </button>
@@ -840,7 +892,9 @@ function InventoryPopup() {
 
   const target = me.bulls.find((b) => b.id === equipTarget) || me.bulls[0];
   const equippedOnTarget = target ? me.items.filter((it) => it.equippedTo === target.id) : [];
-  const items = me.items.filter((it) => !it.equippedTo);
+  const items = me.items.filter((it) => (it.kind ?? 'bull') !== 'char' && !it.equippedTo);
+  const worn = me.items.filter((it) => it.kind === 'char' && it.equipped);
+  const wardrobe = me.items.filter((it) => it.kind === 'char' && !it.equipped);
 
   return (
     <div className="inv-popup">
@@ -855,11 +909,44 @@ function InventoryPopup() {
           {equippedOnTarget.map((it) => (
             <div key={it.id} className="row-between" style={{ marginTop: 6 }}>
               <div className="row gap">
-                <ItemIcon slot={it.slot} rarity={it.rarity} size={34} />
+                <ItemIcon slot={it.slot} rarity={it.rarity} color={it.color} size={34} />
                 <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
                 <span className="muted sm">{it.slot}</span>
               </div>
               <button className="small-btn" onClick={() => api.unequip(it.id).then(setMe).catch((e) => toast(e.message))}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {(worn.length > 0 || wardrobe.length > 0) && (
+        <div className="card">
+          <div className="bold sm">Your outfit</div>
+          {worn.map((it) => (
+            <div key={it.id} className="row-between" style={{ marginTop: 6 }}>
+              <div className="row gap">
+                <ItemIcon slot={it.slot} rarity={it.rarity} color={it.color} size={34} />
+                <div>
+                  <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
+                  <div className="muted sm">
+                    {it.slot}{it.bonus ? ` · +${it.bonus.amt}% ${CHAR_STAT_LABEL[it.bonus.stat as CharStatType] ?? it.bonus.stat}` : ''}
+                  </div>
+                </div>
+              </div>
+              <button className="small-btn" onClick={() => api.unequipChar(it.id).then(setMe).catch((e) => toast(e.message))}>Take off</button>
+            </div>
+          ))}
+          {wardrobe.map((it) => (
+            <div key={it.id} className="row-between" style={{ marginTop: 6 }}>
+              <div className="row gap">
+                <ItemIcon slot={it.slot} rarity={it.rarity} color={it.color} size={34} />
+                <div>
+                  <span style={{ color: it.rarityColor }} className="bold sm">{it.name}</span>
+                  <div className="muted sm">
+                    {it.slot}{it.bonus ? ` · +${it.bonus.amt}% ${CHAR_STAT_LABEL[it.bonus.stat as CharStatType] ?? it.bonus.stat}` : ''}
+                  </div>
+                </div>
+              </div>
+              <button className={`${btn} green sm`} onClick={() => api.equipChar(it.id).then(setMe).catch((e) => toast(e.message))}>Wear</button>
             </div>
           ))}
         </div>
@@ -878,6 +965,192 @@ function InventoryPopup() {
           <button className={`${btn} green sm`} onClick={() => target && api.equip(it.id, target.id).then(setMe).catch((e) => toast(e.message))}>Equip</button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function StorePanel() {
+  const me = useGameStore((s) => s.me)!;
+  const setPanel = useGameStore((s) => s.setPanel);
+  const setMe = useGameStore((s) => s.setMe);
+  const toast = useGameStore((s) => s.toastMsg);
+
+  return (
+    <div className={panel}>
+      <PanelHeader title="General Store" color="#7dc24f" onClose={() => setPanel(null)} />
+      <div className="panel-body">
+        <p className="muted">Clothing for your rancher — walk faster, gather quicker. Wear it from Items.</p>
+        {STORE_CATALOG.map((d) => (
+          <div key={d.sku} className="card row-between">
+            <div className="row gap">
+              <ItemIcon slot={d.slot} rarity={d.rarity} color={d.color} />
+              <div>
+                <span className="bold" style={{ color: RARITIES.find((r) => r.k === d.rarity)?.c }}>{d.name}</span>
+                <div className="muted sm">
+                  {d.slot} · {d.rarity} · +{d.bonus.amt}% {CHAR_STAT_LABEL[d.bonus.stat]}
+                </div>
+              </div>
+            </div>
+            <button
+              className={`${btn} gold sm`}
+              disabled={me.gold < d.price}
+              onClick={() => api.buyStoreItem(d.sku).then((m) => { setMe(m); toast(`Bought ${d.name}!`); BRSfx.coin(); }).catch((e) => toast(e.message))}
+            >
+              Buy {d.price}g
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const WHEEL_SEGS = [...WHEEL_GOLD_TIERS.map((t) => t.label), 'JACKPOT'];
+const WHEEL_SEG_COLORS = ['#c9573f', '#3b6ea5', '#7dc24f', '#e07840', '#f2b23a'];
+
+function drawFortuneWheel(canvas: HTMLCanvasElement, rot: number) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const dpr = window.devicePixelRatio || 1;
+  const size = 280;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, size, size);
+  const cx = size / 2;
+  const cy = size / 2 + 6;
+  const R = 118;
+  const n = WHEEL_SEGS.length;
+  for (let i = 0; i < n; i++) {
+    const a0 = rot + (i * Math.PI * 2) / n;
+    const a1 = rot + ((i + 1) * Math.PI * 2) / n;
+    ctx.fillStyle = WHEEL_SEG_COLORS[i % WHEEL_SEG_COLORS.length];
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, a0, a1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(23,16,10,.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const mid = (a0 + a1) / 2;
+    ctx.save();
+    ctx.translate(cx + Math.cos(mid) * R * 0.62, cy + Math.sin(mid) * R * 0.62);
+    ctx.rotate(mid + (Math.cos(mid) < 0 ? Math.PI : 0));
+    ctx.font = "700 12px 'Pixelify Sans', monospace";
+    ctx.fillStyle = '#17100a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(WHEEL_SEGS[i], 0, 0);
+    ctx.restore();
+  }
+  ctx.strokeStyle = '#41291a';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#f2b23a';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#41291a';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+  ctx.fillStyle = '#efe9dc';
+  ctx.beginPath();
+  ctx.moveTo(cx - 11, cy - R - 12);
+  ctx.lineTo(cx + 11, cy - R - 12);
+  ctx.lineTo(cx, cy - R + 10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#41291a';
+  ctx.stroke();
+}
+
+function WheelPopup() {
+  const me = useGameStore((s) => s.me)!;
+  const setPanel = useGameStore((s) => s.setPanel);
+  const setMe = useGameStore((s) => s.setMe);
+  const toast = useGameStore((s) => s.toastMsg);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rotRef = useRef(-Math.PI / 2);
+  const animRef = useRef(0);
+  const [spinning, setSpinning] = useState(false);
+  const [resultText, setResultText] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (canvasRef.current) drawFortuneWheel(canvasRef.current, rotRef.current);
+    return () => cancelAnimationFrame(animRef.current);
+  }, []);
+
+  const available = me.wheelAvailableAt <= Date.now();
+
+  const spin = async () => {
+    if (spinning || !available) return;
+    setSpinning(true);
+    setResultText(null);
+    try {
+      const res = await api.spinWheel();
+      const n = WHEEL_SEGS.length;
+      // land the winning segment center under the top pointer (-PI/2)
+      const target = -Math.PI / 2 - ((res.segment + 0.5) * Math.PI * 2) / n;
+      const start = rotRef.current;
+      const turns = Math.PI * 2 * 5;
+      const delta = turns + ((target - start - turns) % (Math.PI * 2));
+      const t0 = performance.now();
+      const dur = 3600;
+      BRSfx.whoosh();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - t0) / dur);
+        const ease = 1 - Math.pow(1 - t, 3);
+        rotRef.current = start + delta * ease;
+        if (canvasRef.current) drawFortuneWheel(canvasRef.current, rotRef.current);
+        if (t < 1) {
+          animRef.current = requestAnimationFrame(tick);
+        } else {
+          setSpinning(false);
+          setMe(res.me);
+          if (res.outcome === 'jackpot') {
+            setResultText(`🎰 JACKPOT! ${res.itemName} (${res.itemRarity}) — check your Items!`);
+            BRSfx.fanfare();
+          } else {
+            setResultText(`💰 You won ${res.gold}g!`);
+            BRSfx.coin();
+          }
+        }
+      };
+      animRef.current = requestAnimationFrame(tick);
+    } catch (e) {
+      setSpinning(false);
+      toast((e as Error).message);
+    }
+  };
+
+  const nextIn = () => {
+    const ms = me.wheelAvailableAt - Date.now();
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.ceil((ms % 3_600_000) / 60_000);
+    return `${h}h ${m}m`;
+  };
+
+  return (
+    <div className="modal-overlay" onClick={() => setPanel(null)}>
+      <div className="modal" style={{ maxWidth: 340, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Daily Fortune Wheel</span>
+          <button type="button" className="close-btn" onClick={() => setPanel(null)}>✕</button>
+        </div>
+        <div style={{ padding: '10px 14px 16px' }}>
+          <canvas ref={canvasRef} style={{ width: 280, height: 280 }} />
+          <div className="muted sm" style={{ marginBottom: 8 }}>
+            One free spin per day · hold {WHEEL_MIN_TOKENS.toLocaleString()} tokens to spin
+          </div>
+          {resultText && <div className="card green-txt" style={{ marginBottom: 8 }}>{resultText}</div>}
+          <button className={`${btn} gold`} disabled={spinning || !available} onClick={() => void spin()}>
+            {spinning ? 'Spinning…' : available ? 'SPIN!' : `Come back in ${nextIn()}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -969,7 +1242,7 @@ export function GameUI() {
 
   if (!me) return null;
 
-  const openBuilding = (p: 'stable' | 'race' | 'bet' | 'market' | 'forge') => {
+  const openBuilding = (p: 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'shop' | 'wheel') => {
     if (panel === p) {
       setPanel(null);
       return;
@@ -1019,6 +1292,7 @@ export function GameUI() {
         {(['stable', 'race', 'bet', 'market', 'forge'] as const).map((p) => (
           <button key={p} className={`${btn} gold`} onClick={() => openBuilding(p)}>{p[0].toUpperCase() + p.slice(1)}</button>
         ))}
+        <button className={`${btn} green`} onClick={() => openBuilding('shop')}>Store</button>
         <button className={`${btn} blue`} onClick={() => setInvOpen(true)}>Items ({invCount})</button>
         <button className={btn} onClick={() => setProfileOpen(true)}>Profile</button>
         <button className={btn} onClick={() => setPanel('help')}>?</button>
@@ -1030,6 +1304,8 @@ export function GameUI() {
       {panel === 'bet' && <BetPanel />}
       {panel === 'market' && <MarketPanel />}
       {panel === 'forge' && <ForgePanel />}
+      {panel === 'shop' && <StorePanel />}
+      {panel === 'wheel' && <WheelPopup />}
       {panel === 'help' && <HelpModal />}
       <InventoryPopup />
       <ProfilePopup />

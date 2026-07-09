@@ -13,3 +13,4 @@ export * from './race/prizes.js';
 export * from './race/track.js';
 export * from './race/serialize.js';
 export * from './items/forge.js';
+export * from './charItems.js';

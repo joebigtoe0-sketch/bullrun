@@ -114,6 +114,18 @@ export const api = {
     request<MeResponse>('/items/equip', { method: 'POST', body: JSON.stringify({ itemId, bullId }) }),
   unequip: (itemId: number) =>
     request<MeResponse>('/items/unequip', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  equipChar: (itemId: number) =>
+    request<MeResponse>('/items/equip-char', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  unequipChar: (itemId: number) =>
+    request<MeResponse>('/items/unequip-char', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  buyStoreItem: (sku: string) =>
+    request<MeResponse>('/store/buy', { method: 'POST', body: JSON.stringify({ sku }) }),
+  spinWheel: () =>
+    request<{ outcome: 'gold' | 'jackpot'; gold?: number; itemName?: string; itemRarity?: string; segment: number; me: MeResponse }>('/wheel/spin', { method: 'POST', body: '{}' }),
+  listItem: (itemId: number, price: number) =>
+    request<MeResponse>('/market/list-item', { method: 'POST', body: JSON.stringify({ itemId, price }) }),
+  cancelItemListing: (listingId: string) =>
+    request<MeResponse>('/market/cancel-item', { method: 'POST', body: JSON.stringify({ listingId }) }),
   deleteBull: (bullId: number) =>
     request<MeResponse>('/bulls/delete', { method: 'POST', body: JSON.stringify({ bullId }) }),
   followBull: (bullId: number) =>

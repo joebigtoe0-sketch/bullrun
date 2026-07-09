@@ -7,6 +7,7 @@ import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
 import * as bulls from '../services/bulls.js';
+import * as charShop from '../services/charShop.js';
 import { computeRaceOdds } from '../services/raceOdds.js';
 import { walletAuthRoutes } from './walletAuth.js';
 import { tokenMarketRoutes, startGoldMarketSweeper } from './tokenMarket.js';
@@ -175,6 +176,60 @@ export async function gameRoutes(app: FastifyInstance) {
     try {
       const userId = (req.user as { sub: string }).sub;
       return await game.unequipItem(userId, req.body.itemId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { itemId: number } }>('/items/equip-char', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.equipCharItem(userId, req.body.itemId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { itemId: number } }>('/items/unequip-char', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.unequipCharItem(userId, req.body.itemId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { sku: string } }>('/store/buy', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.buyStoreItem(userId, req.body.sku);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post('/wheel/spin', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.spinWheel(userId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { itemId: number; price: number } }>('/market/list-item', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.listItem(userId, req.body.itemId, req.body.price);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { listingId: string } }>('/market/cancel-item', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await charShop.cancelItemListing(userId, req.body.listingId);
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

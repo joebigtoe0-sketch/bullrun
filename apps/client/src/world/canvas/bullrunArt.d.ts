@@ -28,7 +28,11 @@ export interface ArtObj {
   hair?: string;
   name?: string;
   lvl?: number;
-  chop?: { tool: 'axe' | 'pick' | 'sickle'; ph: number } | null;
+  chop?: { tool: 'axe' | 'pick' | 'sickle' | 'pitchfork'; ph: number } | null;
+  /** mirror horizontally around the anchor (face screen-left) */
+  flip?: boolean;
+  /** character clothing colors by slot */
+  gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
 }
 
 export interface ArtOpts {
@@ -63,5 +67,5 @@ export const BRArt: {
   label(ctx: CanvasRenderingContext2D, iso: IsoFn, wx: number, wy: number, txt: string, yOff: number, color?: string): void;
   tile(ctx: CanvasRenderingContext2D, iso: IsoFn, x: number, y: number, type: string): void;
   drawObj(ctx: CanvasRenderingContext2D, iso: IsoFn, o: ArtObj, opts?: ArtOpts): void;
-  drawItem(ctx: CanvasRenderingContext2D, iso: IsoFn, slot: string, rarity: string): void;
+  drawItem(ctx: CanvasRenderingContext2D, iso: IsoFn, slot: string, rarity: string, color?: string): void;
 };

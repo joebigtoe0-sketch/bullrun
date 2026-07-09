@@ -4,6 +4,10 @@ import {
   WORLD_RX,
   WORLD_RY,
   WORLD_SIZE,
+  BRIDGE_X,
+  BRIDGE_Y,
+  BRIDGE_LEN,
+  BRIDGE_HALF_W,
 } from './constants.js';
 import { PASTURE_PLOTS, PASTURE_FENCE_MARGIN } from './pastures.js';
 
@@ -12,8 +16,17 @@ const TRACK_OUTER = 1.225;
 const PASTURE_FENCE = PASTURE_FENCE_MARGIN;
 const PASTURE_INNER = 0.38;
 
-/** Race track + fence band — blocks walking through the track oval. */
+/** On the walkover bridge corridor — the one legal crossing of the track. */
+export function isOnBridge(x: number, y: number): boolean {
+  return (
+    Math.abs(x - BRIDGE_X) <= BRIDGE_HALF_W &&
+    Math.abs(y - BRIDGE_Y) <= BRIDGE_LEN / 2 + 0.6
+  );
+}
+
+/** Race track + fence band — blocks walking through the track oval (except the bridge). */
 export function isTrackBlocked(x: number, y: number): boolean {
+  if (isOnBridge(x, y)) return false;
   const ex = (x - WORLD_CX) / WORLD_RX;
   const ey = (y - WORLD_CY) / WORLD_RY;
   const e = Math.hypot(ex, ey);
@@ -55,6 +68,7 @@ export function trackClamp(
   RX = WORLD_RX,
   RY = WORLD_RY,
 ): boolean {
+  if (isOnBridge(o.x, o.y)) return false;
   const ex = (o.x - CX) / RX;
   const ey = (o.y - CY) / RY;
   const e = Math.hypot(ex, ey);

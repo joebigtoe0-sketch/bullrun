@@ -165,10 +165,10 @@ export async function spinWheel(userId: string): Promise<WheelSpinResult> {
   const nextAt = nextWheelSpinAt(p.lastWheelSpinAt);
   if (nextAt > Date.now()) throw new Error('Already spun today — come back tomorrow');
 
-  // token requirement: hold WHEEL_MIN_TOKENS (skipped when no token is configured, e.g. local dev)
+  // wheel needs a linked wallet holding WHEEL_MIN_TOKENS (balance check skipped when no token configured, e.g. local dev)
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user?.walletAddress) throw new Error('Connect your wallet in Profile to spin the wheel');
   if (isTokenGateConfigured()) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user?.walletAddress) throw new Error(`Hold ${WHEEL_MIN_TOKENS.toLocaleString()} tokens to spin`);
     const balance = await getTokenBalance(user.walletAddress);
     if (balance < WHEEL_MIN_TOKENS) {
       throw new Error(`Hold ${WHEEL_MIN_TOKENS.toLocaleString()} tokens to spin — you have ${Math.floor(balance).toLocaleString()}`);

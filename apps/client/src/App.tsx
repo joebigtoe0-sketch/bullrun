@@ -10,7 +10,6 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 export default function App() {
   const token = useGameStore((s) => s.token);
   const me = useGameStore((s) => s.me);
-  const hasDisplayName = useGameStore((s) => s.hasDisplayName);
   const setAuth = useGameStore((s) => s.setAuth);
   const setMe = useGameStore((s) => s.setMe);
   const setWallet = useGameStore((s) => s.setWallet);
@@ -33,7 +32,7 @@ export default function App() {
     }
   }, [token, me, setAuth, setMe, setWallet]);
 
-  useGameLoop(Boolean(token && me && hasDisplayName));
+  useGameLoop(Boolean(token && me));
 
   if (!token) return <AuthScreen />;
   if (!me) {
@@ -43,7 +42,6 @@ export default function App() {
       </div>
     );
   }
-  if (!hasDisplayName) return <AuthScreen />;
 
   return (
     <ErrorBoundary>

@@ -8,6 +8,7 @@ import {
   BREED_COST,
   REST_COST,
   REST_ENERGY,
+  WHEEL_MIN_TOKENS,
   stableWoodNeed,
   stableGoldNeed,
 } from '@bullrun/shared';
@@ -56,29 +57,38 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              <Strong>Bull Run</Strong> is a bull racing MMO. Connect your Solana wallet, gather materials,
-              breed and equip bulls, enter global races, bet gold, trade on the market, and explore the ranch with other
+              <Strong>Bull Run</Strong> is a bull racing MMO. Gather materials, breed and equip bulls, dress up your
+              rancher, enter global races, bet gold, trade on the player market, and explore the ranch with other
               players in real time.
             </P>
             <P>
-              Your wallet is your account — no password. Hold the required SPL token balance to enter the world after
-              signing in.
+              You spawn at the <Strong>central hub</Strong> inside the race track — race signup, the betting booth, and
+              the daily fortune wheel are all right there. The <Strong>walkover bridge</Strong> on the west side is the
+              only way in and out of the infield.
             </P>
           </>
         ),
       },
       {
-        id: 'wallet',
-        title: 'Wallet & Access',
+        id: 'account',
+        title: 'Account & Wallet',
         body: (
           <>
             <P>
-              Connect a Solana wallet, then sign a free message to prove ownership. Pick a display name — that&apos;s
-              what other players see on the ranch and in race results.
+              Sign up with a <Strong>username and password</Strong> — that&apos;s all you need to play. Your display
+              name is what other players see on the ranch and in race results.
+            </P>
+            <P>
+              Connecting a <Strong>Solana wallet</Strong> is optional. Do it from <Strong>Profile</Strong> when you
+              want the token features:
             </P>
             <UL>
-              <LI>The game only asks for login signatures and marketplace transactions you start — never your seed phrase.</LI>
-              <LI>Disconnect anytime from Profile.</LI>
+              <LI>Selling gold for SPL tokens (and buying token listings) on the market.</LI>
+              <LI>Spinning the <Strong>daily wheel</Strong> (requires holding {WHEEL_MIN_TOKENS.toLocaleString()} tokens).</LI>
+            </UL>
+            <UL>
+              <LI>The game only asks for a free link signature and marketplace transactions you start — never your seed phrase.</LI>
+              <LI>A wallet can only be linked to one account.</LI>
             </UL>
           </>
         ),
@@ -91,8 +101,9 @@ export const GUIDE_GROUPS: GuideGroup[] = [
             <UL>
               <LI><Strong>Click the ground</Strong> to walk. Click trees, rocks, hay piles, and buildings to interact when close enough.</LI>
               <LI><Strong>WASD / arrow keys</Strong> pan the camera.</LI>
-              <LI><Strong>Bottom bar</Strong> opens Stable, Race, Bet, Market, Forge, Items, Profile, and this guide (?).</LI>
+              <LI><Strong>Bottom bar</Strong> opens Stable, Race, Bet, Market, Forge, Store, Items, Profile, and this guide (?).</LI>
               <LI><Strong>Chat</Strong> — type in the chat box to talk with everyone online.</LI>
+              <LI>The track blocks walking — cross it over the <Strong>bridge</Strong> west of the hub.</LI>
             </UL>
           </>
         ),
@@ -108,10 +119,33 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              Click resource nodes on the map — <Strong>hay</Strong>, <Strong>ore</Strong>, and <Strong>wood</Strong> —
-              while standing nearby. A short gather bar fills; you receive a random bundle when it completes.
+              Click resource nodes on the map — <Strong>wood</Strong> (axe), <Strong>ore</Strong> (pickaxe), and{' '}
+              <Strong>hay</Strong> (pitchfork) — while standing nearby. A short gather bar fills; you receive a random
+              bundle when it completes.
             </P>
-            <P>Nodes respawn after depletion. New players start with 0 of each material — gather before training, forging, or upgrading.</P>
+            <P>
+              Nodes respawn after depletion. Clothing from the <Strong>General Store</Strong> speeds up gathering and
+              walking — see the next section.
+            </P>
+          </>
+        ),
+      },
+      {
+        id: 'clothing',
+        title: 'Clothing & General Store',
+        body: (
+          <>
+            <P>
+              The <Strong>General Store</Strong> (north-east homestead, or the Store button) sells clothing for your
+              rancher: <Strong>hat, outfit, boots, and gloves</Strong>. Each piece gives a % bonus — walk speed, wood
+              cutting, mining, or hay gathering — and shows on your character.
+            </P>
+            <UL>
+              <LI>Rarities run <Strong>Common → Uncommon → Rare → Epic → Legendary</Strong>; better rarity, bigger bonus.</LI>
+              <LI>Wear pieces from <Strong>Items → Your outfit</Strong>. One item per slot.</LI>
+              <LI>Clothing can be resold on the player market.</LI>
+              <LI>The rarest clothing only drops from the <Strong>daily wheel jackpot</Strong>.</LI>
+            </UL>
           </>
         ),
       },
@@ -140,14 +174,18 @@ export const GUIDE_GROUPS: GuideGroup[] = [
       },
       {
         id: 'items',
-        title: 'Forge & Equipment',
+        title: 'Forge & Bull Gear',
         body: (
           <>
             <P>
-              At the <Strong>Forge</Strong>, spend ore ({FORGE_MIN_ORE}+) to roll random coat items. Rarity improves with
-              more ore. Equip items from your bag onto a bull to boost stats in races.
+              At the <Strong>Forge</Strong>, spend ore ({FORGE_MIN_ORE}+) to roll random bull gear — coats, horns,
+              hooves, tail wraps, and harnesses. Rarity improves with more ore. Equip gear onto a bull from the Stable
+              panel or <Strong>Items</Strong> to boost race stats.
             </P>
-            <P>Open <Strong>Items</Strong> from the bottom bar to equip or unequip gear.</P>
+            <P>
+              <Strong>Champion</Strong> gear with rolls beyond the forge&apos;s best exists only as a daily wheel
+              jackpot. Bull gear can be sold on the player market too.
+            </P>
           </>
         ),
       },
@@ -174,14 +212,15 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              Races run on a server timer — check the <Strong>NEXT RACE</Strong> countdown at the top of the screen or at
-              the track. When the grid appears, registered player bulls line up; then the race plays out live for everyone.
+              Races run on a server timer — check the <Strong>NEXT RACE</Strong> countdown at the top of the screen or
+              painted on the infield. Sign up at the <Strong>RACE SIGNUP</Strong> kiosk in the hub. When the grid
+              appears, registered bulls line up; then the race plays out live for everyone.
             </P>
             <UL>
-              <LI><Strong>Player bulls only</Strong> — no NPC fill-ins. Only wallets that entered appear.</LI>
+              <LI><Strong>Player bulls only</Strong> — no NPC fill-ins.</LI>
               <LI>Entry costs <Strong>{RACE_ENTRY_ENERGY} energy</Strong> (bull must be at full {BULL_MAX_ENERGY}).</LI>
               <LI><Strong>One bull per player</Strong> per race.</LI>
-              <LI>Your bull must be <Strong>following you</Strong> to enter at the Race booth.</LI>
+              <LI>Your bull must be <Strong>following you</Strong> to enter.</LI>
               <LI>Top finishers earn gold and XP; results show ~10 seconds then the next countdown begins.</LI>
             </UL>
           </>
@@ -193,8 +232,8 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              At the <Strong>Bet</Strong> booth, wager gold on any entered bull before the race starts. Odds are simulated
-              from stats and gear. Adjust your bet amount with +/−, then pick a bull.
+              At the <Strong>BETS</Strong> booth in the hub, wager gold on any entered bull before the race starts. Odds
+              are simulated from stats and gear. Adjust your bet amount with +/−, then pick a bull.
             </P>
             <P>Winning bets pay out at the shown multiplier; losing bets forfeit the stake.</P>
           </>
@@ -213,14 +252,33 @@ export const GUIDE_GROUPS: GuideGroup[] = [
             <UL>
               <LI><Strong>Materials</Strong> — list stacks of {MARKET_LIST_QUANTITIES.join(', ')}. Set price as <Strong>gold per 100 units</Strong> (e.g. 5g/100 → 5g for 100 hay, 25g for 500).</LI>
               <LI><Strong>Bulls</Strong> — list stable bulls for gold.</LI>
-              <LI><Strong>Gold for tokens</Strong> — sell gold for SPL tokens on-chain (buyers pay via wallet).</LI>
+              <LI><Strong>Gear & clothing</Strong> — list unequipped bull gear and rancher clothing for gold.</LI>
+              <LI><Strong>Gold for tokens</Strong> — sell gold for SPL tokens on-chain (wallet required, buyers pay via wallet).</LI>
               <LI><Strong>NPC shop</Strong> — buy material bundles with gold.</LI>
             </UL>
-            <P>Browse open listings from other players and buy instantly if you have enough gold.</P>
+            <P>Browse open listings from other players and buy instantly if you have enough gold. All sales pay a 5% fee.</P>
             <P>
-              You can <Strong>cancel your own listings</Strong> anytime. Material and bull listings return instantly.
-              Gold-for-token listings have a <Strong>30 second cancel delay</Strong> so buyers mid-checkout aren&apos;t sniped.
+              You can <Strong>cancel your own listings</Strong> anytime. Material, bull, and item listings return
+              instantly. Gold-for-token listings have a <Strong>30 second cancel delay</Strong> so buyers mid-checkout
+              aren&apos;t sniped.
             </P>
+          </>
+        ),
+      },
+      {
+        id: 'wheel',
+        title: 'Daily Fortune Wheel',
+        body: (
+          <>
+            <P>
+              The <Strong>DAILY WHEEL</Strong> stands in the hub next to spawn. One free spin per day (UTC). To spin you
+              must have a wallet connected in Profile holding at least{' '}
+              <Strong>{WHEEL_MIN_TOKENS.toLocaleString()} tokens</Strong>.
+            </P>
+            <UL>
+              <LI>Most spins win gold — small amounts are common, big pouches are rare.</LI>
+              <LI>The <Strong>JACKPOT</Strong> is the day&apos;s exclusive item — rare/legendary bull gear or clothing you can&apos;t get anywhere else. Everyone sees the same jackpot item each day; it&apos;s shown in the wheel popup.</LI>
+            </UL>
           </>
         ),
       },
@@ -230,8 +288,8 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         body: (
           <>
             <P>
-              Gold comes from race prizes, selling on the market, and betting wins. Spend it on breeding, resting, dens,
-              training, and NPC shop bundles.
+              Gold comes from race prizes, selling on the market, betting wins, and the daily wheel. Spend it on
+              breeding, resting, dens, training, store clothing, and NPC shop bundles.
             </P>
           </>
         ),
@@ -248,6 +306,10 @@ export const GUIDE_GROUPS: GuideGroup[] = [
           <>
             <H3>Why can&apos;t I enter a race?</H3>
             <P>Bull must follow you, have {BULL_MAX_ENERGY} energy, and you can only enter one bull per race before the lock.</P>
+            <H3>Why can&apos;t I spin the wheel or sell gold for tokens?</H3>
+            <P>Those need a Solana wallet — connect one from Profile. The wheel also requires holding {WHEEL_MIN_TOKENS.toLocaleString()} tokens.</P>
+            <H3>How do I get into the middle of the track?</H3>
+            <P>Use the walkover bridge on the west side — it&apos;s the only crossing.</P>
             <H3>Why did my bull teleport or results look wrong?</H3>
             <P>Refresh mid-race can desync — try staying connected through the finish. Report persistent bugs to the team.</P>
             <H3>Is this real money?</H3>

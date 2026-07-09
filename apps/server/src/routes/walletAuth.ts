@@ -3,7 +3,6 @@ import crypto from 'crypto';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import { prisma } from '../db.js';
-import { createStarterUser } from '../services/player.js';
 import { getTokenBalance, isTokenGateConfigured } from '../lib/solana.js';
 
 function isValidSolanaAddress(addr: string): boolean {
@@ -14,65 +13,43 @@ function isValidSolanaAddress(addr: string): boolean {
   }
 }
 
-function buildSignInMessage(wallet: string, nonce: string): string {
+function buildLinkMessage(wallet: string, nonce: string): string {
   return `Sign in to Bull Run\n\nWallet: ${wallet}\nNonce: ${nonce}`;
 }
 
-async function generateHandle(wallet: string): Promise<string> {
-  const base = `bull_${wallet.slice(0, 4)}${wallet.slice(-4)}`.toLowerCase();
-  let candidate = base;
-  for (let i = 0; i < 5; i++) {
-    const exists = await prisma.user.findUnique({ where: { username: candidate } });
-    if (!exists) return candidate;
-    candidate = `${base}_${crypto.randomBytes(2).toString('hex')}`;
-  }
-  return `${base}_${crypto.randomBytes(4).toString('hex')}`;
-}
-
-function autoDisplayName(wallet: string): string {
-  return `Rancher_${wallet.slice(0, 4)}`;
-}
-
 export async function walletAuthRoutes(app: FastifyInstance) {
-  app.post<{ Body: { walletAddress: string } }>('/auth/nonce', async (req, reply) => {
+  // Link a Solana wallet to the logged-in account (auth handled by the global preHandler).
+  app.post<{ Body: { walletAddress: string } }>('/auth/link-nonce', async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub;
     const { walletAddress } = req.body;
     if (!walletAddress || !isValidSolanaAddress(walletAddress)) {
       return reply.status(400).send({ error: 'Invalid wallet address' });
     }
-
-    const nonce = crypto.randomBytes(16).toString('hex');
-    let user = await prisma.user.findUnique({ where: { walletAddress } });
-    if (!user) {
-      const username = await generateHandle(walletAddress);
-      user = await prisma.user.create({
-        data: {
-          username,
-          walletAddress,
-          displayName: autoDisplayName(walletAddress),
-          hasDisplayName: false,
-          authNonce: nonce,
-        },
-      });
-      await createStarterUser(user.id);
-    } else {
-      await prisma.user.update({ where: { id: user.id }, data: { authNonce: nonce } });
+    const taken = await prisma.user.findUnique({ where: { walletAddress } });
+    if (taken && taken.id !== userId) {
+      return reply.status(409).send({ error: 'Wallet already linked to another account' });
     }
-
-    return { message: buildSignInMessage(walletAddress, nonce) };
+    const nonce = crypto.randomBytes(16).toString('hex');
+    await prisma.user.update({ where: { id: userId }, data: { authNonce: nonce } });
+    return { message: buildLinkMessage(walletAddress, nonce) };
   });
 
-  app.post<{ Body: { walletAddress: string; signature: string } }>('/auth/verify', async (req, reply) => {
+  app.post<{ Body: { walletAddress: string; signature: string } }>('/auth/link-verify', async (req, reply) => {
+    const userId = (req.user as { sub: string }).sub;
     const { walletAddress, signature } = req.body;
     if (!walletAddress || !signature || !isValidSolanaAddress(walletAddress)) {
       return reply.status(400).send({ error: 'Invalid request' });
     }
-
-    const user = await prisma.user.findUnique({ where: { walletAddress } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user?.authNonce) {
-      return reply.status(401).send({ error: 'Request a nonce first' });
+      return reply.status(400).send({ error: 'Request a link message first' });
+    }
+    const taken = await prisma.user.findUnique({ where: { walletAddress } });
+    if (taken && taken.id !== userId) {
+      return reply.status(409).send({ error: 'Wallet already linked to another account' });
     }
 
-    const message = buildSignInMessage(walletAddress, user.authNonce);
+    const message = buildLinkMessage(walletAddress, user.authNonce);
     let valid = false;
     try {
       valid = nacl.sign.detached.verify(
@@ -83,48 +60,15 @@ export async function walletAuthRoutes(app: FastifyInstance) {
     } catch {
       valid = false;
     }
-
     if (!valid) {
       return reply.status(401).send({ error: 'Signature verification failed' });
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: { authNonce: null } });
-    const token = app.jwt.sign({ sub: user.id });
-    return {
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        walletAddress: user.walletAddress,
-        hasDisplayName: user.hasDisplayName,
-      },
-    };
-  });
-
-  app.post<{ Body: { displayName: string } }>('/auth/display-name', async (req, reply) => {
-    const userId = (req.user as { sub: string }).sub;
-    const displayName = req.body.displayName?.trim();
-    if (!displayName || displayName.length < 2 || displayName.length > 24) {
-      return reply.status(400).send({ error: 'Display name must be 2–24 characters' });
-    }
-
-    const user = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
-      data: { displayName, hasDisplayName: true },
+      data: { walletAddress, authNonce: null },
     });
-
-    const token = app.jwt.sign({ sub: user.id });
-    return {
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        displayName: user.displayName,
-        walletAddress: user.walletAddress,
-        hasDisplayName: user.hasDisplayName,
-      },
-    };
+    return { walletAddress };
   });
 
   // No token gate — everyone can play. Kept for the token balance shown in the profile.

@@ -42,17 +42,15 @@ async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  authNonce: (walletAddress: string) =>
-    request<{ message: string }>('/auth/nonce', { method: 'POST', body: JSON.stringify({ walletAddress }) }),
-  authVerify: (walletAddress: string, signature: string) =>
-    request<import('@bullrun/shared').AuthResponse>('/auth/verify', {
+  linkWalletNonce: (walletAddress: string) =>
+    request<{ message: string }>('/auth/link-nonce', {
+      method: 'POST',
+      body: JSON.stringify({ walletAddress }),
+    }),
+  linkWalletVerify: (walletAddress: string, signature: string) =>
+    request<{ walletAddress: string }>('/auth/link-verify', {
       method: 'POST',
       body: JSON.stringify({ walletAddress, signature }),
-    }),
-  setDisplayName: (displayName: string) =>
-    request<import('@bullrun/shared').AuthResponse>('/auth/display-name', {
-      method: 'POST',
-      body: JSON.stringify({ displayName }),
     }),
   checkAccess: () =>
     request<{ balance: number; required: number; hasAccess: boolean; configured?: boolean }>('/auth/access'),

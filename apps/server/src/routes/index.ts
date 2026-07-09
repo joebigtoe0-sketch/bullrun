@@ -26,12 +26,13 @@ export async function authRoutes(app: FastifyInstance) {
       data: {
         username: username.toLowerCase(),
         passwordHash: await hashPassword(password),
-        displayName: displayName || username,
+        displayName: (displayName || username).slice(0, 24),
+        hasDisplayName: true,
       },
     });
     await createStarterUser(user.id);
     const token = app.jwt.sign({ sub: user.id });
-    return { token, user: { id: user.id, username: user.username, displayName: user.displayName } };
+    return { token, user: { id: user.id, username: user.username, displayName: user.displayName, hasDisplayName: true } };
   });
 
   app.post<{ Body: { username: string; password: string } }>('/auth/login', async (req, reply) => {
@@ -50,7 +51,7 @@ export async function gameRoutes(app: FastifyInstance) {
   await tokenMarketRoutes(app);
   await adminRoutes(app);
 
-  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/auth/nonce', '/auth/verify', '/admin/grant']);
+  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/admin/grant']);
 
   app.addHook('preHandler', async (request, reply) => {
     const path = request.url.split('?')[0];

@@ -645,7 +645,9 @@ function MarketPanel() {
         )}
 
         <div className="muted sm" style={{ marginTop: 12 }}>SELL GOLD FOR TOKENS · 5% FEE PAID BY BUYER</div>
-        {myGoldListing ? (
+        {!walletAddress ? (
+          <div className="card muted sm">Connect your wallet in Profile to sell gold for tokens.</div>
+        ) : myGoldListing ? (
           <div className="card">
             <div className="row-between">
               <div>
@@ -819,7 +821,8 @@ function MarketPanel() {
                 ) : l.type === 'gold' ? (
                   <button
                     className={`${btn} gold sm`}
-                    disabled={buyPhase !== 'idle' && buyPhase !== 'error'}
+                    disabled={!walletAddress || (buyPhase !== 'idle' && buyPhase !== 'error')}
+                    title={!walletAddress ? 'Connect your wallet in Profile' : undefined}
                     onClick={() => buyGold(l.id)}
                   >
                     {buyPhase !== 'idle' && buyPhase !== 'error' ? buyMsg || '…' : `Buy ${buyerPaysTokens(l.tokenPrice ?? 0)} tok`}
@@ -1069,6 +1072,7 @@ function drawFortuneWheel(canvas: HTMLCanvasElement, rot: number) {
 
 function WheelPopup() {
   const me = useGameStore((s) => s.me)!;
+  const walletAddress = useGameStore((s) => s.walletAddress);
   const setPanel = useGameStore((s) => s.setPanel);
   const setMe = useGameStore((s) => s.setMe);
   const toast = useGameStore((s) => s.toastMsg);
@@ -1083,7 +1087,7 @@ function WheelPopup() {
     return () => cancelAnimationFrame(animRef.current);
   }, []);
 
-  const available = me.wheelAvailableAt <= Date.now();
+  const available = me.wheelAvailableAt <= Date.now() && !!walletAddress;
 
   const spin = async () => {
     if (spinning || !available) return;
@@ -1158,7 +1162,13 @@ function WheelPopup() {
           </div>
           {resultText && <div className="card green-txt" style={{ marginBottom: 8 }}>{resultText}</div>}
           <button className={`${btn} gold`} disabled={spinning || !available} onClick={() => void spin()}>
-            {spinning ? 'Spinning…' : available ? 'SPIN!' : `Come back in ${nextIn()}`}
+            {spinning
+              ? 'Spinning…'
+              : !walletAddress
+                ? 'Connect wallet in Profile to spin'
+                : available
+                  ? 'SPIN!'
+                  : `Come back in ${nextIn()}`}
           </button>
         </div>
       </div>

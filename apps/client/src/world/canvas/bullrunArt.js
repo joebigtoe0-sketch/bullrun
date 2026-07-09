@@ -543,42 +543,53 @@ function person(ctx, iso, o) {
     cube(ctx, iso, gx - 0.17 + sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, sw) * 2.2, gear.boots);
     cube(ctx, iso, gx + 0.02 - sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, -sw) * 2.2, gear.boots);
   }
+  // arms — swing opposite the legs; working arm raised while gathering.
+  // Facing away: arms first so the torso paints over their inner edge
+  // (otherwise the far arm renders through the body).
+  const armSw = walking ? sw * 0.045 : 0;
+  const drawFarArm = () => {
+    cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
+    cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
+  };
+  const drawNearArm = () => {
+    if (o.chop) {
+      cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 2.5, 12, hands);
+      cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 5, 9, mul(shirt, 0.92));
+      const sp = iso(gx + 0.26, gy - 0.02);
+      const tool = o.chop.tool;
+      let ang, jab = 0;
+      if (tool === 'pick') {
+        // mining: big overhead arc slamming down
+        ang = -2.15 + (Math.sin(o.chop.ph) + 1) * 0.95;
+      } else if (tool === 'pitchfork') {
+        // hay: forward-down digging jabs
+        ang = 0.5;
+        jab = Math.max(0, Math.sin(o.chop.ph)) * 5.5;
+      } else {
+        // axe: chopping swing
+        ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
+      }
+      toolDraw(ctx, sp.x + 2, sp.y - 13, ang, tool, jab);
+    } else {
+      cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
+      cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
+    }
+  };
+  // far (-x) arm sits behind the torso in every facing; near (+x) arm in front
+  drawFarArm();
   // torso + belt
   cube(ctx, iso, gx - 0.195, gy - 0.145, 0.39, 0.29, 2, 5 + bob, '#2e2318');
   cube(ctx, iso, gx - 0.19, gy - 0.14, 0.38, 0.28, 8, 7 + bob, shirt);
-  // arms — swing opposite the legs; working arm raised while gathering
-  const armSw = walking ? sw * 0.045 : 0;
-  cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
-  cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
-  if (o.chop) {
-    cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 2.5, 12, hands);
-    cube(ctx, iso, gx + 0.19, gy - 0.14, 0.09, 0.18, 5, 9, mul(shirt, 0.92));
-    const sp = iso(gx + 0.26, gy - 0.02);
-    const tool = o.chop.tool;
-    let ang, jab = 0;
-    if (tool === 'pick') {
-      // mining: big overhead arc slamming down
-      ang = -2.15 + (Math.sin(o.chop.ph) + 1) * 0.95;
-    } else if (tool === 'pitchfork') {
-      // hay: forward-down digging jabs
-      ang = 0.5;
-      jab = Math.max(0, Math.sin(o.chop.ph)) * 5.5;
-    } else {
-      // axe: chopping swing
-      ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
-    }
-    toolDraw(ctx, sp.x + 2, sp.y - 13, ang, tool, jab);
-  } else {
-    cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
-    cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
-  }
+  drawNearArm();
   // head
   cube(ctx, iso, gx - 0.14, gy - 0.11, 0.28, 0.22, 8, 15 + bob, skin);
-  // eyes on front (+y) face
-  const fc = iso(gx, gy + 0.11);
-  ctx.fillStyle = '#241608';
-  ctx.fillRect(fc.x - 4, fc.y - 20 - bob, 2.2, 3);
-  ctx.fillRect(fc.x + 2, fc.y - 20 - bob, 2.2, 3);
+  // eyes on front (+y) face — hidden when facing away from the camera
+  if (!o.back) {
+    const fc = iso(gx, gy + 0.11);
+    ctx.fillStyle = '#241608';
+    ctx.fillRect(fc.x - 3.8, fc.y - 20 - bob, 2.2, 3);
+    ctx.fillRect(fc.x + 1.2, fc.y - 20 - bob, 2.2, 3);
+  }
   if (gear.hat) { // worn hat — brim, then crown
     cube(ctx, iso, gx - 0.23, gy - 0.19, 0.46, 0.38, 1.8, 22.4 + bob, gear.hat);
     cube(ctx, iso, gx - 0.12, gy - 0.1, 0.24, 0.2, 3.6, 24.2 + bob, mul(gear.hat, 0.88));
@@ -602,12 +613,44 @@ function bull(ctx, iso, o, t) {
   const bob = moving ? Math.abs(Math.cos(ph)) * 1.3 * amp : 0;
   const hb = bob + (moving ? Math.sin(ph + 0.6) * 0.9 * amp : 0);
   const swish = Math.sin((t || 0) * 2.2 + gx * 2) * 0.05;
+  const back = !!o.back;
+  // mirror body segments along world x when facing away (head points up-screen)
+  const hx = (off, w) => (back ? gx - off - w : gx + off);
   shadow(ctx, iso, gx, gy, 16, 7);
   const anchor = iso(gx, gy);
   if (o.flip) { ctx.save(); ctx.translate(2 * anchor.x, 0); ctx.scale(-1, 1); }
-  // tail FIRST — it hangs off the rear (-x) so the body must paint over its root
-  cube(ctx, iso, gx - 0.56, gy - 0.04 + swish, 0.08, 0.08, 5, 9 + bob, mul(c, 0.85));
-  cube(ctx, iso, gx - 0.58, gy - 0.05 + swish * 2, 0.1, 0.1, 3, 6 + bob, '#241608');
+  // painter's order: whatever ends up on the -x side (screen up-left) must
+  // draw first. Facing camera the tail is behind and the head in front;
+  // facing away (back) it's the opposite, so the two groups swap order.
+  const drawTail = () => {
+    cube(ctx, iso, hx(-0.64, 0.12), gy - 0.05 + swish, 0.12, 0.1, 7, 8.5 + bob, mul(c, 0.85));
+    cube(ctx, iso, hx(-0.68, 0.13), gy - 0.06 + swish * 2, 0.13, 0.12, 4, 4.5 + bob, '#241608');
+  };
+  const drawHead = () => {
+    // head (extra bob out of phase with the body)
+    cube(ctx, iso, hx(0.42, 0.34), gy - 0.19, 0.34, 0.38, 9, 8 + hb, c);
+    // forehead tuft
+    cube(ctx, iso, hx(0.44, 0.28), gy - 0.15, 0.28, 0.3, 1.6, 17 + hb, mul(c, 0.85));
+    // snout
+    cube(ctx, iso, hx(0.72, 0.17), gy - 0.13, 0.17, 0.26, 5, 8 + hb, '#d8b58a');
+    // eyes + nostrils — on the head front face; hidden when facing away
+    if (!back) {
+      decal(ctx, iso, gx + 0.761, gy - 0.15, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
+      decal(ctx, iso, gx + 0.761, gy + 0.06, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
+      decal(ctx, iso, gx + 0.891, gy - 0.095, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
+      decal(ctx, iso, gx + 0.891, gy + 0.04, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
+    }
+    // ears
+    cube(ctx, iso, hx(0.44, 0.1), gy - 0.32, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
+    cube(ctx, iso, hx(0.44, 0.1), gy + 0.22, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
+    // horns
+    cube(ctx, iso, hx(0.5, 0.08), gy - 0.36, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
+    cube(ctx, iso, hx(0.52, 0.06), gy - 0.4, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
+    cube(ctx, iso, hx(0.5, 0.08), gy + 0.24, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
+    cube(ctx, iso, hx(0.52, 0.06), gy + 0.33, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
+  };
+  if (back) drawHead();
+  else drawTail();
   // legs — diagonal pairs lift alternately (walk) / faster+higher (run)
   const liftA = moving ? Math.max(0, s1) * 2.6 * amp : 0;
   const liftB = moving ? Math.max(0, -s1) * 2.6 * amp : 0;
@@ -615,37 +658,20 @@ function bull(ctx, iso, o, t) {
     cube(ctx, iso, lx, ly, 0.13, 0.13, 2, lift, '#2b2118');
     cube(ctx, iso, lx, ly, 0.13, 0.13, 3.5, 2 + lift, mul(c, 0.8));
   };
-  leg(gx + 0.26, gy - 0.2, liftA); leg(gx - 0.42, gy + 0.07, liftA);
-  leg(gx + 0.26, gy + 0.07, liftB); leg(gx - 0.42, gy - 0.2, liftB);
-  // hindquarters (drawn first so the body paints over its seam) + belly + body
-  cube(ctx, iso, gx - 0.5, gy - 0.22, 0.3, 0.44, 9, 6 + bob, mul(c, 0.94));
-  cube(ctx, iso, gx - 0.46, gy - 0.2, 0.92, 0.4, 2.5, 4 + bob, belly);
-  cube(ctx, iso, gx - 0.48, gy - 0.24, 0.96, 0.48, 10, 5.5 + bob, c);
+  leg(hx(0.26, 0.13), gy - 0.2, liftA); leg(hx(-0.42, 0.13), gy + 0.07, liftA);
+  leg(hx(0.26, 0.13), gy + 0.07, liftB); leg(hx(-0.42, 0.13), gy - 0.2, liftB);
+  // hindquarters (body paints over its seam) + belly + body
+  cube(ctx, iso, hx(-0.5, 0.3), gy - 0.22, 0.3, 0.44, 9, 6 + bob, mul(c, 0.94));
+  cube(ctx, iso, hx(-0.46, 0.92), gy - 0.2, 0.92, 0.4, 2.5, 4 + bob, belly);
+  cube(ctx, iso, hx(-0.48, 0.96), gy - 0.24, 0.96, 0.48, 10, 5.5 + bob, c);
   // shoulder hump
-  cube(ctx, iso, gx + 0.04, gy - 0.2, 0.3, 0.4, 3, 15.5 + bob, c);
-  // head (extra bob out of phase with the body)
-  cube(ctx, iso, gx + 0.42, gy - 0.19, 0.34, 0.38, 9, 8 + hb, c);
-  // forehead tuft
-  cube(ctx, iso, gx + 0.44, gy - 0.15, 0.28, 0.3, 1.6, 17 + hb, mul(c, 0.85));
-  // snout
-  cube(ctx, iso, gx + 0.72, gy - 0.13, 0.17, 0.26, 5, 8 + hb, '#d8b58a');
-  // eyes + nostrils — decals that follow the head/snout front (+x) faces
-  decal(ctx, iso, gx + 0.761, gy - 0.15, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
-  decal(ctx, iso, gx + 0.761, gy + 0.06, 0.09, 'y', 13.5 + hb, 1.9, '#17100a');
-  decal(ctx, iso, gx + 0.891, gy - 0.095, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
-  decal(ctx, iso, gx + 0.891, gy + 0.04, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
-  // ears
-  cube(ctx, iso, gx + 0.44, gy - 0.32, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
-  cube(ctx, iso, gx + 0.44, gy + 0.22, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
-  // horns
-  cube(ctx, iso, gx + 0.5, gy - 0.36, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
-  cube(ctx, iso, gx + 0.52, gy - 0.4, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
-  cube(ctx, iso, gx + 0.5, gy + 0.24, 0.08, 0.12, 2, 15.5 + hb, '#efe8d8');
-  cube(ctx, iso, gx + 0.52, gy + 0.33, 0.06, 0.07, 3.5, 16.5 + hb, '#f5efe2');
+  cube(ctx, iso, hx(0.04, 0.3), gy - 0.2, 0.3, 0.4, 3, 15.5 + bob, c);
+  if (back) drawTail();
+  else drawHead();
   // racing blanket
   if (o.racing) {
-    cube(ctx, iso, gx - 0.18, gy - 0.26, 0.38, 0.52, 2, 15.7 + bob, '#f2b23a');
-    cube(ctx, iso, gx - 0.16, gy - 0.27, 0.34, 0.54, 0.8, 15.4 + bob, '#8e3b2e');
+    cube(ctx, iso, hx(-0.18, 0.38), gy - 0.26, 0.38, 0.52, 2, 15.7 + bob, '#f2b23a');
+    cube(ctx, iso, hx(-0.16, 0.34), gy - 0.27, 0.34, 0.54, 0.8, 15.4 + bob, '#8e3b2e');
   }
   if (o.flip) ctx.restore();
   if (o.label) label(ctx, iso, gx, gy, o.label, 38, '#fff');

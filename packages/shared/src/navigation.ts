@@ -195,6 +195,11 @@ export function findPath(
     for (const [dx, dy] of NEIGHBORS) {
       const nb = { x: current.x + dx, y: current.y + dy };
       if (!isWalkableCell(nb.x, nb.y, M)) continue;
+      // no diagonal corner-cutting through blocked cells (fences, track band)
+      if (
+        dx !== 0 && dy !== 0 &&
+        (!isWalkableCell(current.x + dx, current.y, M) || !isWalkableCell(current.x, current.y + dy, M))
+      ) continue;
       const nk = cellKey(nb);
       const step = dx !== 0 && dy !== 0 ? 1.414 : 1;
       const tg = (gScore.get(currentKey) ?? Infinity) + step;

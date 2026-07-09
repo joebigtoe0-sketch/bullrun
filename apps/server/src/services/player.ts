@@ -196,7 +196,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
     where: { userId },
     select: { lastWheelSpinAt: true },
   });
-  const { nextWheelSpinAt } = await import('./charShop.js');
+  const { nextWheelSpinAt, todaysJackpot } = await import('./charShop.js');
 
   const currentRace = await prisma.race.findFirst({
     where: { status: { in: ['scheduled', 'running'] } },
@@ -222,6 +222,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
   return {
     ...profile,
     wheelAvailableAt: nextWheelSpinAt(rawProfile?.lastWheelSpinAt ?? null),
+    wheelJackpot: todaysJackpot(),
     entered: myEntries,
     bet: myBet
       ? { bullId: myBet.targetBullId, name: myBet.targetName, amount: myBet.amount, odds: myBet.odds }

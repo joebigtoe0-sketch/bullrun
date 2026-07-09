@@ -31,6 +31,8 @@ export interface ArtObj {
   chop?: { tool: 'axe' | 'pick' | 'sickle' | 'pitchfork'; ph: number } | null;
   /** mirror horizontally around the anchor (face screen-left) */
   flip?: boolean;
+  /** face away from the camera (up-screen) */
+  back?: boolean;
   /** character clothing colors by slot */
   gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
 }

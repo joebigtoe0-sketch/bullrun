@@ -108,6 +108,7 @@ export function CanvasWorld() {
   return (
     <canvas
       ref={canvasRef}
+      className="world-canvas"
       style={{ position: 'absolute', inset: 0, display: 'block' }}
       onClick={onClick}
     />

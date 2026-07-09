@@ -4,7 +4,6 @@ import {
   WHEEL_JACKPOT_WEIGHT,
   WHEEL_JACKPOT_CLOTHING,
   WHEEL_MIN_TOKENS,
-  makeItem,
 } from '@bullrun/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
@@ -99,35 +98,53 @@ export function nextWheelSpinAt(lastSpin: Date | null): number {
   return next.getTime();
 }
 
-/** Deterministic daily jackpot item — same for everyone on a given UTC day. */
-function dailyJackpotItem(nextItemId: number) {
+/**
+ * Deterministic daily jackpot item — same for everyone on a given UTC day,
+ * and exclusive to the wheel ("Champion" bull gear can't be forged; the
+ * clothing pool isn't sold in the store).
+ */
+export function todaysJackpot() {
   const day = Math.floor(Date.now() / 86_400_000);
+  const rng = (n: number) => {
+    const x = Math.sin(day * 127.1 + n * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
   // alternate between char clothing and high-rarity bull gear day by day
   if (day % 2 === 0) {
     const def = WHEEL_JACKPOT_CLOTHING[day % WHEEL_JACKPOT_CLOTHING.length];
     return {
       kind: 'char' as const,
-      slot: def.slot,
-      rarity: def.rarity,
+      slot: def.slot as string,
+      rarity: def.rarity as string,
       rarityColor: rarityColorOf(def.rarity),
       name: def.name,
       color: def.color,
-      bonusStat: def.bonus.stat,
+      bonusStat: def.bonus.stat as string,
       bonusAmt: def.bonus.amt,
     };
   }
-  // bull gear: force Epic (3) or Legendary (4) rarity, seeded by day
-  const rarIdx = day % 3 === 0 ? 4 : 3;
-  const it = makeItem(rarIdx, nextItemId);
+  const slots = ['coat', 'horns', 'hooves', 'tail', 'accessory'] as const;
+  const nouns: Record<(typeof slots)[number], string> = {
+    coat: 'Coat',
+    horns: 'Horns',
+    hooves: 'Hooves',
+    tail: 'Tail Wrap',
+    accessory: 'Harness',
+  };
+  const slot = slots[Math.floor(rng(1) * slots.length)];
+  const rarity = day % 3 === 0 ? 'Legendary' : 'Epic';
+  const stats = ['speed', 'stamina', 'accel'] as const;
+  const stat = stats[Math.floor(rng(2) * stats.length)];
+  const amt = rarity === 'Legendary' ? 180 : 130; // a notch above the best forge rolls
   return {
     kind: 'bull' as const,
-    slot: it.slot,
-    rarity: it.rarity,
-    rarityColor: it.rarityColor,
-    name: it.name,
-    color: it.color,
-    bonusStat: it.bonus?.stat ?? null,
-    bonusAmt: it.bonus?.amt ?? null,
+    slot: slot as string,
+    rarity,
+    rarityColor: rarityColorOf(rarity),
+    name: `Champion ${nouns[slot]}`,
+    color: rarityColorOf(rarity),
+    bonusStat: stat as string,
+    bonusAmt: amt,
   };
 }
 
@@ -171,11 +188,11 @@ export async function spinWheel(userId: string): Promise<WheelSpinResult> {
 
   const now = new Date();
   if (tierIdx === -1) {
-    const itemData = dailyJackpotItem(p.nextItemId);
+    const itemData = todaysJackpot();
     await prisma.$transaction([
       prisma.playerProfile.update({
         where: { userId },
-        data: { lastWheelSpinAt: now, nextItemId: p.nextItemId + 1 },
+        data: { lastWheelSpinAt: now },
       }),
       prisma.item.create({ data: { ownerId: userId, ...itemData } }),
     ]);

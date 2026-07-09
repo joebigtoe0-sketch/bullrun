@@ -357,6 +357,17 @@ export interface AuthResponse {
 export interface MeResponse extends UserProfile {
   /** epoch ms when the daily wheel can next be spun (0 = available now) */
   wheelAvailableAt: number;
+  /** today's wheel jackpot item — same for everyone, wheel-exclusive */
+  wheelJackpot: {
+    kind: ItemKind;
+    slot: string;
+    rarity: string;
+    rarityColor: string;
+    name: string;
+    color: string;
+    bonusStat: string;
+    bonusAmt: number;
+  };
   race: {
     id: string;
     status: string;

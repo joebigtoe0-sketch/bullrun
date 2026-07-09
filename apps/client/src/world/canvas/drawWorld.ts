@@ -24,6 +24,9 @@ import {
   liveStandings,
   formatLiveStandingLine,
   CHAT_SPEECH_FADE_MS,
+  isOnBridge,
+  BRIDGE_Y,
+  BRIDGE_LEN,
   type MeResponse,
   type GameItem,
   type OtherPlayer,
@@ -53,6 +56,7 @@ export interface FollowerPos {
   ph?: number;
   moving?: boolean;
   flip?: boolean;
+  back?: boolean;
 }
 
 function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number } {
@@ -190,6 +194,8 @@ type DrawObj = WorldObject & {
   run?: boolean;
   racing?: boolean;
   flip?: boolean;
+  back?: boolean;
+  bridgeElev?: number;
   gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
   speech?: { text: string; until: number };
 };
@@ -199,12 +205,25 @@ function bullCoat(coat: string, trait: BullTrait | undefined, now: number, wx: n
   return coat || '#33261d';
 }
 
+/*
+ * Facing rules — the walk trackers store `left` = last horizontal screen direction:
+ * - person art faces down-LEFT by default (eyes on the +y face) -> mirror when moving right
+ * - bull art faces down-RIGHT (head on +x); back mode pre-mirrors the head to up-left,
+ *   so the screen mirror must invert while facing away
+ */
+function personFlip(left: boolean, back: boolean): boolean {
+  return back ? left : !left;
+}
+function bullFlip(left: boolean, back: boolean): boolean {
+  return back ? !left : left;
+}
+
 /** Per-player walk cycle derived from observed movement (positions come from the server). */
-const walkAnim = new Map<string, { x: number; y: number; ph: number; moving: boolean; flip: boolean }>();
+const walkAnim = new Map<string, { x: number; y: number; ph: number; moving: boolean; flip: boolean; back: boolean }>();
 function otherWalkAnim(id: string, x: number, y: number) {
   let w = walkAnim.get(id);
   if (!w) {
-    w = { x, y, ph: 0, moving: false, flip: false };
+    w = { x, y, ph: 0, moving: false, flip: false, back: false };
     walkAnim.set(id, w);
   }
   const dx = x - w.x;
@@ -214,7 +233,9 @@ function otherWalkAnim(id: string, x: number, y: number) {
   if (w.moving) {
     w.ph += Math.min(0.6, dm * 3);
     const screenDx = dx - dy;
+    const screenDy = dx + dy;
     if (Math.abs(screenDx) > 0.002) w.flip = screenDx < 0;
+    if (Math.abs(screenDy) > 0.002) w.back = screenDy < 0;
   }
   w.x = x;
   w.y = y;
@@ -278,11 +299,30 @@ function gearFromItems(items: GameItem[] | undefined): { hat?: string; outfit?: 
 }
 
 /** Own player's facing, tracked from frame-to-frame movement. */
-const myWalk = { x: 0, y: 0, flip: false, init: false };
+const myWalk = { x: 0, y: 0, flip: false, back: false, init: false };
+
+/** Pixel height of the bridge deck under an entity standing on it (0 = not on bridge). */
+function bridgeElevAt(x: number, y: number): number {
+  if (!isOnBridge(x, y)) return 0;
+  const half = BRIDGE_LEN / 2;
+  const u = Math.max(-half, Math.min(half, y - BRIDGE_Y));
+  const arch = 2 + 38 * (1 - (u / half) * (u / half));
+  return Math.max(0, arch) + 2.4;
+}
+
+/** Depth bias so entities on the deck paint over the bridge span (dSort 4.5). */
+const BRIDGE_RIDER_DSORT = 6;
 
 /** Delegate drawing to the shared BRArt library, mapping game state to art objects. */
 function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number, now: number, artT: number) {
   const opts = { t: artT, nowMs: now, stableLevel };
+
+  const lifted = o.bridgeElev ?? 0;
+  if (lifted > 0) {
+    ctx.save();
+    ctx.translate(0, -lifted);
+  }
+  try {
 
   if (o.t === 'player' || o.t === 'other') {
     if (o.speech) {
@@ -304,6 +344,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       ph: o.ph ?? now / 111,
       chop,
       flip: o.flip,
+      back: o.back,
       gear: o.gear,
     }, opts);
     return;
@@ -326,12 +367,16 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       run: o.run,
       racing: o.racing,
       flip: o.flip,
+      back: o.back,
     }, opts);
     if (ghost) ctx.restore();
     return;
   }
 
   BRArt.drawObj(ctx, iso, o as ArtObj, opts);
+  } finally {
+    if (lifted > 0) ctx.restore();
+  }
 }
 
 /** Text painted flat on isometric ground tiles (world x/y axes). */
@@ -604,8 +649,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
 
   for (const p of otherPlayers) {
     const walk = otherWalkAnim(p.id, p.x, p.y);
+    const pElev = bridgeElevAt(p.x, p.y);
     list.push({
-      d: p.x + p.y,
+      d: p.x + p.y + (pElev > 0 ? BRIDGE_RIDER_DSORT : 0),
       o: {
         t: 'other',
         x: p.x,
@@ -615,7 +661,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         lvl: p.stableLevel,
         moving: walk.moving,
         ph: walk.ph,
-        flip: walk.flip,
+        flip: personFlip(walk.flip, walk.back),
+        back: walk.back,
+        bridgeElev: pElev,
         speech: speechBubbles[p.id],
       },
     });
@@ -623,8 +671,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     for (const b of p.bulls ?? []) {
       let f = pf[b.id];
       if (!f) f = { x: p.x + 1.5, y: p.y + 1.5 };
+      const fElev = bridgeElevAt(f.x, f.y);
       list.push({
-        d: f.x + f.y,
+        d: f.x + f.y + (fElev > 0 ? BRIDGE_RIDER_DSORT : 0),
         o: {
           t: 'bull',
           x: f.x,
@@ -634,7 +683,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           label: b.name,
           ph: f.ph,
           moving: f.moving,
-          flip: f.flip,
+          flip: bullFlip(!!f.flip, !!f.back),
+          back: f.back,
+          bridgeElev: fElev,
         },
       });
     }
@@ -650,16 +701,23 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     const mdx = me.position.x - myWalk.x;
     const mdy = me.position.y - myWalk.y;
     const mScreenDx = mdx - mdy;
+    const mScreenDy = mdx + mdy;
     if (Math.abs(mScreenDx) > 0.002) myWalk.flip = mScreenDx < 0;
+    if (Math.abs(mScreenDy) > 0.002) myWalk.back = mScreenDy < 0;
     myWalk.x = me.position.x;
     myWalk.y = me.position.y;
-    let myFlip = myWalk.flip;
+    let myLeft = myWalk.flip;
+    let myBack = myWalk.back;
     if (gather && gather.nodeX != null && gather.nodeY != null) {
       const nodeScreenDx = (gather.nodeX - gather.nodeY) - (me.position.x - me.position.y);
-      if (Math.abs(nodeScreenDx) > 0.01) myFlip = nodeScreenDx < 0;
+      const nodeScreenDy = (gather.nodeX + gather.nodeY) - (me.position.x + me.position.y);
+      if (Math.abs(nodeScreenDx) > 0.01) myLeft = nodeScreenDx < 0;
+      myBack = nodeScreenDy < -0.05;
     }
+    const myFlip = personFlip(myLeft, myBack);
+    const myElev = bridgeElevAt(me.position.x, me.position.y);
     list.push({
-      d: me.position.x + me.position.y,
+      d: me.position.x + me.position.y + (myElev > 0 ? BRIDGE_RIDER_DSORT : 0),
       o: {
         t: 'player',
         x: me.position.x,
@@ -668,6 +726,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         gatherStart: gather?.start,
         walking: walking && !gather,
         flip: myFlip,
+        back: myBack,
+        bridgeElev: myElev,
         gear: gearFromItems(me.items),
         speech: myPlayerId ? speechBubbles[myPlayerId] : undefined,
       },
@@ -683,8 +743,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
         f = { x: me.position.x + 1.5, y: me.position.y + 1.5 };
         folPos[b.id] = f;
       }
+      const fElev = bridgeElevAt(f.x, f.y);
       list.push({
-        d: f.x + f.y,
+        d: f.x + f.y + (fElev > 0 ? BRIDGE_RIDER_DSORT : 0),
         o: {
           t: 'bull',
           x: f.x,
@@ -694,7 +755,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           label: b.name,
           ph: f.ph,
           moving: f.moving,
-          flip: f.flip,
+          flip: bullFlip(!!f.flip, !!f.back),
+          back: f.back,
+          bridgeElev: fElev,
         },
       });
     }
@@ -761,6 +824,16 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       const pos = raceAnim.frozen
         ? raceFinishPosition(place, fieldSize)
         : raceBullAt(el, b.finishT, gridSlot, laps, b.lapTimes, fieldSize, place);
+      let left = pos.facingLeft;
+      let back = false;
+      if (!raceAnim.frozen) {
+        const ahead = raceBullAt(el + 80, b.finishT, gridSlot, laps, b.lapTimes, fieldSize, place);
+        const sdx = (ahead.x - pos.x) - (ahead.y - pos.y);
+        const sdy = (ahead.x - pos.x) + (ahead.y - pos.y);
+        if (Math.abs(sdx) > 0.0005) left = sdx < 0;
+        back = sdy < 0;
+      }
+      const flip = bullFlip(left, back);
       list.push({
         d: pos.x + pos.y,
         o: {
@@ -774,7 +847,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           moving: !raceAnim.frozen,
           run: !raceAnim.frozen,
           ph: el / 60,
-          flip: pos.facingLeft,
+          flip,
+          back,
         },
       });
     }
@@ -819,7 +893,9 @@ export function stepFollowers(
       f.moving = true;
       f.ph = (f.ph ?? 0) + spd * dt * 2.4;
       const screenDx = stepX - stepY;
+      const screenDy = stepX + stepY;
       if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
+      if (Math.abs(screenDy) > 0.0005) f.back = screenDy < 0;
     } else {
       f.moving = false;
     }
@@ -850,7 +926,9 @@ export function stepOtherFollowers(
         f.moving = true;
         f.ph = (f.ph ?? 0) + spd * dt * 2.4;
         const screenDx = stepX - stepY;
+        const screenDy = stepX + stepY;
         if (Math.abs(screenDx) > 0.0005) f.flip = screenDx < 0;
+        if (Math.abs(screenDy) > 0.0005) f.back = screenDy < 0;
       } else {
         f.moving = false;
       }

@@ -1142,6 +1142,17 @@ function WheelPopup() {
         </div>
         <div style={{ padding: '10px 14px 16px' }}>
           <canvas ref={canvasRef} style={{ width: 280, height: 280 }} />
+          <div className="card row-between" style={{ marginBottom: 8, textAlign: 'left' }}>
+            <div className="row gap">
+              <ItemIcon slot={me.wheelJackpot.slot} rarity={me.wheelJackpot.rarity} color={me.wheelJackpot.color} size={38} />
+              <div>
+                <div className="muted sm">TODAY'S JACKPOT · wheel exclusive</div>
+                <span className="bold sm" style={{ color: me.wheelJackpot.rarityColor }}>
+                  {me.wheelJackpot.name} ({me.wheelJackpot.rarity})
+                </span>
+              </div>
+            </div>
+          </div>
           <div className="muted sm" style={{ marginBottom: 8 }}>
             One free spin per day · hold {WHEEL_MIN_TOKENS.toLocaleString()} tokens to spin
           </div>

@@ -272,7 +272,7 @@ export function handleWorldClick(wx: number, wy: number) {
   let bd = 1.6;
   const playerPos = s.me?.position ?? { x: wx, y: wy };
 
-  const clickedPlot = nearestPasturePlot(wx, wy, 3.5);
+  const clickedPlot = nearestPasturePlot(wx, wy, 0.9);
   if (clickedPlot) {
     const approach = pastureApproachPoint(playerPos.x, playerPos.y, clickedPlot);
     bd = distanceToPastureFence(wx, wy, clickedPlot);

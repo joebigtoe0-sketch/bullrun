@@ -5,10 +5,11 @@ import { Logo } from './Logo';
 import { OnlineBadge } from './OnlineBadge';
 import { GameGuide } from './GameGuide';
 import { useOnlineCount } from '../hooks/useOnlineCount';
+import { HeroBackdrop } from './HeroBackdrop';
 
 type Mode = 'login' | 'register';
 
-export function AuthScreen() {
+export function AuthScreen({ onSpectate }: { onSpectate?: () => void } = {}) {
   const setAuth = useGameStore((s) => s.setAuth);
   const setMe = useGameStore((s) => s.setMe);
 
@@ -46,6 +47,7 @@ export function AuthScreen() {
 
   return (
     <div className="auth-screen">
+      <HeroBackdrop variant="landing" />
       <div className="auth-card">
         <OnlineBadge count={playersOnline} />
         <Logo className="auth-logo" />
@@ -95,6 +97,11 @@ export function AuthScreen() {
         >
           {mode === 'login' ? 'New here? Create an account →' : '← Back to log in'}
         </button>
+        {onSpectate && (
+          <button type="button" className="br-btn auth-btn" style={{ marginTop: 10 }} onClick={onSpectate}>
+            SPECTATE
+          </button>
+        )}
         <p className="auth-hint" style={{ marginTop: 10, marginBottom: 0 }}>
           No wallet needed to play — connect one later in Profile for the token market and daily wheel.
         </p>

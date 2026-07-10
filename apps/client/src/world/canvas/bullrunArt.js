@@ -73,7 +73,7 @@ function shadow(ctx, iso, x, y, rx, ry) {
 }
 function label(ctx, iso, wx, wy, txt, yOff, color) {
   const s = iso(wx, wy);
-  ctx.font = "600 11px 'Pixelify Sans', monospace";
+  ctx.font = "800 11px 'Nunito', system-ui, sans-serif";
   const w = ctx.measureText(txt).width + 10;
   ctx.fillStyle = 'rgba(23,16,10,.8)'; ctx.fillRect(s.x - w / 2, s.y - yOff - 13, w, 16);
   ctx.fillStyle = color || '#f3e7cd'; ctx.textAlign = 'center';

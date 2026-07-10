@@ -57,6 +57,10 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
     try {
       const token = socket.handshake.auth.token as string;
       if (!token) return next(new Error('No token'));
+      if (token === 'spectator') {
+        socket.data.spectator = true;
+        return next();
+      }
       const decoded = app.jwt.verify<{ sub: string }>(token);
       socket.data.userId = decoded.sub;
       next();
@@ -66,6 +70,34 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
   });
 
   io.on('connection', async (socket) => {
+    // Spectators get the world snapshot + live broadcasts, but no presence and no inputs.
+    if (socket.data.spectator) {
+      const nodes = await prisma.worldNode.findMany();
+      const pastures = await listPastures();
+      const race = await prisma.race.findFirst({
+        where: { status: { in: ['scheduled', 'running'] } },
+        orderBy: { startAt: 'asc' },
+      });
+      socket.emit('world_snapshot', {
+        players: [...onlinePlayers.entries()].map(([id, p]) => toPresence(id, p)),
+        nodes: nodes.map((n: WorldNode) => ({
+          id: n.id,
+          x: n.x,
+          y: n.y,
+          mat: n.mat,
+          deadUntil: n.deadUntil?.getTime() ?? null,
+        })),
+        pastures,
+        race: race
+          ? { id: race.id, status: race.status, startAt: race.startAt.getTime(), field: race.field }
+          : null,
+      });
+      if (race?.status === 'running') {
+        joinRunningRaceToSocket(race.id, socket);
+      }
+      return;
+    }
+
     const userId = socket.data.userId as string;
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -75,6 +107,10 @@ export function setupSocket(io: SocketServer, app: FastifyInstance) {
       socket.disconnect();
       return;
     }
+
+    prisma.playerProfile
+      .update({ where: { userId }, data: { lastSeenAt: new Date() } })
+      .catch(() => {});
 
     const bulls = await loadBullsForUser(userId);
 

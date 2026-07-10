@@ -55,6 +55,8 @@ export const api = {
   checkAccess: () =>
     request<{ balance: number; required: number; hasAccess: boolean; configured?: boolean }>('/auth/access'),
   getOnline: () => request<{ online: number }>('/online'),
+  publicStats: () =>
+    request<{ online: number; monthlyPlayers: number; goldWon: number; contract: string }>('/stats/public'),
   goldMarket: () =>
     request<Array<{ id: string; sellerId: string; sellerName: string; type: 'gold'; qty: number; tokenPrice: number; status: string }>>('/market/gold'),
   listGold: (goldQty: number, tokenPrice: number, signature: string, message: string) =>

@@ -152,7 +152,7 @@ function drawSpeechBubble(
 ) {
   if (alpha <= 0) return;
   const s = iso(wx, wy);
-  ctx.font = "600 10px 'Pixelify Sans', monospace";
+  ctx.font = "700 10px 'Nunito', system-ui, sans-serif";
   const maxW = 118;
   const lines = wrapSpeechLines(ctx, text, maxW);
   const lineH = 12;
@@ -302,7 +302,7 @@ function drawFloatFx(ctx: CanvasRenderingContext2D) {
         ctx.fillRect(s.x + Math.cos(a) * r - 1.2, s.y - 14 - rise * 0.7 + Math.sin(a) * r * 0.5 - 1.2, 2.4, 2.4);
       }
     }
-    ctx.font = "700 13px 'Pixelify Sans', monospace";
+    ctx.font = "800 13px 'Nunito', system-ui, sans-serif";
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(23,16,10,.85)';
     ctx.fillText(f.text, s.x + 1.5, s.y - 34 - rise + 1.5);
@@ -503,7 +503,7 @@ function drawGroundText(
     ctx.textAlign = 'center';
     ctx.textBaseline = baseline;
     for (const line of lines) {
-      ctx.font = `700 ${line.size}px 'Pixelify Sans', monospace`;
+      ctx.font = `800 ${line.size}px 'Nunito', system-ui, sans-serif`;
       ctx.fillStyle = shadow ? 'rgba(23,16,10,0.85)' : line.color;
       ctx.fillText(line.text, ox + (line.x ?? 0), line.y + oy);
     }
@@ -685,8 +685,10 @@ export interface DrawState {
   otherFolPos: Record<string, Record<number, FollowerPos>>;
   speechBubbles: Record<string, { text: string; until: number }>;
   myPlayerId: string | null;
-  camOff: { x: number; y: number };
+  /** written by drawWorld each frame — inverse mapping for canvas clicks */
+  camOff: { cpx: number; cpy: number; z: number };
   dpr: number;
+  zoom: number;
 }
 
 export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
@@ -699,21 +701,31 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   ctx.fillStyle = '#69a949';
   ctx.fillRect(0, 0, cw, ch);
 
+  const z = Math.max(1, Math.min(2.5, state.zoom || 1));
   const cp = iso(cam.x, cam.y);
-  const ox = cw / 2 - cp.x;
-  const oy = ch / 2 - cp.y + 30;
-  camOff.x = ox;
-  camOff.y = oy;
+  camOff.cpx = cp.x;
+  camOff.cpy = cp.y;
+  camOff.z = z;
 
   ctx.save();
-  ctx.translate(ox, oy);
+  ctx.translate(cw / 2, ch / 2 + 30);
+  ctx.scale(z, z);
+  ctx.translate(-cp.x, -cp.y);
 
   const artT = performance.now() / 1000;
+
+  // culling bounds in iso space, widened by the visible half-extent at this zoom
+  const cullHalfW = cw / (2 * z) + 80;
+  const cullTop = -(ch / 2 + 30) / z - 60;
+  const cullBottom = ch / (2 * z) + 60;
 
   for (let x = 0; x < M; x++) {
     for (let y = 0; y < M; y++) {
       const s = iso(x, y);
-      if (s.x + ox < -80 || s.x + ox > cw + 80 || s.y + oy < -60 || s.y + oy > ch + 60) continue;
+      if (
+        s.x - cp.x < -cullHalfW || s.x - cp.x > cullHalfW ||
+        s.y - cp.y < cullTop || s.y - cp.y > cullBottom
+      ) continue;
       BRArt.tile(ctx, iso, x, y, worldData.tiles[x][y]);
     }
   }

@@ -54,6 +54,10 @@ interface GameStore {
   chatInputFocused: boolean;
   cam: { x: number; y: number };
   freeCamUntil: number;
+  /** world zoom (1 = default, up to 2.5) */
+  zoom: number;
+  /** watching without an account */
+  spectator: boolean;
   shopBulls: MeResponse['shopBulls'];
   chatLog: ChatMessage[];
   speechBubbles: Record<string, { text: string; until: number }>;
@@ -94,6 +98,8 @@ interface GameStore {
   setChatInputFocused: (v: boolean) => void;
   setCam: (x: number, y: number) => void;
   setFreeCamUntil: (t: number) => void;
+  setZoom: (z: number) => void;
+  setSpectator: (v: boolean) => void;
   setPastures: (p: PasturePlotState[]) => void;
   setDenPlotId: (id: number | null) => void;
   addChatMessage: (msg: ChatMessage) => void;
@@ -136,6 +142,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   chatInputFocused: false,
   cam: { x: 28, y: 25 },
   freeCamUntil: 0,
+  zoom: 1,
+  spectator: false,
   shopBulls: [],
   pastures: [],
   denPlotId: null,
@@ -296,6 +304,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setChatInputFocused: (v) => set({ chatInputFocused: v }),
   setCam: (x, y) => set({ cam: { x, y } }),
   setFreeCamUntil: (t) => set({ freeCamUntil: t }),
+  setZoom: (z) => set({ zoom: Math.max(1, Math.min(2.5, z)) }),
+  setSpectator: (v) => set({ spectator: v }),
   setPastures: (p) => set({ pastures: p }),
   setDenPlotId: (id) => set({ denPlotId: id }),
   addChatMessage: (msg) => {

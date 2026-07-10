@@ -41,6 +41,7 @@ model PlayerProfile {
   lastWheelSpinAt DateTime?
   level       Int      @default(1)
   xp          Int      @default(0)
+  lastSeenAt  DateTime?
   helpSeen    Boolean  @default(false)
   betAmount   Int      @default(50)
   forgeOre    Int      @default(100)

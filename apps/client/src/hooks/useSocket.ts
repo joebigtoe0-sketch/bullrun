@@ -16,12 +16,14 @@ export function useSocket() {
   const socketRef = useRef<Socket | null>(null);
   const me = useGameStore((s) => s.me);
   const token = useGameStore((s) => s.token);
+  const spectator = useGameStore((s) => s.spectator);
 
   useEffect(() => {
-    if (!token || !me) return;
+    const authed = Boolean(token && me);
+    if (!authed && !spectator) return;
 
     const socket = io(getWsUrl(), {
-      auth: { token },
+      auth: { token: authed ? token : 'spectator' },
       transports: ['websocket', 'polling'],
     });
     socketRef.current = socket;
@@ -180,7 +182,7 @@ export function useSocket() {
       socketRef.current = null;
       gameSocketRef.current = null;
     };
-  }, [token, me?.id]);
+  }, [token, me?.id, spectator]);
 
   const emitMove = useCallback((x: number, y: number) => {
     socketRef.current?.emit('move', { x, y });

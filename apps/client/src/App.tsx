@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from './store/gameStore';
 import { api } from './api/client';
 import { AuthScreen } from './ui/AuthScreen';
@@ -6,13 +6,22 @@ import { GameUI } from './ui/GameUI';
 import { CanvasWorld } from './world/CanvasWorld';
 import { useGameLoop } from './game/loop';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { LandingPage } from './ui/LandingPage';
+import { LoadingScreen } from './ui/LoadingScreen';
+import { SpectateMode } from './ui/SpectateMode';
+
+type Stage = 'landing' | 'loading' | 'auth' | 'game';
 
 export default function App() {
   const token = useGameStore((s) => s.token);
   const me = useGameStore((s) => s.me);
+  const spectator = useGameStore((s) => s.spectator);
+  const setSpectator = useGameStore((s) => s.setSpectator);
   const setAuth = useGameStore((s) => s.setAuth);
   const setMe = useGameStore((s) => s.setMe);
   const setWallet = useGameStore((s) => s.setWallet);
+
+  const [stage, setStage] = useState<Stage>('landing');
 
   useEffect(() => {
     if (token && !me) {
@@ -32,9 +41,49 @@ export default function App() {
     }
   }, [token, me, setAuth, setMe, setWallet]);
 
-  useGameLoop(Boolean(token && me));
+  // once logged in from the auth screen, enter the game
+  useEffect(() => {
+    if (stage === 'auth' && token && me) setStage('game');
+  }, [stage, token, me]);
 
-  if (!token) return <AuthScreen />;
+  // logging out from inside the game returns to the landing page
+  useEffect(() => {
+    if (stage === 'game' && !token && !spectator) setStage('landing');
+  }, [stage, token, spectator]);
+
+  useGameLoop(Boolean(stage === 'game' && token && me && !spectator));
+
+  const startSpectate = () => {
+    setSpectator(true);
+    setStage('game');
+  };
+
+  if (stage === 'landing') {
+    return <LandingPage onPlay={() => setStage('loading')} onSpectate={startSpectate} />;
+  }
+
+  if (stage === 'loading') {
+    return <LoadingScreen onDone={() => setStage(token ? 'game' : 'auth')} />;
+  }
+
+  if (stage === 'auth') {
+    return <AuthScreen onSpectate={startSpectate} />;
+  }
+
+  // stage === 'game'
+  if (spectator && !me) {
+    return (
+      <ErrorBoundary>
+        <SpectateMode
+          onExit={() => {
+            setSpectator(false);
+            setStage('auth');
+          }}
+        />
+      </ErrorBoundary>
+    );
+  }
+
   if (!me) {
     return (
       <div className="auth-screen">

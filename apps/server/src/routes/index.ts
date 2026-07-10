@@ -12,6 +12,7 @@ import { computeRaceOdds } from '../services/raceOdds.js';
 import { walletAuthRoutes } from './walletAuth.js';
 import { tokenMarketRoutes, startGoldMarketSweeper } from './tokenMarket.js';
 import { adminRoutes } from './admin.js';
+import { getOnlineCount } from '../socket/index.js';
 
 export async function authRoutes(app: FastifyInstance) {
   app.post<{ Body: { username: string; password: string; displayName?: string } }>('/auth/register', async (req, reply) => {
@@ -51,12 +52,41 @@ export async function gameRoutes(app: FastifyInstance) {
   await tokenMarketRoutes(app);
   await adminRoutes(app);
 
-  const PUBLIC = new Set(['/health', '/auth/register', '/auth/login', '/admin/grant']);
+  const PUBLIC = new Set(['/health', '/online', '/auth/register', '/auth/login', '/admin/grant', '/stats/public']);
 
   app.addHook('preHandler', async (request, reply) => {
     const path = request.url.split('?')[0];
     if (PUBLIC.has(path)) return;
     await app.authenticate(request, reply);
+  });
+
+  // Landing-page stats — cached for a minute, no auth.
+  let statsCache: { at: number; data: unknown } | null = null;
+  app.get('/stats/public', async () => {
+    if (statsCache && Date.now() - statsCache.at < 60_000) return statsCache.data;
+    const monthStart = new Date();
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+    const monthlyPlayers = await prisma.playerProfile.count({
+      where: { lastSeenAt: { gte: monthStart } },
+    });
+    const finished = await prisma.race.findMany({
+      where: { status: 'finished' },
+      select: { results: true },
+    });
+    let goldWon = 0;
+    for (const r of finished) {
+      const res = r.results as Array<{ prize?: number }> | null;
+      if (Array.isArray(res)) for (const e of res) goldWon += e.prize ?? 0;
+    }
+    const data = {
+      online: getOnlineCount(),
+      monthlyPlayers,
+      goldWon,
+      contract: process.env.TOKEN_ADDRESS || '',
+    };
+    statsCache = { at: Date.now(), data };
+    return data;
   });
 
   app.get('/me', async (req, reply) => {

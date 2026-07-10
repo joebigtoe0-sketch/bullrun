@@ -12,7 +12,7 @@ import {
 /** Canvas 2D world renderer — ported directly from the prototype spec. */
 export function CanvasWorld() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const camOffRef = useRef({ x: 0, y: 0 });
+  const camOffRef = useRef({ cpx: 0, cpy: 0, z: 1 });
   const folPosRef = useRef<Record<number, FollowerPos>>({});
   const otherFolPosRef = useRef<Record<string, Record<number, FollowerPos>>>({});
 
@@ -34,6 +34,14 @@ export function CanvasWorld() {
     };
     resize();
     window.addEventListener('resize', resize);
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const cur = useGameStore.getState().zoom;
+      const next = e.deltaY < 0 ? cur * 1.12 : cur / 1.12;
+      useGameStore.getState().setZoom(next);
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
 
     const frame = (t: number) => {
       const dt = Math.min(0.05, (t - lastT) / 1000);
@@ -82,6 +90,7 @@ export function CanvasWorld() {
         myPlayerId: state.user?.id ?? null,
         camOff: camOffRef.current,
         dpr: window.devicePixelRatio || 1,
+        zoom: state.zoom,
       });
 
       raf = requestAnimationFrame(frame);
@@ -91,6 +100,7 @@ export function CanvasWorld() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
+      canvas.removeEventListener('wheel', onWheel);
     };
   }, []);
 
@@ -98,8 +108,10 @@ export function CanvasWorld() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left - camOffRef.current.x;
-    const my = e.clientY - rect.top - camOffRef.current.y;
+    const { cpx, cpy, z } = camOffRef.current;
+    // invert the draw transform: screen center maps to the camera's iso point
+    const mx = (e.clientX - rect.left - rect.width / 2) / z + cpx;
+    const my = (e.clientY - rect.top - rect.height / 2 - 30) / z + cpy;
     const { x, y } = screenToGrid(mx, my);
     if (x <= 0 || y <= 0 || x >= worldData.M || y >= worldData.M) return;
     handleWorldClick(x, y);

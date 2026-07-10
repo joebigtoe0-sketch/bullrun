@@ -1051,7 +1051,7 @@ function drawFortuneWheel(canvas: HTMLCanvasElement, rot: number) {
     ctx.save();
     ctx.translate(cx + Math.cos(mid) * R * 0.62, cy + Math.sin(mid) * R * 0.62);
     ctx.rotate(mid + (Math.cos(mid) < 0 ? Math.PI : 0));
-    ctx.font = "700 12px 'Pixelify Sans', monospace";
+    ctx.font = "800 12px 'Nunito', system-ui, sans-serif";
     ctx.fillStyle = '#17100a';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

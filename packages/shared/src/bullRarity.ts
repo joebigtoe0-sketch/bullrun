@@ -86,6 +86,29 @@ export function statRangeForRarity(rarity: BullRarity): { min: number; max: numb
   }
 }
 
+const RARITY_TIER: Record<BullRarity, number> = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+
+/**
+ * Offspring rarity from two parents. Higher-rarity parents shift the whole
+ * distribution upward: two commons ≈ base drop rates, two uncommons favor
+ * uncommon over common, and rare/legendary odds climb with parent quality.
+ */
+export function rollBreedRarity(a: BullRarity, b: BullRarity, rand: number): BullRarity {
+  const tier = (RARITY_TIER[a] + RARITY_TIER[b]) / 2;
+  const weights: [BullRarity, number][] = [
+    ['legendary', 1 * (1 + 2.4 * tier)],
+    ['rare', 3 * (1 + 1.8 * tier)],
+    ['uncommon', 20 * (1 + 1.3 * tier)],
+    ['common', 76 / (1 + 1.0 * tier)],
+  ];
+  const total = weights.reduce((sum, [, w]) => sum + w, 0);
+  let r = rand * total;
+  for (const [rarity, w] of weights) {
+    if ((r -= w) < 0) return rarity;
+  }
+  return 'common';
+}
+
 export function inferBullRarity(trait?: BullTrait, rarity?: BullRarity): BullRarity {
   if (rarity) return rarity;
   if (!trait || trait === 'normal') return 'common';

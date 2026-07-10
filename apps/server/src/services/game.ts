@@ -30,6 +30,9 @@ import {
   type StatType,
   gatherBonusQty,
   applyXpGain,
+  rollBreedRarity,
+  type BullTrait,
+  type BullRarity,
 } from '@bullrun/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
@@ -182,21 +185,11 @@ export async function completeBreed(userId: string) {
   ]);
   if (!a || !b) return null;
 
-  const parentRarities = [
-    inferBullRarity(a.trait as 'normal' | 'rainbow' | 'ghost', a.rarity as 'common' | 'uncommon' | 'rare' | 'legendary'),
-    inferBullRarity(b.trait as 'normal' | 'rainbow' | 'ghost', b.rarity as 'common' | 'uncommon' | 'rare' | 'legendary'),
-  ];
-  const rarityBoost = parentRarities.includes('legendary') ? 0.02
-    : parentRarities.includes('rare') ? 0.01
-    : parentRarities.includes('uncommon') ? 0.005
-    : 0;
-  const roll = Math.random();
-  const rarity = roll < 0.01 + rarityBoost ? 'legendary'
-    : roll < 0.04 + rarityBoost ? 'rare'
-    : roll < 0.24 + rarityBoost ? 'uncommon'
-    : 'common';
-  const trait = traitForRarity(rarity as 'common' | 'uncommon' | 'rare' | 'legendary', Math.random());
-  const range = statRangeForRarity(rarity as 'common' | 'uncommon' | 'rare' | 'legendary');
+  const rarityA = inferBullRarity(a.trait as BullTrait, a.rarity as BullRarity);
+  const rarityB = inferBullRarity(b.trait as BullTrait, b.rarity as BullRarity);
+  const rarity = rollBreedRarity(rarityA, rarityB, Math.random());
+  const trait = traitForRarity(rarity, Math.random());
+  const range = statRangeForRarity(rarity);
   const mix = (k: 'speed' | 'stamina' | 'accel' | 'temper') =>
     Math.max(range.min, Math.min(range.max, Math.round((a[k] + b[k]) / 2 + (Math.random() * 6 - 3))));
 

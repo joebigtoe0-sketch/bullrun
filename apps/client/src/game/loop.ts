@@ -87,22 +87,51 @@ export function useGameLoop(active = true) {
 
       if (s.moveTarget) {
         s.setFreeCamUntil(0);
-        const mt = s.moveTarget;
-        const d = Math.hypot(mt.x - p.x, mt.y - p.y);
-        const arrive = s.pending?.type === 'pasture' ? 0.5 : s.pending ? 1.7 : 0.15;
-        if (d < arrive) {
-          if (s.movePath && s.movePath.length > 1) {
-            s.advanceMovePath();
-          } else {
-            s.setMovePath(null);
-            s.setMoveTarget(null);
-            s.setWalkDestination(null);
-            if (s.pending) execPending(s.pending);
+        const spd = moveSpeedFor(s.me!.items);
+        // Consume as many waypoints as this frame's travel budget allows so there's
+        // never a dead frame at a waypoint (that caused a stutter at every tile).
+        let budget = spd * dt;
+        let path = s.movePath && s.movePath.length
+          ? s.movePath.map((w) => ({ x: w.x, y: w.y }))
+          : [{ x: s.moveTarget.x, y: s.moveTarget.y }];
+        let reachedFinal = false;
+
+        for (let guard = 0; guard < 32 && budget > 1e-4 && path.length; guard++) {
+          const mt = path[0];
+          const d = Math.hypot(mt.x - p.x, mt.y - p.y);
+
+          if (path.length === 1) {
+            const arrive = s.pending?.type === 'pasture' ? 0.5 : s.pending ? 1.7 : 0.12;
+            if (d <= arrive) {
+              reachedFinal = true;
+            } else {
+              const move = Math.min(budget, d);
+              p.x += ((mt.x - p.x) / d) * move;
+              p.y += ((mt.y - p.y) / d) * move;
+            }
+            break;
           }
-        } else {
-          const spd = moveSpeedFor(s.me!.items);
-          p.x += ((mt.x - p.x) / d) * spd * dt;
-          p.y += ((mt.y - p.y) / d) * spd * dt;
+
+          // intermediate waypoint — snap through, carry the leftover budget onward
+          if (d <= budget) {
+            p.x = mt.x;
+            p.y = mt.y;
+            budget -= d;
+            path.shift();
+          } else {
+            p.x += ((mt.x - p.x) / d) * budget;
+            p.y += ((mt.y - p.y) / d) * budget;
+            budget = 0;
+          }
+        }
+
+        if (reachedFinal) {
+          s.setMovePath(null);
+          s.setMoveTarget(null);
+          s.setWalkDestination(null);
+          if (s.pending) execPending(s.pending);
+        } else if (s.movePath && path.length !== s.movePath.length) {
+          s.setMovePath(path);
         }
       }
 

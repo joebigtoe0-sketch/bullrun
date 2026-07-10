@@ -116,6 +116,11 @@ export async function depositBullStable(userId: string, bullId: number) {
   if (!bull) throw new Error('Bull not found');
   if (bull.location !== 'following') throw new Error('Bull is not following you');
 
+  const inRace = await prisma.raceEntry.findFirst({
+    where: { bullId, race: { status: { in: ['scheduled', 'running'] } } },
+  });
+  if (inRace) throw new Error('Bull is signed up for a race');
+
   await requireNearInteractable(userId, 'stable');
 
   const profile = await prisma.playerProfile.findUnique({ where: { userId } });
@@ -149,6 +154,11 @@ export async function depositBullDen(userId: string, bullId: number, plotId: num
 
   const loc = bull.location || 'stable';
   if (loc !== 'following' && loc !== 'stable') throw new Error('Bull must be following or in stable');
+
+  const inRace = await prisma.raceEntry.findFirst({
+    where: { bullId, race: { status: { in: ['scheduled', 'running'] } } },
+  });
+  if (inRace) throw new Error('Bull is signed up for a race');
 
   const denCount = await countDenBulls(plotId);
   const cap = denCapacity(plot.level);

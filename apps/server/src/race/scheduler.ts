@@ -12,6 +12,9 @@ import {
   type RaceBull,
   type RaceBullWire,
   type BullTrait,
+  coatOf,
+  bullGearFromItems,
+  type GameItem,
 } from '@bullrun/shared';
 import type { Server as SocketServer } from 'socket.io';
 import { Prisma } from '@prisma/client';
@@ -66,6 +69,19 @@ async function simulateOnce(raceId: string): Promise<RaceBullWire[]> {
     include: { user: { include: { items: true } } },
   });
 
+  const allItems = entries.flatMap((e: RaceEntry & { user?: { items: PrismaItem[] } | null }) => e.user?.items ?? []);
+  const mappedItems = allItems.map((it: PrismaItem) => ({
+    id: it.id,
+    slot: it.slot as GameItem['slot'],
+    rarity: it.rarity as GameItem['rarity'],
+    rarityColor: it.rarityColor,
+    name: it.name,
+    color: it.color,
+    bonus: it.bonusStat ? { stat: it.bonusStat as 'speed', amt: it.bonusAmt ?? 0 } : null,
+    equippedTo: it.equippedTo,
+    kind: (it as PrismaItem & { kind?: string }).kind ?? 'bull',
+  })) as GameItem[];
+
   const playerBulls: RaceBull[] = [];
   for (const e of entries) {
     if (e.isNpc || !e.bullId) continue;
@@ -74,6 +90,8 @@ async function simulateOnce(raceId: string): Promise<RaceBullWire[]> {
     const user = e.user!;
     playerBulls.push({
       ...bull,
+      coat: coatOf(bull as unknown as Parameters<typeof coatOf>[0], mappedItems),
+      gear: bullGearFromItems(bull.id, mappedItems),
       owner: user.displayName,
       isMine: false,
       userId: user.id,
@@ -83,17 +101,7 @@ async function simulateOnce(raceId: string): Promise<RaceBullWire[]> {
   const race = await prisma.race.findUnique({ where: { id: raceId } });
   if (!race) throw new Error(`Race ${raceId} not found`);
 
-  const allItems = entries.flatMap((e: RaceEntry & { user?: { items: PrismaItem[] } | null }) => e.user?.items ?? []);
-  const { bulls } = simulateRace(playerBulls, [], allItems.map((it: PrismaItem) => ({
-    id: it.id,
-    slot: it.slot as 'coat',
-    rarity: it.rarity as 'Common',
-    rarityColor: it.rarityColor,
-    name: it.name,
-    color: it.color,
-    bonus: it.bonusStat ? { stat: it.bonusStat as 'speed', amt: it.bonusAmt ?? 0 } : null,
-    equippedTo: it.equippedTo,
-  })));
+  const { bulls } = simulateRace(playerBulls, [], mappedItems);
 
   return persistSimulatedField(raceId, bulls);
 }

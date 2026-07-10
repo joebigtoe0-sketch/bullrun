@@ -82,7 +82,7 @@ export function useSocket() {
     });
     socket.on('race_grid', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; owner?: string; trait?: string }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
       startAt: number;
       laps: number;
     }) => {
@@ -95,7 +95,7 @@ export function useSocket() {
     });
     socket.on('race_started', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
       startT: number;
       endT: number;
       laps?: number;
@@ -135,7 +135,7 @@ export function useSocket() {
       id: string;
       results: import('@bullrun/shared').RaceResult[];
       betResults: Record<string, string>;
-      bulls?: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string }>;
+      bulls?: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
     }) => {
       const userId = useGameStore.getState().user?.id;
       const anim = useGameStore.getState().raceAnim;

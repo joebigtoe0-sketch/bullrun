@@ -38,7 +38,9 @@ export interface ArtObj {
   /** face away from the camera (up-screen) */
   back?: boolean;
   /** character clothing colors by slot */
-  gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
+  gear?: Record<string, { color: string; accent: string }>;
+  /** equipped bull gear render colors */
+  bullGear?: { coat?: string; horns?: string; hooves?: string; tail?: string; accessory?: string };
 }
 
 export interface ArtOpts {

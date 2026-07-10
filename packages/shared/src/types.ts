@@ -89,6 +89,15 @@ export interface NpcBull {
   isNpc: true;
 }
 
+/** Equipped bull gear resolved to render colors (coat color + accent per slot). */
+export interface BullGear {
+  coat?: string;
+  horns?: string;
+  hooves?: string;
+  tail?: string;
+  accessory?: string;
+}
+
 export interface RaceBull {
   id: number | string;
   name: string;
@@ -112,6 +121,8 @@ export interface RaceBull {
   userId?: string;
   /** Lane on the starting grid (1…n). Distinct from finish `pos`. */
   gridSlot?: number;
+  /** equipped gear render colors */
+  gear?: BullGear;
 }
 
 export interface Stable {

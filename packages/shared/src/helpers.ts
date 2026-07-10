@@ -45,6 +45,20 @@ export function eff(bull: Bull, stat: StatType, items: GameItem[]): number {
   return bullBaseStat(bull, stat) + bullItemBonus(bull, stat, items);
 }
 
+/** Resolve a bull's equipped gear into render colors (coat = item color, others = rarity accent). */
+export function bullGearFromItems(bullId: number, items: GameItem[]): import('./types.js').BullGear {
+  const gear: import('./types.js').BullGear = {};
+  for (const it of items) {
+    if (it.equippedTo !== bullId || it.kind === 'char') continue;
+    if (it.slot === 'coat') gear.coat = it.color;
+    else if (it.slot === 'horns') gear.horns = it.rarityColor;
+    else if (it.slot === 'hooves') gear.hooves = it.rarityColor;
+    else if (it.slot === 'tail') gear.tail = it.rarityColor;
+    else if (it.slot === 'accessory') gear.accessory = it.rarityColor;
+  }
+  return gear;
+}
+
 export function coatOf(bull: Bull, items: GameItem[]): string {
   const c = items.find((it) => it.equippedTo === bull.id && it.slot === 'coat');
   return c ? c.color : bull.coat;

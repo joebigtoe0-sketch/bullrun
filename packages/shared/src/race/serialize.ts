@@ -1,4 +1,4 @@
-import type { BullTrait, RaceBull } from '../types.js';
+import type { BullGear, BullTrait, RaceBull } from '../types.js';
 
 /** Wire format — one immutable snapshot per race, shared by grid / start / finish. */
 export interface RaceBullWire {
@@ -12,6 +12,7 @@ export interface RaceBullWire {
   lapTimes: number[];
   /** Starting-grid lane (1…n). Never changes during the race. */
   gridSlot: number;
+  gear?: BullGear;
 }
 
 export function serializeRaceBulls(bulls: RaceBull[]): RaceBullWire[] {
@@ -25,6 +26,7 @@ export function serializeRaceBulls(bulls: RaceBull[]): RaceBullWire[] {
     finishT: b.finishT ?? 0,
     lapTimes: b.lapTimes ?? [],
     gridSlot: i + 1,
+    gear: b.gear,
   }));
 }
 
@@ -43,5 +45,6 @@ export function wireToRaceBulls(wire: RaceBullWire[]): RaceBull[] {
     lapTimes: b.lapTimes,
     owner: b.owner,
     gridSlot: b.gridSlot,
+    gear: b.gear,
   })) as RaceBull[];
 }

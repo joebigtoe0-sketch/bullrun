@@ -525,9 +525,15 @@ function person(ctx, iso, o) {
   const gx = o.x, gy = o.y;
   const isMe = o.t === 'player';
   const gear = o.gear || {};
-  const shirt = gear.outfit || o.shirt || (isMe ? '#e8a33d' : '#4a72c4');
+  const gv = (slot) => {
+    const v = gear[slot];
+    if (!v) return null;
+    return typeof v === 'string' ? { color: v, accent: mul(v, 0.7) } : v;
+  };
+  const outfit = gv('outfit'), hatG = gv('hat'), bootsG = gv('boots'), glovesG = gv('gloves');
+  const shirt = (outfit && outfit.color) || o.shirt || (isMe ? '#e8a33d' : '#4a72c4');
   const skin = '#e8c49a';
-  const hands = gear.gloves || skin;
+  const hands = (glovesG && glovesG.color) || skin;
   const pants = isMe ? '#5a4632' : '#3f3542';
   const ph = o.ph || 0;
   const walking = !!o.moving;
@@ -539,9 +545,12 @@ function person(ctx, iso, o) {
   // legs — alternate lift while walking (+ boots)
   cube(ctx, iso, gx - 0.16 + sw * 0.03, gy - 0.11, 0.13, 0.2, 5, Math.max(0, sw) * 2.2, pants);
   cube(ctx, iso, gx + 0.03 - sw * 0.03, gy - 0.11, 0.13, 0.2, 5, Math.max(0, -sw) * 2.2, pants);
-  if (gear.boots) {
-    cube(ctx, iso, gx - 0.17 + sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, sw) * 2.2, gear.boots);
-    cube(ctx, iso, gx + 0.02 - sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, -sw) * 2.2, gear.boots);
+  if (bootsG) {
+    cube(ctx, iso, gx - 0.17 + sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, sw) * 2.2, bootsG.color);
+    cube(ctx, iso, gx + 0.02 - sw * 0.03, gy - 0.12, 0.15, 0.22, 2.4, Math.max(0, -sw) * 2.2, bootsG.color);
+    // cuff trim at the boot top
+    cube(ctx, iso, gx - 0.18 + sw * 0.03, gy - 0.125, 0.16, 0.23, 0.7, 2.4 + Math.max(0, sw) * 2.2, bootsG.accent);
+    cube(ctx, iso, gx + 0.01 - sw * 0.03, gy - 0.125, 0.16, 0.23, 0.7, 2.4 + Math.max(0, -sw) * 2.2, bootsG.accent);
   }
   // arms — swing opposite the legs; working arm raised while gathering.
   // Facing away: arms first so the torso paints over their inner edge
@@ -549,6 +558,7 @@ function person(ctx, iso, o) {
   const armSw = walking ? sw * 0.045 : 0;
   const drawFarArm = () => {
     cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
+    if (glovesG) cube(ctx, iso, gx - 0.285 - armSw, gy - 0.105, 0.1, 0.21, 0.8, 7.3 + bob, glovesG.accent);
     cube(ctx, iso, gx - 0.28 - armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
   };
   const drawNearArm = () => {
@@ -575,6 +585,7 @@ function person(ctx, iso, o) {
       toolDraw(ctx, sp.x - 2, sp.y - 13, Math.PI - ang, tool, jab);
     } else {
       cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
+      if (glovesG) cube(ctx, iso, gx + 0.185 + armSw, gy - 0.105, 0.1, 0.21, 0.8, 7.3 + bob, glovesG.accent);
       cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 6, 8 + bob, mul(shirt, 0.92));
     }
   };
@@ -583,19 +594,35 @@ function person(ctx, iso, o) {
   // torso + belt
   cube(ctx, iso, gx - 0.195, gy - 0.145, 0.39, 0.29, 2, 5 + bob, '#2e2318');
   cube(ctx, iso, gx - 0.19, gy - 0.14, 0.38, 0.28, 8, 7 + bob, shirt);
+  if (outfit) {
+    const acc = outfit.accent;
+    // collar band at the neckline
+    cube(ctx, iso, gx - 0.14, gy - 0.105, 0.28, 0.21, 1.3, 14.2 + bob, mix(shirt, '#ffffff', 0.4));
+    // shoulder trim
+    cube(ctx, iso, gx - 0.2, gy - 0.145, 0.08, 0.29, 1.1, 14.4 + bob, acc);
+    cube(ctx, iso, gx + 0.12, gy - 0.145, 0.08, 0.29, 1.1, 14.4 + bob, acc);
+    // button placket + buttons down the chest (front face only)
+    if (!o.back) {
+      decal(ctx, iso, gx - 0.02, gy + 0.141, 0.05, 'x', 7.5 + bob, 6.5, acc);
+      const bcol = mix(acc, '#ffffff', 0.45);
+      decal(ctx, iso, gx - 0.008, gy + 0.142, 0.02, 'x', 12.4 + bob, 1, bcol);
+      decal(ctx, iso, gx - 0.008, gy + 0.142, 0.02, 'x', 9.9 + bob, 1, bcol);
+    }
+  }
   drawNearArm();
   // head
   cube(ctx, iso, gx - 0.14, gy - 0.11, 0.28, 0.22, 8, 15 + bob, skin);
-  // eyes on front (+y) face — hidden when facing away from the camera
+  // eyes on the head front (+y) face — decals so they sit flush on the iso face,
+  // symmetric about the head center. Hidden when facing away from the camera.
   if (!o.back) {
-    const fc = iso(gx, gy + 0.11);
-    ctx.fillStyle = '#241608';
-    ctx.fillRect(fc.x - 3.8, fc.y - 20 - bob, 2.2, 3);
-    ctx.fillRect(fc.x + 1.2, fc.y - 20 - bob, 2.2, 3);
+    const FY = gy + 0.111;
+    decal(ctx, iso, gx - 0.1, FY, 0.07, 'x', 17 + bob, 3, '#241608');
+    decal(ctx, iso, gx + 0.03, FY, 0.07, 'x', 17 + bob, 3, '#241608');
   }
-  if (gear.hat) { // worn hat — brim, then crown
-    cube(ctx, iso, gx - 0.23, gy - 0.19, 0.46, 0.38, 1.8, 22.4 + bob, gear.hat);
-    cube(ctx, iso, gx - 0.12, gy - 0.1, 0.24, 0.2, 3.6, 24.2 + bob, mul(gear.hat, 0.88));
+  if (hatG) { // worn hat — brim, band, crown
+    cube(ctx, iso, gx - 0.23, gy - 0.19, 0.46, 0.38, 1.8, 22.4 + bob, hatG.color);
+    cube(ctx, iso, gx - 0.125, gy - 0.105, 0.25, 0.21, 0.9, 24.2 + bob, hatG.accent);
+    cube(ctx, iso, gx - 0.12, gy - 0.1, 0.24, 0.2, 3.0, 25.1 + bob, mul(hatG.color, 0.88));
   } else { // plain hair (seeded by name so it doesn't flicker while walking)
     const seed = o.name ? o.name.length : 1;
     const hairC = isMe ? '#3a2a1a' : ['#3a2a1a', '#241608', '#5e4527', '#1d1a17'][seed % 4];
@@ -627,6 +654,7 @@ function bull(ctx, iso, o, t) {
   const hb = bob + (moving ? Math.sin(ph + 0.6) * 0.9 * amp : 0);
   const swish = Math.sin((t || 0) * 2.2 + gx * 2) * 0.05;
   const back = !!o.back;
+  const bg = o.bullGear || {};
   // mirror body segments along world x when facing away (head points up-screen)
   const hx = (off, w) => (back ? gx - off - w : gx + off);
   shadow(ctx, iso, gx, gy, 16, 7);
@@ -649,8 +677,10 @@ function bull(ctx, iso, o, t) {
   // draw first. Facing camera the tail is behind and the head in front;
   // facing away (back) it's the opposite, so the two groups swap order.
   const drawTail = () => {
-    const tuft = trait === 'inferno' ? '#f2842c' : '#241608';
+    const tuft = bg.tail ? bg.tail : (trait === 'inferno' ? '#f2842c' : '#241608');
     cube(ctx, iso, hx(-0.64, 0.12), gy - 0.05 + swish, 0.12, 0.1, 7, 8.5 + bob, mul(c, 0.85));
+    // gear tail wrap: a colored band around the tail base
+    if (bg.tail) cube(ctx, iso, hx(-0.65, 0.13), gy - 0.055 + swish, 0.13, 0.11, 2.2, 10.5 + bob, bg.tail);
     cube(ctx, iso, hx(-0.68, 0.13), gy - 0.06 + swish * 2, 0.13, 0.12, 4, 4.5 + bob, tuft);
   };
   const drawHead = () => {
@@ -676,9 +706,9 @@ function bull(ctx, iso, o, t) {
     cube(ctx, iso, hx(0.44, 0.1), gy + 0.22, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
     if (trait === 'unicorn') {
       // single spiral horn instead of the usual pair
-      cube(ctx, iso, hx(0.54, 0.1), gy - 0.06, 0.1, 0.12, 3, 18 + hb, '#ffffff');
-      cube(ctx, iso, hx(0.56, 0.07), gy - 0.04, 0.07, 0.08, 3, 21 + hb, '#ffd9ec');
-      cube(ctx, iso, hx(0.575, 0.045), gy - 0.025, 0.045, 0.05, 2.6, 24 + hb, '#ffffff');
+      cube(ctx, iso, hx(0.54, 0.1), gy - 0.06, 0.1, 0.12, 3, 18 + hb, bg.horns || '#ffffff');
+      cube(ctx, iso, hx(0.56, 0.07), gy - 0.04, 0.07, 0.08, 3, 21 + hb, bg.horns ? mix(bg.horns, '#ffffff', 0.4) : '#ffd9ec');
+      cube(ctx, iso, hx(0.575, 0.045), gy - 0.025, 0.045, 0.05, 2.6, 24 + hb, bg.horns ? mix(bg.horns, '#ffffff', 0.6) : '#ffffff');
       // sparkle
       const sp = iso(gx + (back ? -0.6 : 0.6), gy);
       const a2 = 0.4 + 0.5 * Math.abs(Math.sin((t || 0) * 2.6 + seed));
@@ -688,9 +718,9 @@ function bull(ctx, iso, o, t) {
       ctx.moveTo(sp.x - 6, sp.y - 29 - hb); ctx.lineTo(sp.x, sp.y - 29 - hb);
       ctx.stroke();
     } else {
-      // horns — longhorns sweep way out
-      const hornBone = trait === 'skeleton' ? '#cfc9b6' : '#efe8d8';
-      const hornTip = trait === 'skeleton' ? '#dfd9c6' : '#f5efe2';
+      // horns — longhorns sweep way out; gear tints them
+      const hornBone = bg.horns ? bg.horns : (trait === 'skeleton' ? '#cfc9b6' : '#efe8d8');
+      const hornTip = bg.horns ? mix(bg.horns, '#ffffff', 0.45) : (trait === 'skeleton' ? '#dfd9c6' : '#f5efe2');
       const L = trait === 'longhorn' ? 2.1 : 1;
       cube(ctx, iso, hx(0.5, 0.08), gy - 0.24 - 0.12 * L, 0.08, 0.12 * L, 2, 15.5 + hb, hornBone);
       cube(ctx, iso, hx(0.52, 0.06), gy - 0.26 - 0.14 * L, 0.06, 0.07 * L, 3.5 + (L > 1 ? 1.5 : 0), 16.5 + hb, hornTip);
@@ -703,7 +733,7 @@ function bull(ctx, iso, o, t) {
   // legs — diagonal pairs lift alternately (walk) / faster+higher (run)
   const liftA = moving ? Math.max(0, s1) * 2.6 * amp : 0;
   const liftB = moving ? Math.max(0, -s1) * 2.6 * amp : 0;
-  const hoofC = trait === 'skeleton' ? '#b8b2a0' : '#2b2118';
+  const hoofC = bg.hooves ? bg.hooves : (trait === 'skeleton' ? '#b8b2a0' : '#2b2118');
   const leg = (lx, ly, lift) => {
     cube(ctx, iso, lx, ly, 0.13, 0.13, 2, lift, hoofC);
     cube(ctx, iso, lx, ly, 0.13, 0.13, 3.5, 2 + lift, mul(c, 0.8));
@@ -716,6 +746,13 @@ function bull(ctx, iso, o, t) {
   cube(ctx, iso, hx(-0.48, 0.96), gy - 0.24, 0.96, 0.48, 10, 5.5 + bob, c);
   // shoulder hump
   cube(ctx, iso, hx(0.04, 0.3), gy - 0.2, 0.3, 0.4, 3, 15.5 + bob, c);
+  // gear harness/saddle across the back
+  if (bg.accessory) {
+    cube(ctx, iso, hx(-0.16, 0.36), gy - 0.26, 0.36, 0.52, 2.2, 15.6 + bob, bg.accessory);
+    cube(ctx, iso, hx(-0.13, 0.3), gy - 0.28, 0.3, 0.56, 1, 15.4 + bob, mul(bg.accessory, 0.8));
+    // cinch strap down the visible side
+    if (!back) decal(ctx, iso, gx - 0.06, gy + 0.261, 0.09, 'x', 8.5 + bob, 7, mul(bg.accessory, 0.75));
+  }
   // ---- trait body decorations (sit on top of the body) ----
   if (trait === 'spotted') {
     const spot = mul(c, 0.5);

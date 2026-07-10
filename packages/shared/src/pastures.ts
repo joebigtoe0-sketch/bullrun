@@ -79,7 +79,8 @@ export function pastureWoodToNextLevel(level: number, woodInvested: number): num
 }
 
 export function pastureUpgradeGoldCost(level: number): number {
-  return 150 * level * level;
+  // 1000 for the first upgrade, 2000 for the second, and so on.
+  return 1000 * level;
 }
 
 const COATS = ['#8e2f2f', '#e8e4da', '#14141a', '#3b6ea5', '#c99a5b', '#7a5296', '#1d1a17', '#6e4526'];

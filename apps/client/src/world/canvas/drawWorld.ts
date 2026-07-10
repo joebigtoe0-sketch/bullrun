@@ -9,6 +9,7 @@ import {
   type PasturePlotDef,
   fmtRaceCountdown,
   coatOf,
+  bullGearFromItems,
   applyWorldCollision,
   trackClamp,
   matNodeType,
@@ -32,6 +33,7 @@ import {
   BRIDGE_LEN,
   type MeResponse,
   type GameItem,
+  type BullGear,
   type OtherPlayer,
   type PasturePlotState,
   type WorldObject,
@@ -62,12 +64,61 @@ export interface FollowerPos {
   back?: boolean;
 }
 
-function denBullPos(bullId: number, def: PasturePlotDef): { x: number; y: number } {
-  const seed = bullId * 7919;
-  const rx = ((seed % 100) / 100 - 0.5) * (def.w * 0.55);
-  const ry = (((seed >> 8) % 100) / 100 - 0.5) * (def.h * 0.45);
-  const c = pastureCenter(def);
-  return { x: c.x + rx, y: c.y + ry };
+/** Den bulls graze in a slow wander bounded inside the fence. */
+interface DenWander {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  ph: number;
+  wait: number;
+  moving: boolean;
+  flip: boolean;
+  back: boolean;
+}
+const denWander = new Map<number, DenWander>();
+let denLastT = 0;
+
+function denBounds(def: PasturePlotDef) {
+  const m = 0.8; // keep clear of the fence
+  return { x0: def.cx + m, x1: def.cx + def.w - m, y0: def.cy + m, y1: def.cy + def.h - m };
+}
+
+function stepDenBull(id: number, def: PasturePlotDef, dt: number): DenWander {
+  const b = denBounds(def);
+  let w = denWander.get(id);
+  if (!w) {
+    const seed = id * 7919;
+    const x = b.x0 + ((seed % 100) / 100) * (b.x1 - b.x0);
+    const y = b.y0 + (((seed >> 8) % 100) / 100) * (b.y1 - b.y0);
+    w = { x, y, tx: x, ty: y, ph: 0, wait: Math.random() * 3, moving: false, flip: false, back: false };
+    denWander.set(id, w);
+  }
+  if (w.wait > 0) {
+    w.wait -= dt;
+    w.moving = false;
+  } else {
+    const d = Math.hypot(w.tx - w.x, w.ty - w.y);
+    if (d < 0.15) {
+      w.tx = b.x0 + Math.random() * (b.x1 - b.x0);
+      w.ty = b.y0 + Math.random() * (b.y1 - b.y0);
+      w.wait = 1.5 + Math.random() * 4;
+      w.moving = false;
+    } else {
+      const spd = 1.1;
+      const sx = ((w.tx - w.x) / d) * spd * dt;
+      const sy = ((w.ty - w.y) / d) * spd * dt;
+      w.x += sx;
+      w.y += sy;
+      w.moving = true;
+      w.ph += spd * dt * 2.4;
+      const screenDx = sx - sy;
+      const screenDy = sx + sy;
+      if (Math.abs(screenDx) > 0.0005) w.flip = screenDx < 0;
+      if (Math.abs(screenDy) > 0.0005) w.back = screenDy < 0;
+    }
+  }
+  return w;
 }
 
 function label(ctx: CanvasRenderingContext2D, wx: number, wy: number, txt: string, yOff: number, color: string) {
@@ -200,7 +251,8 @@ type DrawObj = WorldObject & {
   flip?: boolean;
   back?: boolean;
   bridgeElev?: number;
-  gear?: { hat?: string; outfit?: string; boots?: string; gloves?: string };
+  gear?: Record<string, { color: string; accent: string }>;
+  bullGear?: BullGear;
   speech?: { text: string; until: number };
 };
 
@@ -346,10 +398,11 @@ const GATHER_TOOL: Record<string, 'axe' | 'pick' | 'sickle' | 'pitchfork'> = {
 };
 
 /** Equipped character clothing → render colors by slot. */
-function gearFromItems(items: GameItem[] | undefined): { hat?: string; outfit?: string; boots?: string; gloves?: string } {
-  const gear: Record<string, string> = {};
+type GearPiece = { color: string; accent: string };
+function gearFromItems(items: GameItem[] | undefined): Record<string, GearPiece> {
+  const gear: Record<string, GearPiece> = {};
   for (const it of items ?? []) {
-    if (it.kind === 'char' && it.equipped) gear[it.slot] = it.color;
+    if (it.kind === 'char' && it.equipped) gear[it.slot] = { color: it.color, accent: it.rarityColor };
   }
   return gear;
 }
@@ -411,7 +464,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       t: 'bull',
       x: o.x,
       y: o.y,
-      coat: o.coat || '#33261d',
+      coat: o.bullGear?.coat || o.coat || '#33261d',
       trait: o.trait,
       seed: o.seed,
       label: o.label,
@@ -421,6 +474,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       racing: o.racing,
       flip: o.flip,
       back: o.back,
+      bullGear: o.bullGear,
     }, opts);
     return;
   }
@@ -607,7 +661,7 @@ export interface DrawState {
   worldNodes: SyncedWorldNode[];
   raceAnim: {
     id?: string;
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>;
     startT: number;
     laps?: number;
     frozen?: boolean;
@@ -616,7 +670,7 @@ export interface DrawState {
     maxElapsedMs?: number;
   } | null;
   raceGrid: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>;
     startAt: number;
     laps: number;
   } | null;
@@ -811,6 +865,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           x: f.x,
           y: f.y,
           coat: coatOf(b, me.items),
+          bullGear: bullGearFromItems(b.id, me.items),
           trait: b.trait,
           seed: bullSeed(b.id),
           label: b.name,
@@ -827,6 +882,9 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
   const myFollowing = new Set(me?.followingBullIds ?? []);
   const myBullById = new Map(me?.bulls.map((b) => [b.id, b]) ?? []);
 
+  const denDt = denLastT ? Math.min(0.05, (now - denLastT) / 1000) : 0;
+  denLastT = now;
+
   for (const plot of pastures) {
     if (!plot.ownerId || !plot.denBulls?.length) continue;
     const def = PASTURE_PLOTS.find((p) => p.id === plot.id);
@@ -835,17 +893,22 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
       if (myFollowing.has(b.id)) continue;
       const own = myBullById.get(b.id);
       if (own && own.location !== 'den') continue;
-      const pos = denBullPos(b.id, def);
+      const w = stepDenBull(b.id, def, denDt);
       list.push({
-        d: pos.x + pos.y,
+        d: w.x + w.y,
         o: {
           t: 'bull',
-          x: pos.x,
-          y: pos.y,
+          x: w.x,
+          y: w.y,
           coat: b.coat,
+          bullGear: me ? bullGearFromItems(b.id, me.items) : undefined,
           trait: b.trait,
           seed: bullSeed(b.id),
           label: b.name,
+          ph: w.ph,
+          moving: w.moving,
+          flip: bullFlip(w.flip, w.back),
+          back: w.back,
         },
       });
     }
@@ -862,7 +925,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           t: 'bull',
           x: pos.x,
           y: pos.y,
-          coat: b.coat,
+          coat: b.gear?.coat || b.coat,
+          bullGear: b.gear,
           trait: b.trait as BullTrait | undefined,
           seed: bullSeed(b.id),
           label: b.name,
@@ -905,7 +969,8 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
           t: 'bull',
           x: pos.x,
           y: pos.y,
-          coat: b.coat,
+          coat: b.gear?.coat || b.coat,
+          bullGear: b.gear,
           trait: b.trait as BullTrait | undefined,
           seed: bullSeed(b.id),
           label: b.name,

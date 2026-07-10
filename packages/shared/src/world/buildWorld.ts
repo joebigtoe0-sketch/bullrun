@@ -73,7 +73,7 @@ export function buildWorld(npcWanderers = 0): WorldData {
   // central hub inside the track — buildings lined along the west road
   objs.push({ t: 'racebooth', x: 19.8, y: 21.2, label: 'RACE SIGNUP' });
   objs.push({ t: 'wheel', x: 19.6, y: 23.8, label: 'DAILY WHEEL' });
-  objs.push({ t: 'booth', x: 19.4, y: 26.4, label: 'BETS' });
+  objs.push({ t: 'booth', x: 19.7, y: 25.5, label: 'BETS' });
 
   objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
   objs.push({ t: 'market', x: 9, y: 35.5, label: 'MARKET' });
@@ -131,7 +131,7 @@ export function buildWorld(npcWanderers = 0): WorldData {
 
   const interactables: Interactable[] = [
     { t: 'stable', x: 38, y: 37.5, label: 'Stable' },
-    { t: 'bet', x: 19.4, y: 26.4, label: 'Betting booth' },
+    { t: 'bet', x: 19.7, y: 25.5, label: 'Betting booth' },
     { t: 'forge', x: 9, y: 32, label: 'Forge' },
     { t: 'market', x: 9, y: 35.5, label: 'Market' },
     { t: 'race', x: 19.8, y: 21.2, label: 'Race signup' },

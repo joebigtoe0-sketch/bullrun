@@ -150,7 +150,11 @@ function StablePanel() {
             {followingBulls.map((b) => (
               <div key={b.id} className="row-between" style={{ marginTop: 8 }}>
                 <span>{b.name}</span>
-                <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
+                {me.entered.includes(b.id) ? (
+                  <span className="entered">In race ✓</span>
+                ) : (
+                  <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
+                )}
               </div>
             ))}
           </div>
@@ -369,12 +373,16 @@ function DenPanel() {
             {followingBulls.map((b) => (
               <div key={b.id} className="row-between" style={{ marginTop: 8 }}>
                 <span>{b.name}</span>
-                <div className="row gap">
-                  {denBulls.length < cap && (
-                    <button className={`${btn} sm green`} onClick={() => actDen(() => api.depositBullDen(b.id, denPlotId), `${b.name} sent to den`)}>To den</button>
-                  )}
-                  <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
-                </div>
+                {me.entered.includes(b.id) ? (
+                  <span className="entered">In race ✓</span>
+                ) : (
+                  <div className="row gap">
+                    {denBulls.length < cap && (
+                      <button className={`${btn} sm green`} onClick={() => actDen(() => api.depositBullDen(b.id, denPlotId), `${b.name} sent to den`)}>To den</button>
+                    )}
+                    <button className={`${btn} sm blue`} onClick={() => act(() => api.depositBullStable(b.id), `${b.name} sent to stable`)}>To stable</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -198,7 +198,12 @@ export function oddsFromProbabilities(
   return probs.map((p) => {
     if (p <= 0) return maxOdds;
     const fair = 1 / p;
-    return Math.min(maxOdds, Math.max(minOdds, fair * houseEdge));
+    const withEdge = fair * houseEdge;
+    // A near-certain winner (e.g. the only entrant) pays below even money so you
+    // can't free-money a bet on a guaranteed result. The min floor only applies
+    // once fair odds clear break-even.
+    if (withEdge < 1) return Math.max(0.85, Math.round(withEdge * 100) / 100);
+    return Math.min(maxOdds, Math.max(minOdds, withEdge));
   });
 }
 

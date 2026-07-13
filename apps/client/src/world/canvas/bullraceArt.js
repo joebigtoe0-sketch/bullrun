@@ -642,8 +642,11 @@ function person(ctx, iso, o) {
     cube(ctx, iso, gx - 0.145, gy - 0.115, 0.29, 0.23, 2.8, 23 + bob, o.hair || hairC);
   }
   if (o.flip) ctx.restore();
-  const txt = isMe ? (o.label || 'You') : ('Lvl ' + (o.lvl || 1) + ' ' + (o.name || ''));
-  label(ctx, iso, gx, gy, txt, 42, isMe ? '#f2b23a' : '#fff');
+  // npcs with an explicit label use it verbatim (e.g. Ansem); empty string = no label
+  const txt = isMe
+    ? (o.label || 'You')
+    : (o.label !== undefined ? o.label : 'Lvl ' + (o.lvl || 1) + ' ' + (o.name || ''));
+  if (txt) label(ctx, iso, gx, gy, txt, 42, isMe ? '#f2b23a' : (o.labelColor || '#fff'));
 }
 
 function bull(ctx, iso, o, t) {

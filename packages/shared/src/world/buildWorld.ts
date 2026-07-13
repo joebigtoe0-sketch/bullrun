@@ -7,6 +7,8 @@ import {
   WORLD_SIZE,
   NPC_SHIRT_COLORS,
   FENCE_RINGS,
+  ANSEM_X,
+  ANSEM_Y,
 } from '../constants.js';
 import { PASTURE_PLOTS, isOnAnyPasture } from '../pastures.js';
 import type { Interactable, NpcWanderer, TileType, WorldData, WorldNode, WorldObject } from '../types.js';
@@ -73,6 +75,9 @@ export function buildWorld(npcWanderers = 0): WorldData {
   // central hub inside the track — buildings lined along the west road
   objs.push({ t: 'racebooth', x: 19.8, y: 21.2, label: 'RACE SIGNUP' });
   objs.push({ t: 'wheel', x: 19.6, y: 23.8, label: 'DAILY WHEEL' });
+
+  // Ansem — gold → $ANSEM exchange NPC near spawn
+  objs.push({ t: 'ansem', x: ANSEM_X, y: ANSEM_Y, label: 'ANSEM' });
   objs.push({ t: 'booth', x: 19.7, y: 25.5, label: 'BETS' });
 
   objs.push({ t: 'forge', x: 9, y: 32, label: 'FORGE' });
@@ -137,6 +142,7 @@ export function buildWorld(npcWanderers = 0): WorldData {
     { t: 'race', x: 19.8, y: 21.2, label: 'Race signup' },
     { t: 'shop', x: 45, y: 9.5, label: 'General store' },
     { t: 'wheel', x: 19.6, y: 23.8, label: 'Daily wheel' },
+    { t: 'ansem', x: ANSEM_X, y: ANSEM_Y, label: 'Ansem' },
   ];
 
   const names: [string, number][] = [

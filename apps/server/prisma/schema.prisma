@@ -24,6 +24,31 @@ model User {
   listings     MarketListing[] @relation("SellerListings")
   purchases    MarketListing[] @relation("BuyerListings")
   pastures     PasturePlot[]
+  ansemDeposits AnsemDeposit[]
+}
+
+/** Ansem gold→$ANSEM exchange cycle (admin-configured). */
+model AnsemCycle {
+  id            String         @id @default(cuid())
+  status        String         @default("open") // open | closed
+  targetGold    Int
+  tokenUsd      Float
+  collectedGold Int            @default(0)
+  createdAt     DateTime       @default(now())
+  closedAt      DateTime?
+  deposits      AnsemDeposit[]
+}
+
+model AnsemDeposit {
+  id        String     @id @default(cuid())
+  cycleId   String
+  cycle     AnsemCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gold      Int        @default(0)
+  updatedAt DateTime   @updatedAt
+
+  @@unique([cycleId, userId])
 }
 
 model PlayerProfile {

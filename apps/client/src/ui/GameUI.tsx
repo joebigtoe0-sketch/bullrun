@@ -1187,6 +1187,197 @@ function WheelPopup() {
   );
 }
 
+function AnsemPanel() {
+  const me = useGameStore((s) => s.me)!;
+  const setPanel = useGameStore((s) => s.setPanel);
+  const setMe = useGameStore((s) => s.setMe);
+  const toast = useGameStore((s) => s.toastMsg);
+  const [state, setState] = useState<import('@bullrace/shared').AnsemState | null>(null);
+  const [amount, setAmount] = useState(100);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => { void api.ansemState().then(setState).catch(() => {}); };
+  useEffect(() => { refresh(); }, []);
+
+  const deposit = async () => {
+    setBusy(true);
+    try {
+      const m = await api.ansemDeposit(amount);
+      setMe(m);
+      toast(`Deposited ${amount}g to Ansem`);
+      refresh();
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pct = state && state.targetGold > 0 ? Math.min(100, (state.collectedGold / state.targetGold) * 100) : 0;
+
+  return (
+    <div className={panel}>
+      <PanelHeader title="Ansem" color="#c99bff" onClose={() => setPanel(null)} />
+      <div className="panel-body">
+        {!state ? (
+          <div className="muted">Loading…</div>
+        ) : !state.open ? (
+          <div className="card muted">Ansem isn&apos;t trading right now. Check back later.</div>
+        ) : (
+          <>
+            <p className="muted">
+              Deposit gold to Ansem this cycle. When it closes, everyone who deposited is airdropped
+              <b> $ANSEM</b> proportional to their share — so your % of the gold = your % of the tokens.
+            </p>
+            <div className="card">
+              <div className="row-between">
+                <span className="bold">This cycle</span>
+                <span className="gold bold">${state.tokenUsd.toLocaleString()} of $ANSEM</span>
+              </div>
+              <div className="bar"><div className="bar-fill" style={{ width: `${pct}%`, background: '#8a4ac4' }} /></div>
+              <div className="row-between">
+                <span className="muted">Collected {state.collectedGold.toLocaleString()} / {state.targetGold.toLocaleString()}g</span>
+                <span className="muted">
+                  Your share: {state.collectedGold > 0 ? ((state.myGold / state.collectedGold) * 100).toFixed(1) : '0'}%
+                  {' '}({state.myGold.toLocaleString()}g)
+                </span>
+              </div>
+            </div>
+            {!state.hasWallet && (
+              <div className="card muted sm">Connect your wallet in Profile so Ansem can airdrop your $ANSEM.</div>
+            )}
+            <div className="card">
+              <div className="row-between" style={{ marginBottom: 8 }}>
+                <span className="muted">Amount</span>
+                <div className="row gap">
+                  <button className="small-btn" onClick={() => setAmount((a) => Math.max(1, a - 100))}>−100</button>
+                  <span className="gold stat-num">{amount}g</span>
+                  <button className="small-btn" onClick={() => setAmount((a) => a + 100)}>+100</button>
+                </div>
+              </div>
+              <div className="row gap wrap" style={{ marginBottom: 8 }}>
+                {[100, 500, 1000].map((q) => (
+                  <button key={q} className={`${btn} sm`} onClick={() => setAmount(q)}>{q}</button>
+                ))}
+                <button className={`${btn} sm`} onClick={() => setAmount(Math.floor(me.gold))}>All ({Math.floor(me.gold)})</button>
+              </div>
+              <button
+                className={`${btn} purple`}
+                style={{ width: '100%' }}
+                disabled={busy || !state.hasWallet || me.gold < amount || amount < 1}
+                onClick={() => void deposit()}
+              >
+                {busy ? 'Depositing…' : `Deposit ${amount}g`}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminPanel() {
+  const setPanel = useGameStore((s) => s.setPanel);
+  const toast = useGameStore((s) => s.toastMsg);
+  const [view, setView] = useState<import('@bullrace/shared').AnsemAdminView | null>(null);
+  const [targetGold, setTargetGold] = useState(5000);
+  const [tokenUsd, setTokenUsd] = useState(200);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => { void api.adminAnsem().then(setView).catch((e) => toast((e as Error).message)); };
+  useEffect(() => { refresh(); }, []);
+
+  const openCycle = async () => {
+    setBusy(true);
+    try { setView(await api.adminAnsemOpen(targetGold, tokenUsd)); toast('Ansem cycle opened'); }
+    catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
+  };
+  const closeCycle = async () => {
+    if (!confirm('Close the current Ansem cycle? Players can no longer deposit.')) return;
+    setBusy(true);
+    try { setView(await api.adminAnsemClose()); toast('Cycle closed — airdrop the depositors'); }
+    catch (e) { toast((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const cycle = view?.cycle ?? null;
+
+  return (
+    <div className="modal-overlay" onClick={() => setPanel(null)}>
+      <div className="modal" style={{ width: 560, maxWidth: '94vw' }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>⚙ Ansem Admin</span>
+          <button type="button" className="close-btn" onClick={() => setPanel(null)}>✕</button>
+        </div>
+        <div style={{ padding: '16px 18px', maxHeight: '72vh', overflowY: 'auto' }}>
+          {cycle ? (
+            <div className="card">
+              <div className="row-between">
+                <span className="bold green-txt">Cycle OPEN</span>
+                <button className={`${btn} sm`} disabled={busy} onClick={() => void closeCycle()}>Close cycle</button>
+              </div>
+              <div className="muted sm">Accepting <b>{cycle.targetGold.toLocaleString()}g</b> for <b>${cycle.tokenUsd.toLocaleString()}</b> of $ANSEM · collected <b>{cycle.collectedGold.toLocaleString()}g</b></div>
+              <button className="small-btn" style={{ alignSelf: 'flex-start' }} onClick={refresh}>Refresh</button>
+            </div>
+          ) : (
+            <div className="card muted sm">No open cycle. Start one below.</div>
+          )}
+
+          <div className="card" style={{ marginTop: 10 }}>
+            <div className="bold sm">{cycle ? 'Start a new cycle (closes the current one)' : 'Start a cycle'}</div>
+            <div className="row-between" style={{ marginTop: 6 }}>
+              <span className="muted">Gold to accept</span>
+              <input className="market-token-input" type="number" min={1} value={targetGold} onChange={(e) => setTargetGold(Number(e.target.value))} />
+            </div>
+            <div className="row-between" style={{ marginTop: 6 }}>
+              <span className="muted">$ANSEM value (USD)</span>
+              <input className="market-token-input" type="number" min={1} step="0.01" value={tokenUsd} onChange={(e) => setTokenUsd(Number(e.target.value))} />
+            </div>
+            <button className={`${btn} purple`} style={{ marginTop: 10 }} disabled={busy} onClick={() => void openCycle()}>
+              {cycle ? 'Replace with new cycle' : 'Open cycle'}
+            </button>
+          </div>
+
+          <div className="bold sm" style={{ margin: '14px 0 6px' }}>Depositors {view ? `(${view.depositors.length})` : ''}</div>
+          {!view?.depositors.length ? (
+            <div className="muted sm">No deposits yet.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ color: '#9a8b72', textAlign: 'left' }}>
+                    <th style={{ padding: '4px 8px' }}>Account</th>
+                    <th style={{ padding: '4px 8px' }}>Wallet</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right' }}>Gold</th>
+                    <th style={{ padding: '4px 8px', textAlign: 'right' }}>Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.depositors.map((d) => (
+                    <tr key={d.userId} style={{ borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                      <td style={{ padding: '5px 8px' }}>{d.displayName}<span className="muted sm"> @{d.username}</span></td>
+                      <td style={{ padding: '5px 8px', fontFamily: 'ui-monospace, monospace', fontSize: 11 }}>
+                        {d.walletAddress ? `${d.walletAddress.slice(0, 5)}…${d.walletAddress.slice(-4)}` : <span className="error">no wallet</span>}
+                      </td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right' }} className="gold">{d.gold.toLocaleString()}</td>
+                      <td style={{ padding: '5px 8px', textAlign: 'right' }} className="bold">{d.pct.toFixed(2)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {view?.depositors.some((d) => !d.walletAddress) && (
+            <div className="error sm" style={{ marginTop: 8 }}>Some depositors have no wallet — they can&apos;t be airdropped. (Deposits now require a wallet; these are legacy.)</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HelpModal() {
   const me = useGameStore((s) => s.me)!;
   const setPanel = useGameStore((s) => s.setPanel);
@@ -1339,6 +1530,7 @@ export function GameUI() {
         <button className={`${btn} green`} onClick={() => openBuilding('shop')}>Store</button>
         <button className={`${btn} blue`} onClick={() => setInvOpen(true)}>Items ({invCount})</button>
         <button className={btn} onClick={() => setProfileOpen(true)}>Profile</button>
+        {me.isAdmin && <button className={`${btn} purple`} onClick={() => setPanel('admin')}>⚙ Admin</button>}
         <button className={btn} onClick={() => setPanel('help')}>?</button>
       </div>
 
@@ -1350,6 +1542,8 @@ export function GameUI() {
       {panel === 'forge' && <ForgePanel />}
       {panel === 'shop' && <StorePanel />}
       {panel === 'wheel' && <WheelPopup />}
+      {panel === 'ansem' && <AnsemPanel />}
+      {panel === 'admin' && <AdminPanel />}
       {panel === 'help' && <HelpModal />}
       <InventoryPopup />
       <ProfilePopup />

@@ -8,7 +8,7 @@ export type CharStatType = 'speed' | 'wood' | 'ore' | 'hay';
 export type ItemKind = 'bull' | 'char';
 export type RarityKey = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 export type TileType = 'g1' | 'g2' | 'dirt' | 'stone' | 'trk1' | 'trk2';
-export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'shop' | 'wheel' | 'help' | 'results' | null;
+export type PanelType = 'stable' | 'race' | 'bet' | 'market' | 'forge' | 'den' | 'shop' | 'wheel' | 'ansem' | 'admin' | 'help' | 'results' | null;
 export type BullLocation = 'stable' | 'den' | 'following';
 export type BullTrait =
   | 'normal'
@@ -187,7 +187,7 @@ export interface WorldObject {
 }
 
 export interface Interactable {
-  t: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel';
+  t: 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel' | 'ansem';
   x: number;
   y: number;
   label: string;
@@ -385,6 +385,8 @@ export interface AuthResponse {
 }
 
 export interface MeResponse extends UserProfile {
+  /** admin (DEV) — unlocks the Ansem admin panel */
+  isAdmin: boolean;
   /** epoch ms when the daily wheel can next be spun (0 = available now) */
   wheelAvailableAt: number;
   /** today's wheel jackpot item — same for everyone, wheel-exclusive */
@@ -407,6 +409,38 @@ export interface MeResponse extends UserProfile {
   } | null;
   marketListings: MarketListing[];
   shopBulls: ShopBull[];
+}
+
+export interface AnsemState {
+  open: boolean;
+  targetGold: number;
+  tokenUsd: number;
+  collectedGold: number;
+  /** this player's total deposit into the current cycle */
+  myGold: number;
+  /** whether the player has a wallet linked (needed to deposit) */
+  hasWallet: boolean;
+}
+
+export interface AnsemDepositor {
+  userId: string;
+  displayName: string;
+  username: string;
+  walletAddress: string | null;
+  gold: number;
+  pct: number;
+}
+
+export interface AnsemAdminView {
+  cycle: {
+    id: string;
+    status: string;
+    targetGold: number;
+    tokenUsd: number;
+    collectedGold: number;
+    createdAt: number;
+  } | null;
+  depositors: AnsemDepositor[];
 }
 
 export interface ChatMessage {

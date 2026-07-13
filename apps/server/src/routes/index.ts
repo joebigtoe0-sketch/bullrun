@@ -8,6 +8,7 @@ import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';
 import * as bulls from '../services/bulls.js';
 import * as charShop from '../services/charShop.js';
+import * as ansem from '../services/ansem.js';
 import { computeRaceOdds } from '../services/raceOdds.js';
 import { walletAuthRoutes } from './walletAuth.js';
 import { tokenMarketRoutes, startGoldMarketSweeper } from './tokenMarket.js';
@@ -261,6 +262,50 @@ export async function gameRoutes(app: FastifyInstance) {
     try {
       const userId = (req.user as { sub: string }).sub;
       return await charShop.cancelItemListing(userId, req.body.listingId);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.get('/ansem', async (req) => {
+    const userId = (req.user as { sub: string }).sub;
+    return ansem.getAnsemState(userId);
+  });
+
+  app.post<{ Body: { amount: number } }>('/ansem/deposit', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      return await ansem.depositToAnsem(userId, req.body.amount);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.get('/admin/ansem', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      await ansem.requireAdmin(userId);
+      return await ansem.getAnsemAdminView();
+    } catch (e) {
+      return reply.status(403).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post<{ Body: { targetGold: number; tokenUsd: number } }>('/admin/ansem/open', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      await ansem.requireAdmin(userId);
+      return await ansem.openAnsemCycle(req.body.targetGold, req.body.tokenUsd);
+    } catch (e) {
+      return reply.status(400).send({ error: (e as Error).message });
+    }
+  });
+
+  app.post('/admin/ansem/close', async (req, reply) => {
+    try {
+      const userId = (req.user as { sub: string }).sub;
+      await ansem.requireAdmin(userId);
+      return await ansem.closeAnsemCycle();
     } catch (e) {
       return reply.status(400).send({ error: (e as Error).message });
     }

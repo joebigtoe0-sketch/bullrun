@@ -286,9 +286,9 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       s.setDenPlotId(plot.id);
       s.setPanel('den');
     }
-  } else if (['stable', 'bet', 'market', 'forge', 'race', 'shop', 'wheel'].includes(pending.type)) {
+  } else if (['stable', 'bet', 'market', 'forge', 'race', 'shop', 'wheel', 'ansem'].includes(pending.type)) {
     const pos = s.me?.position;
-    if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel', worldData.interactables)) {
+    if (!pos || !isNearInteractable(pos.x, pos.y, pending.type as 'stable' | 'bet' | 'market' | 'forge' | 'race' | 'shop' | 'wheel' | 'ansem', worldData.interactables)) {
       s.toastMsg('Get closer to use that');
       return;
     }

@@ -32,6 +32,7 @@ export interface ArtObj {
   hair?: string;
   name?: string;
   lvl?: number;
+  labelColor?: string;
   chop?: { tool: 'axe' | 'pick' | 'sickle' | 'pitchfork'; ph: number } | null;
   /** mirror horizontally around the anchor (face screen-left) */
   flip?: boolean;

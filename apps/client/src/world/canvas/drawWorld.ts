@@ -479,6 +479,21 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
     return;
   }
 
+  if (o.t === 'ansem') {
+    // a small sign board, then Ansem himself (a purple-hooded NPC, no auto Lvl label)
+    BRArt.drawObj(ctx, iso, { t: 'sign', x: o.x - 0.7, y: o.y - 0.2, label: 'GOLD → $ANSEM' }, opts);
+    BRArt.drawObj(ctx, iso, {
+      t: 'npc',
+      x: o.x,
+      y: o.y,
+      shirt: '#6c4bd1',
+      hair: '#1d1a17',
+      label: 'ANSEM',
+      labelColor: '#c99bff',
+    }, opts);
+    return;
+  }
+
   BRArt.drawObj(ctx, iso, o as ArtObj, opts);
   } finally {
     if (lifted > 0) ctx.restore();

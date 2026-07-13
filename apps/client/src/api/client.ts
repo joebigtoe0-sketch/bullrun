@@ -118,6 +118,14 @@ export const api = {
     request<MeResponse>('/items/equip-char', { method: 'POST', body: JSON.stringify({ itemId }) }),
   unequipChar: (itemId: number) =>
     request<MeResponse>('/items/unequip-char', { method: 'POST', body: JSON.stringify({ itemId }) }),
+  ansemState: () => request<import('@bullrace/shared').AnsemState>('/ansem'),
+  ansemDeposit: (amount: number) =>
+    request<MeResponse>('/ansem/deposit', { method: 'POST', body: JSON.stringify({ amount }) }),
+  adminAnsem: () => request<import('@bullrace/shared').AnsemAdminView>('/admin/ansem'),
+  adminAnsemOpen: (targetGold: number, tokenUsd: number) =>
+    request<import('@bullrace/shared').AnsemAdminView>('/admin/ansem/open', { method: 'POST', body: JSON.stringify({ targetGold, tokenUsd }) }),
+  adminAnsemClose: () =>
+    request<import('@bullrace/shared').AnsemAdminView>('/admin/ansem/close', { method: 'POST', body: '{}' }),
   buyStoreItem: (sku: string) =>
     request<MeResponse>('/store/buy', { method: 'POST', body: JSON.stringify({ sku }) }),
   spinWheel: () =>

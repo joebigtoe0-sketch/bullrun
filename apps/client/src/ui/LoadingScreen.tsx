@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BRArt } from '../world/canvas/bullrunArt';
+import { BRArt } from '../world/canvas/bullraceArt';
 import { HeroBackdrop } from './HeroBackdrop';
 
 const STAGES = ['World', 'Track', 'Market', 'Bulls', 'Ready'] as const;
@@ -107,7 +107,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
     <div className="loading-root">
       <HeroBackdrop variant="loading" />
       <div className="loading-card">
-        <h1 className="landing-title" style={{ fontSize: 34 }}>BULL RUN</h1>
+        <h1 className="landing-title" style={{ fontSize: 34 }}>BULL RACE</h1>
         <div className="loading-run">
           <canvas ref={canvasRef} style={{ width: BAR_W, height: RUN_H, maxWidth: '88vw' }} aria-hidden />
           <div className="loading-bar-row">

@@ -11,7 +11,7 @@ import {
   WHEEL_MIN_TOKENS,
   stableWoodNeed,
   stableGoldNeed,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import type { ReactNode } from 'react';
 import { BullGallery, GearGallery } from './GuideGalleries';
 
@@ -54,11 +54,11 @@ export const GUIDE_GROUPS: GuideGroup[] = [
     sections: [
       {
         id: 'intro',
-        title: 'Welcome to Bull Run',
+        title: 'Welcome to Bull Race',
         body: (
           <>
             <P>
-              <Strong>Bull Run</Strong> is a bull racing MMO. Gather materials, breed and equip bulls, dress up your
+              <Strong>Bull Race</Strong> is a bull racing MMO. Gather materials, breed and equip bulls, dress up your
               rancher, enter global races, bet gold, trade on the player market, and explore the ranch with other
               players in real time.
             </P>

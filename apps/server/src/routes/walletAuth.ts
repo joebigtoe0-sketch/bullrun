@@ -14,7 +14,7 @@ function isValidSolanaAddress(addr: string): boolean {
 }
 
 function buildLinkMessage(wallet: string, nonce: string): string {
-  return `Sign in to Bull Run\n\nWallet: ${wallet}\nNonce: ${nonce}`;
+  return `Sign in to Bull Race\n\nWallet: ${wallet}\nNonce: ${nonce}`;
 }
 
 export async function walletAuthRoutes(app: FastifyInstance) {

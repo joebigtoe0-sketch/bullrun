@@ -1,4 +1,4 @@
 {
   "startCommand": "pnpm db:deploy && node dist/index.js",
-  "buildCommand": "cd ../.. && pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/server build"
+  "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/server build"
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@bullrun/client",
+  "name": "@bullrace/client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "start": "sh scripts/start.sh"
   },
   "dependencies": {
-    "@bullrun/shared": "workspace:*",
+    "@bullrace/shared": "workspace:*",
     "@solana/spl-token": "^0.4.14",
     "@solana/wallet-adapter-base": "^0.9.27",
     "@solana/wallet-adapter-react": "^0.15.39",

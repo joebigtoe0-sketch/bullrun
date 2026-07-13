@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS, raceElapsedMs, raceMaxDurationMs } from '@bullrun/shared';
-import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrun/shared';
+import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS, raceElapsedMs, raceMaxDurationMs } from '@bullrace/shared';
+import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrace/shared';
 import { api } from '../api/client';
 import { BRSfx } from '../lib/sfx';
 
@@ -36,8 +36,8 @@ interface GameStore {
   worldNodes: SyncedWorldNode[];
   walkDestination: { x: number; y: number } | null;
   raceLive: { id: string; standings: { pos: number; name: string; finished: boolean }[] } | null;
-  raceAnim: { id?: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>; startT: number; endT: number; laps?: number; frozen?: boolean; elapsedMs?: number; elapsedAt?: number; maxElapsedMs?: number } | null;
-  raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>; startAt: number; laps: number } | null;
+  raceAnim: { id?: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrace/shared').BullGear }>; startT: number; endT: number; laps?: number; frozen?: boolean; elapsedMs?: number; elapsedAt?: number; maxElapsedMs?: number } | null;
+  raceGrid: { id: string; bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrace/shared').BullGear }>; startAt: number; laps: number } | null;
   pastures: PasturePlotState[];
   denPlotId: number | null;
   results: RaceResult[] | null;
@@ -110,7 +110,7 @@ interface GameStore {
 let toastTimer: ReturnType<typeof setTimeout>;
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  token: localStorage.getItem('bullrun.token'),
+  token: localStorage.getItem('bullrace.token'),
   user: null,
   walletAddress: null,
   hasDisplayName: false,
@@ -151,7 +151,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   speechBubbles: {},
 
   setAuth: (token, user) => {
-    localStorage.setItem('bullrun.token', token);
+    localStorage.setItem('bullrace.token', token);
     set({
       token,
       user,
@@ -329,7 +329,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (changed) set({ speechBubbles: next });
   },
   logout: () => {
-    localStorage.removeItem('bullrun.token');
+    localStorage.removeItem('bullrace.token');
     set({
       token: null,
       user: null,

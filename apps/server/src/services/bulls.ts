@@ -5,7 +5,7 @@ import {
   bullSlots,
   denCapacity,
   isNearPasturePlot,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
 import { requireNearDen, requireNearInteractable } from './proximity.js';

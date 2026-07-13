@@ -81,7 +81,7 @@ async function main() {
   startGoldMarketSweeper();
   startPastureSpawner();
 
-  console.log(`Bull Run server on :${PORT}`);
+  console.log(`Bull Race server on :${PORT}`);
 }
 
 main().catch((err) => {

@@ -53,7 +53,7 @@ export function LandingPage({ onPlay, onSpectate }: { onPlay: () => void; onSpec
 
       <div className="landing-hero">
         <Logo className="landing-logo" />
-        <h1 className="landing-title">BULL RUN</h1>
+        <h1 className="landing-title">BULL RACE</h1>
         <p className="landing-blurb">
           Raise, breed, and race bulls in a shared voxel ranch. Gather, forge gear, dress up your
           rancher, bet on global races, and trade it all on the player market — live with everyone online.

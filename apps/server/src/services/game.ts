@@ -33,7 +33,7 @@ import {
   rollBreedRarity,
   type BullTrait,
   type BullRarity,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getMeResponse, mapBull } from './player.js';

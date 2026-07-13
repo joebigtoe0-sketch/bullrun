@@ -51,7 +51,7 @@ export function AuthScreen({ onSpectate }: { onSpectate?: () => void } = {}) {
       <div className="auth-card">
         <OnlineBadge count={playersOnline} />
         <Logo className="auth-logo" />
-        <h1>Bull Run</h1>
+        <h1>Bull Race</h1>
         <p>Bull racing MMO</p>
 
         <form onSubmit={submit}>

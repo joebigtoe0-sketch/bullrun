@@ -1,4 +1,4 @@
-# Bull Run
+# Bull Race
 
 Multiplayer bull-racing MMO — voxel isometric world built with React Three Fiber, Fastify, Socket.io, and PostgreSQL.
 
@@ -23,7 +23,7 @@ cp .env.example .env
 pnpm install
 
 # Build shared package
-pnpm --filter @bullrun/shared build
+pnpm --filter @bullrace/shared build
 
 # Push database schema
 pnpm db:push
@@ -40,11 +40,11 @@ Create an account in-game to start playing.
 ## Project structure
 
 ```
-bullrun/
+bullrace/
 ├── apps/client/     # Vite + React + Three.js (R3F)
 ├── apps/server/     # Fastify + Socket.io + Prisma
 ├── packages/shared/ # Game logic, world gen, race math
-└── Bull Run game design spec/  # Original prototype (reference)
+└── Bull Race game design spec/  # Original prototype (reference)
 ```
 
 ## Deploy to Railway
@@ -65,7 +65,7 @@ Add the PostgreSQL plugin. Railway sets `DATABASE_URL` automatically.
 **Environment variables:**
 - `DATABASE_URL` — from Postgres plugin (reference in Railway)
 - `JWT_SECRET` — random secret string
-- `CORS_ORIGIN` — your client Railway URL (e.g. `https://bullrun-client.up.railway.app`)
+- `CORS_ORIGIN` — your client Railway URL (e.g. `https://bullrace-client.up.railway.app`)
 - `RACE_INTERVAL_SEC` — seconds between races (default `360` = 6 min)
 
 ### 3. Client (use `Dockerfile.client` at repo root)
@@ -76,7 +76,7 @@ Add the PostgreSQL plugin. Railway sets `DATABASE_URL` automatically.
 | Start | auto via Dockerfile CMD |
 
 **Environment variables (client service):**
-- `API_URL` — your **server** public URL (e.g. `https://bullrun-server.up.railway.app`) — **required**
+- `API_URL` — your **server** public URL (e.g. `https://bullrace-server.up.railway.app`) — **required**
 - `WS_URL` — same as `API_URL` (optional, defaults to `API_URL`)
 - `PORT` — Railway sets this automatically
 
@@ -99,8 +99,8 @@ You can also set `VITE_API_URL` / `VITE_WS_URL` at build time, but `API_URL` at 
 ```bash
 git init
 git add .
-git commit -m "Bull Run MMO — full stack game"
-git remote add origin https://github.com/YOUR_USER/bullrun.git
+git commit -m "Bull Race MMO — full stack game"
+git remote add origin https://github.com/YOUR_USER/bullrace.git
 git push -u origin main
 ```
 

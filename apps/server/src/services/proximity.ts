@@ -1,4 +1,4 @@
-import { buildWorld, isNearInteractable, isNearPasturePlot } from '@bullrun/shared';
+import { buildWorld, isNearInteractable, isNearPasturePlot } from '@bullrace/shared';
 import { prisma } from '../db.js';
 
 const { interactables } = buildWorld(0);

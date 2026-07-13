@@ -16,7 +16,7 @@ export function GameGuide({ onClose, onDismiss, dismissLabel = 'Close' }: GameGu
     <div className="guide-overlay" onClick={onClose}>
       <div className="guide-modal" onClick={(e) => e.stopPropagation()}>
         <div className="guide-header">
-          <span>Bull Run — Game Guide</span>
+          <span>Bull Race — Game Guide</span>
           <button type="button" className="guide-close" onClick={onClose} aria-label="Close guide">✕</button>
         </div>
         <div className="guide-body">

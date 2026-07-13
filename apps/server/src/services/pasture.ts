@@ -10,7 +10,7 @@ import {
   pastureWoodToNextLevel,
   rollPastureBull,
   type PasturePlotState,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';
 import { broadcastPlayerBulls } from '../socket/index.js';
@@ -56,13 +56,13 @@ function mapBull(b: {
   speed: number;
   stamina: number;
   accel: number;
-}): import('@bullrun/shared').PastureDisplayBull {
+}): import('@bullrace/shared').PastureDisplayBull {
   return {
     id: b.id,
     name: b.name,
     coat: b.coat,
-    trait: b.trait as import('@bullrun/shared').BullTrait,
-    rarity: b.rarity as import('@bullrun/shared').BullRarity,
+    trait: b.trait as import('@bullrace/shared').BullTrait,
+    rarity: b.rarity as import('@bullrace/shared').BullRarity,
     level: b.level,
     speed: b.speed,
     stamina: b.stamina,
@@ -80,7 +80,7 @@ function mapPlot(
     owner?: { displayName: string } | null;
   },
   denCount: number,
-  denBulls: import('@bullrun/shared').PastureDisplayBull[],
+  denBulls: import('@bullrace/shared').PastureDisplayBull[],
 ): PasturePlotState {
   return {
     id: row.id,
@@ -123,7 +123,7 @@ export async function listPastures(): Promise<PasturePlotState[]> {
     },
   });
   const countMap = new Map(counts.map((c) => [c.denPlotId!, c._count._all]));
-  const bullsByPlot = new Map<number, import('@bullrun/shared').PastureDisplayBull[]>();
+  const bullsByPlot = new Map<number, import('@bullrace/shared').PastureDisplayBull[]>();
   for (const b of denBullRows) {
     if (b.denPlotId == null) continue;
     const list = bullsByPlot.get(b.denPlotId) ?? [];

@@ -1,4 +1,4 @@
-/* Bull Run — tiny WebAudio SFX synth (TS port of the design spec's
+/* Bull Race — tiny WebAudio SFX synth (TS port of the design spec's
    bullrun-sfx.js — keep in sync with the spec folder). No audio files. */
 
 let C: AudioContext | null = null;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CHAT_MAX_LEN } from '@bullrun/shared';
+import { CHAT_MAX_LEN } from '@bullrace/shared';
 import { emitChat } from '../hooks/useSocket';
 import { useGameStore } from '../store/gameStore';
 

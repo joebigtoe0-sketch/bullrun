@@ -1,5 +1,5 @@
 {
-  "name": "@bullrun/server",
+  "name": "@bullrace/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "grant:resources": "tsx scripts/grant-resources.ts"
   },
   "dependencies": {
-    "@bullrun/shared": "workspace:*",
+    "@bullrace/shared": "workspace:*",
     "@fastify/cors": "^10.0.2",
     "@fastify/jwt": "^9.0.2",
     "@prisma/client": "^6.3.1",

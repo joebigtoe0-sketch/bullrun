@@ -8,7 +8,7 @@ export function buildGoldListingMessage(args: {
   tokenPrice: number;
 }): string {
   return [
-    'List gold for sale on Bull Run',
+    'List gold for sale on Bull Race',
     '',
     `Wallet: ${args.wallet}`,
     `Gold: ${args.goldQty}`,

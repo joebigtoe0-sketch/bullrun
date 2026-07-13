@@ -1,4 +1,4 @@
-/** Types for the BRArt canvas art library (bullrunArt.js). */
+/** Types for the BRArt canvas art library (bullraceArt.js). */
 
 export type IsoFn = (x: number, y: number) => { x: number; y: number };
 

@@ -4,7 +4,7 @@ import type { WorldNode } from '@prisma/client';
 import { prisma } from '../db.js';
 import { updatePosition } from '../services/player.js';
 import { listPastures } from '../services/pasture.js';
-import { CHAT_MAX_LEN, shirtColorForId, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrun/shared';
+import { CHAT_MAX_LEN, shirtColorForId, type ChatMessage, type OtherPlayer, type OtherPlayerBull } from '@bullrace/shared';
 import { syncRunningRaceToSocket, joinRunningRaceToSocket } from '../race/scheduler.js';
 
 type OnlinePlayer = {

@@ -1,4 +1,4 @@
-import { odds, type GameItem, type RaceBull } from '@bullrun/shared';
+import { odds, type GameItem, type RaceBull } from '@bullrace/shared';
 import type { Item as PrismaItem } from '@prisma/client';
 import { prisma } from '../db.js';
 

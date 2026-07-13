@@ -5,7 +5,7 @@ export function Logo({ className = '' }: { className?: string }) {
   return (
     <img
       src={LOGO_SRC}
-      alt="Bull Run"
+      alt="Bull Race"
       className={`app-logo ${className}`.trim()}
       width={72}
       height={72}

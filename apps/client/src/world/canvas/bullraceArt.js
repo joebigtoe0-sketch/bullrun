@@ -1,5 +1,5 @@
 /* ============================================================
- Bull Run — shared art library (ES module port of the design
+ Bull Race — shared art library (ES module port of the design
  spec bullrun-art.js — keep in sync with the spec folder).
  Pure canvas drawing: tiles, props, buildings, bulls, people.
  World space: 1 unit = one tile; iso(x,y) => screen px.
@@ -501,10 +501,14 @@ function toolDraw(ctx, sx, sy, ang, tool, jab) {
     ctx.save(); ctx.translate(ex, ey); ctx.rotate(ang + Math.PI / 2);
     ctx.fillStyle = '#b8bcc0'; ctx.fillRect(-1.5, -5.5, 5, 10);
     ctx.restore();
-  } else if (tool === 'pick') { // double-headed pickaxe
-    ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(ex, ey, 5.5, ang + 0.7, ang + 2.45); ctx.stroke();
-    ctx.beginPath(); ctx.arc(ex, ey, 5.5, ang - 2.45, ang - 0.7); ctx.stroke();
+  } else if (tool === 'pick') { // pickaxe: a curved head crossing the handle top
+    const px = Math.cos(ang + Math.PI / 2), py = Math.sin(ang + Math.PI / 2);
+    const fx = Math.cos(ang), fy = Math.sin(ang);
+    ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ex - px * 7 + fx * 2.5, ey - py * 7 + fy * 2.5);
+    ctx.quadraticCurveTo(ex, ey, ex + px * 7 + fx * 2.5, ey + py * 7 + fy * 2.5);
+    ctx.stroke();
   } else if (tool === 'pitchfork') { // crossbar + three tines
     const px = Math.cos(ang + Math.PI / 2), py = Math.sin(ang + Math.PI / 2);
     ctx.strokeStyle = '#c9ccd0'; ctx.lineWidth = 2;
@@ -563,26 +567,35 @@ function person(ctx, iso, o) {
   };
   const drawNearArm = () => {
     if (o.chop) {
-      // working arm + tool on the front-left — the side the character faces
-      // (the whole sprite mirrors via flip when facing right)
-      cube(ctx, iso, gx - 0.14, gy + 0.19, 0.18, 0.09, 2.5, 12, hands);
-      cube(ctx, iso, gx - 0.14, gy + 0.19, 0.18, 0.09, 5, 9, mul(shirt, 0.92));
-      const sp = iso(gx - 0.02, gy + 0.26);
+      // working arm + tool aimed toward the node. Left/right is handled by the
+      // sprite flip; `up` swings toward a node above (facing away) instead of below.
+      const up = !!o.chop.up;
+      // working arm on the front side normally, over the shoulder when the node is above
+      const ay = up ? -0.28 : 0.19;
+      const pivY = up ? -0.2 : 0.26;
+      cube(ctx, iso, gx - 0.14, gy + ay, 0.18, 0.09, 2.5, 12, hands);
+      cube(ctx, iso, gx - 0.14, gy + ay, 0.18, 0.09, 5, 9, mul(shirt, 0.92));
+      const sp = iso(gx - 0.02, gy + pivY);
       const tool = o.chop.tool;
       let ang, jab = 0;
       if (tool === 'pick') {
         // mining: big overhead arc slamming down
         ang = -2.15 + (Math.sin(o.chop.ph) + 1) * 0.95;
       } else if (tool === 'pitchfork') {
-        // hay: forward-down digging jabs
+        // hay: forward digging jabs
         ang = 0.5;
         jab = Math.max(0, Math.sin(o.chop.ph)) * 5.5;
       } else {
         // axe: chopping swing
         ang = -1.55 + (Math.sin(o.chop.ph) + 1) * 0.62;
       }
-      // mirror the swing to the left side (screen angle -> PI - angle)
-      toolDraw(ctx, sp.x - 2, sp.y - 13, Math.PI - ang, tool, jab);
+      // the axe/pick arcs are overhead swings (up ↔ up-left after the PI - ang mirror),
+      // which read correctly for nodes above too. Only the pitchfork's directional jab
+      // changes: up + unmirrored the sprite faces up-right, so thrust up-right (-ang);
+      // the canvas flip mirrors it to up-left for the other side.
+      let drawAng = Math.PI - ang;
+      if (up && tool === 'pitchfork') drawAng = -ang;
+      toolDraw(ctx, sp.x - 2, sp.y - (up ? 16 : 13), drawAng, tool, jab);
     } else {
       cube(ctx, iso, gx + 0.19 + armSw, gy - 0.1, 0.09, 0.2, 2.5, 5.5 + bob, hands);
       if (glovesG) cube(ctx, iso, gx + 0.185 + armSw, gy - 0.105, 0.1, 0.21, 0.8, 7.3 + bob, glovesG.accent);
@@ -684,14 +697,36 @@ function bull(ctx, iso, o, t) {
     cube(ctx, iso, hx(-0.68, 0.13), gy - 0.06 + swish * 2, 0.13, 0.12, 4, 4.5 + bob, tuft);
   };
   const drawHead = () => {
+    // facing away, the head peeks over the shoulders and the muzzle is occluded
+    const hl = back ? 3 : 0;
+    // horns — original wide sweep; longhorns scale out via L
+    const hornBone = bg.horns ? bg.horns : (trait === 'skeleton' ? '#cfc9b6' : '#efe8d8');
+    const hornTip = bg.horns ? mix(bg.horns, '#ffffff', 0.45) : (trait === 'skeleton' ? '#dfd9c6' : '#f5efe2');
+    const L = trait === 'longhorn' ? 2.1 : 1;
+    const tipH = 3.5 + (L > 1 ? 1.5 : 0);
+    const farHorn = () => {
+      cube(ctx, iso, hx(0.5, 0.08), gy - 0.24 - 0.12 * L, 0.08, 0.12 * L, 2, 15.5 + hb + hl, hornBone);
+      cube(ctx, iso, hx(0.52, 0.06), gy - 0.26 - 0.14 * L, 0.06, 0.07 * L, tipH, 16.5 + hb + hl, hornTip);
+    };
+    const nearHorn = () => {
+      cube(ctx, iso, hx(0.5, 0.08), gy + 0.24, 0.08, 0.12 * L, 2, 15.5 + hb + hl, hornBone);
+      cube(ctx, iso, hx(0.52, 0.06), gy + 0.26 + 0.07 * L, 0.06, 0.07 * L, tipH, 16.5 + hb + hl, hornTip);
+    };
+    // far-side ear + horn sit behind the head — ear first, horn over the ear,
+    // and the head cube (drawn after) occludes both of their bases
+    const earC = mul(c, 0.85);
+    cube(ctx, iso, hx(0.44, 0.1), gy - 0.32, 0.1, 0.1, 2.2, 14 + hb + hl, earC);
+    if (trait !== 'unicorn') farHorn();
     // head (extra bob out of phase with the body)
-    cube(ctx, iso, hx(0.42, 0.34), gy - 0.19, 0.34, 0.38, 9, 8 + hb, c);
+    cube(ctx, iso, hx(0.42, 0.34), gy - 0.19, 0.34, 0.38, 9, 8 + hb + hl, c);
     // forehead tuft
     const tuftC = trait === 'unicorn' ? 'hsl(' + ((seed * 47 + 60) % 360) + ', 55%, 68%)' : mul(c, 0.85);
-    cube(ctx, iso, hx(0.44, 0.28), gy - 0.15, 0.28, 0.3, 1.6, 17 + hb, tuftC);
-    // snout
-    const snoutC = trait === 'skeleton' ? '#d6d0bf' : '#d8b58a';
-    cube(ctx, iso, hx(0.72, 0.17), gy - 0.13, 0.17, 0.26, 5, 8 + hb, snoutC);
+    cube(ctx, iso, hx(0.44, 0.28), gy - 0.15, 0.28, 0.3, 1.6, 17 + hb + hl, tuftC);
+    // snout — hidden from behind (it points away from the camera)
+    if (!back) {
+      const snoutC = trait === 'skeleton' ? '#d6d0bf' : '#d8b58a';
+      cube(ctx, iso, hx(0.72, 0.17), gy - 0.13, 0.17, 0.26, 5, 8 + hb, snoutC);
+    }
     // eyes + nostrils — on the head front face; hidden when facing away
     if (!back) {
       const eyeC = trait === 'shadow' ? '#c07ef0' : trait === 'skeleton' ? '#111009' : '#17100a';
@@ -701,14 +736,13 @@ function bull(ctx, iso, o, t) {
       decal(ctx, iso, gx + 0.891, gy - 0.095, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
       decal(ctx, iso, gx + 0.891, gy + 0.04, 0.055, 'y', 9.6 + hb, 1.5, '#3a2a1a');
     }
-    // ears
-    cube(ctx, iso, hx(0.44, 0.1), gy - 0.32, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
-    cube(ctx, iso, hx(0.44, 0.1), gy + 0.22, 0.1, 0.1, 2.2, 14 + hb, mul(c, 0.85));
+    // near-side ear in front of the head
+    cube(ctx, iso, hx(0.44, 0.1), gy + 0.22, 0.1, 0.1, 2.2, 14 + hb + hl, earC);
     if (trait === 'unicorn') {
       // single spiral horn instead of the usual pair
-      cube(ctx, iso, hx(0.54, 0.1), gy - 0.06, 0.1, 0.12, 3, 18 + hb, bg.horns || '#ffffff');
-      cube(ctx, iso, hx(0.56, 0.07), gy - 0.04, 0.07, 0.08, 3, 21 + hb, bg.horns ? mix(bg.horns, '#ffffff', 0.4) : '#ffd9ec');
-      cube(ctx, iso, hx(0.575, 0.045), gy - 0.025, 0.045, 0.05, 2.6, 24 + hb, bg.horns ? mix(bg.horns, '#ffffff', 0.6) : '#ffffff');
+      cube(ctx, iso, hx(0.54, 0.1), gy - 0.06, 0.1, 0.12, 3, 18 + hb + hl, bg.horns || '#ffffff');
+      cube(ctx, iso, hx(0.56, 0.07), gy - 0.04, 0.07, 0.08, 3, 21 + hb + hl, bg.horns ? mix(bg.horns, '#ffffff', 0.4) : '#ffd9ec');
+      cube(ctx, iso, hx(0.575, 0.045), gy - 0.025, 0.045, 0.05, 2.6, 24 + hb + hl, bg.horns ? mix(bg.horns, '#ffffff', 0.6) : '#ffffff');
       // sparkle
       const sp = iso(gx + (back ? -0.6 : 0.6), gy);
       const a2 = 0.4 + 0.5 * Math.abs(Math.sin((t || 0) * 2.6 + seed));
@@ -718,14 +752,8 @@ function bull(ctx, iso, o, t) {
       ctx.moveTo(sp.x - 6, sp.y - 29 - hb); ctx.lineTo(sp.x, sp.y - 29 - hb);
       ctx.stroke();
     } else {
-      // horns — longhorns sweep way out; gear tints them
-      const hornBone = bg.horns ? bg.horns : (trait === 'skeleton' ? '#cfc9b6' : '#efe8d8');
-      const hornTip = bg.horns ? mix(bg.horns, '#ffffff', 0.45) : (trait === 'skeleton' ? '#dfd9c6' : '#f5efe2');
-      const L = trait === 'longhorn' ? 2.1 : 1;
-      cube(ctx, iso, hx(0.5, 0.08), gy - 0.24 - 0.12 * L, 0.08, 0.12 * L, 2, 15.5 + hb, hornBone);
-      cube(ctx, iso, hx(0.52, 0.06), gy - 0.26 - 0.14 * L, 0.06, 0.07 * L, 3.5 + (L > 1 ? 1.5 : 0), 16.5 + hb, hornTip);
-      cube(ctx, iso, hx(0.5, 0.08), gy + 0.24, 0.08, 0.12 * L, 2, 15.5 + hb, hornBone);
-      cube(ctx, iso, hx(0.52, 0.06), gy + 0.26 + 0.07 * L, 0.06, 0.07 * L, 3.5 + (L > 1 ? 1.5 : 0), 16.5 + hb, hornTip);
+      // near horn sits in front of the head — drawn after the head cube
+      nearHorn();
     }
   };
   if (back) drawHead();

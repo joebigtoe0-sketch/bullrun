@@ -11,7 +11,7 @@ import {
   type MeResponse,
   type Materials,
   type UserProfile,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import type { Bull as PrismaBull, RaceEntry, MarketListing } from '@prisma/client';
 import { prisma } from '../db.js';
 
@@ -249,7 +249,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
       bull: l.bullData as unknown as Partial<Bull> | undefined,
       price: l.price,
       tokenPrice: l.tokenPrice ? Number(l.tokenPrice.toString()) : undefined,
-      status: l.status as import('@bullrun/shared').MarketListing['status'],
+      status: l.status as import('@bullrace/shared').MarketListing['status'],
       soldAt: l.soldAt?.getTime(),
       cooldownUntil: l.cooldownUntil?.getTime(),
     })),

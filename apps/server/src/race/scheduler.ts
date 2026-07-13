@@ -15,7 +15,7 @@ import {
   coatOf,
   bullGearFromItems,
   type GameItem,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import type { Server as SocketServer } from 'socket.io';
 import { Prisma } from '@prisma/client';
 import type { RaceEntry, Item as PrismaItem } from '@prisma/client';
@@ -233,7 +233,7 @@ async function finishRace(raceId: string) {
         const xpGain = rb.pos === 1 ? 60 : Math.max(10, 40 - (rb.pos ?? 1) * 5);
         let xp = bull.xp + xpGain;
         let level = bull.level;
-        const maxLv = maxBullLevel((bull.rarity as import('@bullrun/shared').BullRarity) || (bull.trait as BullTrait) || 'common');
+        const maxLv = maxBullLevel((bull.rarity as import('@bullrace/shared').BullRarity) || (bull.trait as BullTrait) || 'common');
         let need = level * 100;
         while (xp >= need && level < maxLv) {
           level++;

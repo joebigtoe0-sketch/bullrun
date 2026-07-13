@@ -10,7 +10,7 @@ importers:
 
   apps/client:
     dependencies:
-      '@bullrun/shared':
+      '@bullrace/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@solana/spl-token':
@@ -68,7 +68,7 @@ importers:
 
   apps/server:
     dependencies:
-      '@bullrun/shared':
+      '@bullrace/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@fastify/cors':

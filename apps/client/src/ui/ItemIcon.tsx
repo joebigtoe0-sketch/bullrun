@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BRArt } from '../world/canvas/bullrunArt';
+import { BRArt } from '../world/canvas/bullraceArt';
 
 /** Canvas icon for an equippable item, drawn with the shared BRArt item art. */
 export function ItemIcon({ slot, rarity, color, size = 44 }: { slot: string; rarity: string; color?: string; size?: number }) {

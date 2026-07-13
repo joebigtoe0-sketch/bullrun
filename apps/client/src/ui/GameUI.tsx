@@ -52,8 +52,8 @@ import {
   MAX_CHAR_LEVEL,
   WHEEL_MIN_TOKENS,
   WHEEL_GOLD_TIERS,
-} from '@bullrun/shared';
-import type { Bull, BullRarity, CharStatType, ItemSlot, MatType, MeResponse, PastureDisplayBull, StatType } from '@bullrun/shared';
+} from '@bullrace/shared';
+import type { Bull, BullRarity, CharStatType, ItemSlot, MatType, MeResponse, PastureDisplayBull, StatType } from '@bullrace/shared';
 import { navigateToBuilding } from '../game/loop';
 import { GoldIcon, HayIcon, OreIcon, WoodIcon } from './HudIcons';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -181,7 +181,7 @@ function StablePanel() {
 }
 
 function BullCard({ bull, items, onTrain, onRename, onEquip, onFollow, onDelete }: {
-  bull: Bull; items: import('@bullrun/shared').GameItem[];
+  bull: Bull; items: import('@bullrace/shared').GameItem[];
   onTrain: (s: StatType) => void; onRename: () => void; onEquip: () => void;
   onFollow?: () => void; onDelete?: () => void;
 }) {

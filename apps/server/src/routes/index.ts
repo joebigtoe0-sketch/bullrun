@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Item as PrismaItem, MarketListing } from '@prisma/client';
 import { hashPassword, verifyPassword } from '../auth.js';
 import { prisma } from '../db.js';
-import { clampForgeOre } from '@bullrun/shared';
+import { clampForgeOre } from '@bullrace/shared';
 import { createStarterUser, getMeResponse } from '../services/player.js';
 import * as game from '../services/game.js';
 import * as pasture from '../services/pasture.js';

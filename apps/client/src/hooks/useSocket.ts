@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { CHAT_MAX_LEN } from '@bullrun/shared';
+import { CHAT_MAX_LEN } from '@bullrace/shared';
 import { getWsUrl, api } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 
@@ -38,9 +38,9 @@ export function useSocket() {
     });
 
     socket.on('world_snapshot', (data: {
-      players: import('@bullrun/shared').OtherPlayer[];
-      nodes: { id: string; x: number; y: number; mat: import('@bullrun/shared').MatType; deadUntil: number | null }[];
-      pastures: import('@bullrun/shared').PasturePlotState[];
+      players: import('@bullrace/shared').OtherPlayer[];
+      nodes: { id: string; x: number; y: number; mat: import('@bullrace/shared').MatType; deadUntil: number | null }[];
+      pastures: import('@bullrace/shared').PasturePlotState[];
       race: unknown;
     }) => {
       useGameStore.getState().setOtherPlayers(data.players);
@@ -53,7 +53,7 @@ export function useSocket() {
       }
     });
 
-    socket.on('player_joined', (p: import('@bullrun/shared').OtherPlayer) => {
+    socket.on('player_joined', (p: import('@bullrace/shared').OtherPlayer) => {
       useGameStore.getState().addOtherPlayer(p);
     });
     socket.on('player_left', ({ id }: { id: string }) => {
@@ -68,13 +68,13 @@ export function useSocket() {
     socket.on('node_respawned', ({ id }: { id: string }) => {
       useGameStore.getState().clearNodeDead(id);
     });
-    socket.on('player_bulls_updated', ({ id, bulls }: { id: string; bulls: import('@bullrun/shared').OtherPlayerBull[] }) => {
+    socket.on('player_bulls_updated', ({ id, bulls }: { id: string; bulls: import('@bullrace/shared').OtherPlayerBull[] }) => {
       const players = useGameStore.getState().otherPlayers.map((p) =>
         p.id === id ? { ...p, bulls } : p,
       );
       useGameStore.getState().setOtherPlayers(players);
     });
-    socket.on('pastures_updated', (pastures: import('@bullrun/shared').PasturePlotState[]) => {
+    socket.on('pastures_updated', (pastures: import('@bullrace/shared').PasturePlotState[]) => {
       useGameStore.getState().setPastures(pastures);
     });
     socket.on('pasture_spawned', (data: { plotId: number; bull: { name: string; trait?: string } }) => {
@@ -84,7 +84,7 @@ export function useSocket() {
     });
     socket.on('race_grid', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; owner?: string; trait?: string; gear?: import('@bullrace/shared').BullGear }>;
       startAt: number;
       laps: number;
     }) => {
@@ -92,12 +92,12 @@ export function useSocket() {
       if (anim?.id === data.id && !anim.frozen) return;
       useGameStore.getState().setRaceGrid({
         ...data,
-        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
+        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrace/shared').BullTrait | undefined })),
       });
     });
     socket.on('race_started', (data: {
       id: string;
-      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
+      bulls: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrace/shared').BullGear }>;
       startT: number;
       endT: number;
       laps?: number;
@@ -115,7 +115,7 @@ export function useSocket() {
       useGameStore.getState().setRaceGrid(null);
       useGameStore.getState().setRaceAnim({
         ...data,
-        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })),
+        bulls: data.bulls.map((b) => ({ ...b, trait: b.trait as import('@bullrace/shared').BullTrait | undefined })),
         elapsedMs: elapsed,
         elapsedAt: Date.now(),
       });
@@ -135,15 +135,15 @@ export function useSocket() {
     });
     socket.on('race_finished', (data: {
       id: string;
-      results: import('@bullrun/shared').RaceResult[];
+      results: import('@bullrace/shared').RaceResult[];
       betResults: Record<string, string>;
-      bulls?: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrun/shared').BullGear }>;
+      bulls?: Array<{ id: number | string; name: string; coat: string; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; trait?: string; gear?: import('@bullrace/shared').BullGear }>;
     }) => {
       const userId = useGameStore.getState().user?.id;
       const anim = useGameStore.getState().raceAnim;
       if (anim?.id && anim.id !== data.id) return;
       if (anim) {
-        const bulls = data.bulls?.map((b) => ({ ...b, trait: b.trait as import('@bullrun/shared').BullTrait | undefined })) ?? anim.bulls;
+        const bulls = data.bulls?.map((b) => ({ ...b, trait: b.trait as import('@bullrace/shared').BullTrait | undefined })) ?? anim.bulls;
         useGameStore.getState().setRaceAnim({ ...anim, bulls, frozen: true });
       }
       useGameStore.getState().setRaceGrid(null);
@@ -157,7 +157,7 @@ export function useSocket() {
     socket.on('race_scheduled', (data: {
       id: string;
       startAt: number;
-      field: import('@bullrun/shared').NpcBull[];
+      field: import('@bullrace/shared').NpcBull[];
     }) => {
       const me = useGameStore.getState().me;
       if (!me) return;
@@ -173,7 +173,7 @@ export function useSocket() {
         },
       });
     });
-    socket.on('chat_message', (msg: import('@bullrun/shared').ChatMessage) => {
+    socket.on('chat_message', (msg: import('@bullrace/shared').ChatMessage) => {
       useGameStore.getState().addChatMessage(msg);
     });
 

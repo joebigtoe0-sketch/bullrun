@@ -38,9 +38,9 @@ import {
   type PasturePlotState,
   type WorldObject,
   type BullTrait,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import { worldData, type SyncedWorldNode } from '../../store/gameStore';
-import { BRArt, type ArtObj } from './bullrunArt';
+import { BRArt, type ArtObj } from './bullraceArt';
 
 const M = worldData.M;
 const CX = WORLD_CX;
@@ -440,7 +440,7 @@ function drawObj(ctx: CanvasRenderingContext2D, o: DrawObj, stableLevel: number,
       if (alpha > 0) drawSpeechBubble(ctx, o.x, o.y, o.speech.text, alpha);
     }
     const chop = o.gatherMat && o.gatherStart
-      ? { tool: GATHER_TOOL[o.gatherMat] ?? 'pitchfork', ph: (now - o.gatherStart) / 90 }
+      ? { tool: GATHER_TOOL[o.gatherMat] ?? 'pitchfork', ph: (now - o.gatherStart) / 90, up: !!o.back }
       : null;
     BRArt.drawObj(ctx, iso, {
       t: o.t === 'player' ? 'player' : 'npc',
@@ -661,7 +661,7 @@ export interface DrawState {
   worldNodes: SyncedWorldNode[];
   raceAnim: {
     id?: string;
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrace/shared').BullGear }>;
     startT: number;
     laps?: number;
     frozen?: boolean;
@@ -670,12 +670,12 @@ export interface DrawState {
     maxElapsedMs?: number;
   } | null;
   raceGrid: {
-    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrun/shared').BullGear }>;
+    bulls: Array<{ id: number | string; name: string; coat: string; trait?: BullTrait; pos: number; gridSlot?: number; finishT: number; lapTimes?: number[]; owner?: string; gear?: import('@bullrace/shared').BullGear }>;
     startAt: number;
     laps: number;
   } | null;
   raceLive: boolean;
-  results: import('@bullrun/shared').RaceResult[] | null;
+  results: import('@bullrace/shared').RaceResult[] | null;
   resultsUntil: number | null;
   betResult: string | null;
   pastures: PasturePlotState[];
@@ -832,12 +832,15 @@ export function drawWorld(ctx: CanvasRenderingContext2D, state: DrawState) {
     myWalk.y = me.position.y;
     let myLeft = myWalk.flip;
     let myBack = myWalk.back;
-    if (gather && gather.nodeX != null && gather.nodeY != null) {
-      const nodeScreenDx = (gather.nodeX - gather.nodeY) - (me.position.x - me.position.y);
-      const nodeScreenDy = (gather.nodeX + gather.nodeY) - (me.position.x + me.position.y);
+    const gathering = !!(gather && gather.nodeX != null && gather.nodeY != null);
+    if (gathering) {
+      const nodeScreenDx = (gather!.nodeX! - gather!.nodeY!) - (me.position.x - me.position.y);
+      const nodeScreenDy = (gather!.nodeX! + gather!.nodeY!) - (me.position.x + me.position.y);
       if (Math.abs(nodeScreenDx) > 0.01) myLeft = nodeScreenDx < 0;
       myBack = nodeScreenDy < -0.05;
     }
+    // personFlip handles the back-mode mirror inversion for gathering too —
+    // myLeft/myBack already point at the node while a gather is running
     const myFlip = personFlip(myLeft, myBack);
     const myElev = bridgeElevAt(me.position.x, me.position.y);
     list.push({

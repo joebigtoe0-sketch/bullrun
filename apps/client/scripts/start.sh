@@ -22,7 +22,7 @@ if [ -f "$DIST/index.html" ]; then
   node "$SCRIPT_DIR/inject-config.mjs" "$DIST/index.html" "$API" "$WS" "$SOLANA"
 fi
 
-echo "Bull Run client config: api=$API ws=$WS solana=$SOLANA"
+echo "Bull Race client config: api=$API ws=$WS solana=$SOLANA"
 
 cd "$CLIENT_DIR"
 PORT="${PORT:-4173}"

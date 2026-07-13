@@ -18,11 +18,11 @@ import {
   findPath,
   isNearInteractable,
   isBuildingPanel,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import { worldData } from '../store/gameStore';
 import { addFloatText } from '../world/canvas/drawWorld';
 import { BRSfx } from '../lib/sfx';
-import { MAT_SWATCHES } from '@bullrun/shared';
+import { MAT_SWATCHES } from '@bullrace/shared';
 
 let lastStepSfx = 0;
 let lastSwingSfx = 0;
@@ -208,7 +208,7 @@ export function useGameLoop(active = true) {
         const pos = s.me?.position;
         s.setGather(null);
         api.gatherComplete(nodeIdStr, pos?.x, pos?.y).then((res) => {
-          const r = res as { qty: number; mat: string; xp?: number; leveledUp?: boolean; me: import('@bullrun/shared').MeResponse };
+          const r = res as { qty: number; mat: string; xp?: number; leveledUp?: boolean; me: import('@bullrace/shared').MeResponse };
           useGameStore.getState().setNodeDead(nodeIdStr, Date.now() + NODE_RESPAWN_MS);
           useGameStore.getState().setMe(r.me);
           const px = fxX ?? pos?.x ?? 0;
@@ -293,7 +293,7 @@ function execPending(pending: { type: string; nodeId?: string; plotId?: number; 
       return;
     }
     syncPosition(pos.x, pos.y);
-    s.setPanel(pending.type as import('@bullrun/shared').PanelType);
+    s.setPanel(pending.type as import('@bullrace/shared').PanelType);
   }
 }
 

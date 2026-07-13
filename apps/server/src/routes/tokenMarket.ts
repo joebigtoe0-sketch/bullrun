@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
-import { MARKET_FEE } from '@bullrun/shared';
+import { MARKET_FEE } from '@bullrace/shared';
 import { prisma } from '../db.js';
 import { requireNearInteractable } from '../services/proximity.js';
 import { getMeResponse } from '../services/player.js';
@@ -20,7 +20,7 @@ import {
 const RESERVE_MS = 120_000;
 const CANCEL_COOLDOWN_MS = 30_000;
 
-import { buildGoldListingMessage } from '@bullrun/shared';
+import { buildGoldListingMessage } from '@bullrace/shared';
 
 function verifySignature(message: string, signature: string, wallet: string): boolean {
   try {

@@ -1,15 +1,15 @@
 {
-  "name": "bullrun",
+  "name": "bullrace",
   "private": true,
   "scripts": {
     "dev": "pnpm run --parallel dev",
-    "dev:client": "pnpm --filter @bullrun/client dev",
-    "dev:server": "pnpm --filter @bullrun/server dev",
-    "build": "pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/server build && pnpm --filter @bullrun/client build",
-    "db:generate": "pnpm --filter @bullrun/server db:generate",
-    "db:migrate": "pnpm --filter @bullrun/server db:migrate",
-    "db:push": "pnpm --filter @bullrun/server db:push",
-    "db:deploy": "pnpm --filter @bullrun/server db:deploy"
+    "dev:client": "pnpm --filter @bullrace/client dev",
+    "dev:server": "pnpm --filter @bullrace/server dev",
+    "build": "pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/server build && pnpm --filter @bullrace/client build",
+    "db:generate": "pnpm --filter @bullrace/server db:generate",
+    "db:migrate": "pnpm --filter @bullrace/server db:migrate",
+    "db:push": "pnpm --filter @bullrace/server db:push",
+    "db:deploy": "pnpm --filter @bullrace/server db:deploy"
   },
   "engines": {
     "node": ">=20"

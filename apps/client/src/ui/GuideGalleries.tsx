@@ -9,9 +9,9 @@ import {
   STORE_CATALOG,
   WHEEL_JACKPOT_CLOTHING,
   CHAR_STAT_LABEL,
-} from '@bullrun/shared';
-import type { BullRarity, BullTrait, ItemSlot } from '@bullrun/shared';
-import { BRArt } from '../world/canvas/bullrunArt';
+} from '@bullrace/shared';
+import type { BullRarity, BullTrait, ItemSlot } from '@bullrace/shared';
+import { BRArt } from '../world/canvas/bullraceArt';
 import { ItemIcon } from './ItemIcon';
 
 /** Animated live preview of a bull with a given trait. */

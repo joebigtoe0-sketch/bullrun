@@ -1,4 +1,4 @@
 {
   "startCommand": "sh scripts/start.sh",
-  "buildCommand": "cd ../.. && pnpm --filter @bullrun/shared build && pnpm --filter @bullrun/client build"
+  "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/client build"
 }

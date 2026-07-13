@@ -4,7 +4,7 @@ import {
   WHEEL_JACKPOT_WEIGHT,
   WHEEL_JACKPOT_CLOTHING,
   WHEEL_MIN_TOKENS,
-} from '@bullrun/shared';
+} from '@bullrace/shared';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getMeResponse } from './player.js';

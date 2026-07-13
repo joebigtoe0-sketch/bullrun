@@ -1,8 +1,8 @@
-import type { MeResponse } from '@bullrun/shared';
+import type { MeResponse } from '@bullrace/shared';
 import { getConfig } from '../config';
 
 function getToken() {
-  return localStorage.getItem('bullrun.token');
+  return localStorage.getItem('bullrace.token');
 }
 
 async function parseError(res: Response): Promise<string> {
@@ -133,7 +133,7 @@ export const api = {
   depositBullStable: (bullId: number) =>
     request<MeResponse>('/bulls/to-stable', { method: 'POST', body: JSON.stringify({ bullId }) }),
   depositBullDen: (bullId: number, plotId: number) =>
-    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[] }>('/bulls/to-den', { method: 'POST', body: JSON.stringify({ bullId, plotId }) }),
+    request<{ me: MeResponse; pastures: import('@bullrace/shared').PasturePlotState[] }>('/bulls/to-den', { method: 'POST', body: JSON.stringify({ bullId, plotId }) }),
   gatherComplete: (nodeId: string, x?: number, y?: number) =>
     request<{ qty: number; mat: string; me: MeResponse }>('/gather/complete', { method: 'POST', body: JSON.stringify({ nodeId, x, y }) }),
   enterRace: (bullId: number, x?: number, y?: number) =>
@@ -158,19 +158,19 @@ export const api = {
     request<MeResponse>('/market/buy-bull', { method: 'POST', body: JSON.stringify({ bull, price }) }),
   settings: (data: Record<string, unknown>) =>
     request<MeResponse>('/me/settings', { method: 'PATCH', body: JSON.stringify(data) }),
-  pastures: () => request<import('@bullrun/shared').PasturePlotState[]>('/pastures'),
+  pastures: () => request<import('@bullrace/shared').PasturePlotState[]>('/pastures'),
   buyPasture: (id: number) =>
-    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[] }>(`/pastures/${id}/buy`, { method: 'POST', body: '{}' }),
+    request<{ me: MeResponse; pastures: import('@bullrace/shared').PasturePlotState[] }>(`/pastures/${id}/buy`, { method: 'POST', body: '{}' }),
   upgradePasture: (id: number) =>
-    request<{ me: MeResponse; pastures: import('@bullrun/shared').PasturePlotState[]; woodToNext: number }>(`/pastures/${id}/upgrade`, { method: 'POST', body: '{}' }),
+    request<{ me: MeResponse; pastures: import('@bullrace/shared').PasturePlotState[]; woodToNext: number }>(`/pastures/${id}/upgrade`, { method: 'POST', body: '{}' }),
 };
 
 export function saveToken(token: string) {
-  localStorage.setItem('bullrun.token', token);
+  localStorage.setItem('bullrace.token', token);
 }
 
 export function clearToken() {
-  localStorage.removeItem('bullrun.token');
+  localStorage.removeItem('bullrace.token');
 }
 
 export function getWsUrl(): string {

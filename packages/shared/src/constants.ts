@@ -12,7 +12,7 @@ export const SPAWN_X = 28;
 export const SPAWN_Y = 25;
 
 /** Ansem exchange NPC — stands just right of spawn in the hub. */
-export const ANSEM_X = 22;
+export const ANSEM_X = 20.5;
 export const ANSEM_Y = 27;
 
 /** Walkover bridge across the track (dir 'y' span centered here). */

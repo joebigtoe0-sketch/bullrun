@@ -1,4 +1,16 @@
 {
-  "startCommand": "pnpm db:deploy && node dist/index.js",
-  "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/server build"
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/server build",
+    "watchPatterns": [
+      "/apps/server/**",
+      "/packages/**",
+      "/package.json",
+      "/pnpm-lock.yaml",
+      "/pnpm-workspace.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm db:deploy && node dist/index.js"
+  }
 }

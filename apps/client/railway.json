@@ -1,4 +1,16 @@
 {
-  "startCommand": "sh scripts/start.sh",
-  "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/client build"
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "buildCommand": "cd ../.. && pnpm --filter @bullrace/shared build && pnpm --filter @bullrace/client build",
+    "watchPatterns": [
+      "/apps/client/**",
+      "/packages/**",
+      "/package.json",
+      "/pnpm-lock.yaml",
+      "/pnpm-workspace.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "sh scripts/start.sh"
+  }
 }

@@ -8,13 +8,16 @@ const ADMIN_USERNAMES = (process.env.ADMIN_USERNAMES || 'dev')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
 
-export function isAdminUsername(username: string | undefined | null): boolean {
-  return !!username && ADMIN_USERNAMES.includes(username.toLowerCase());
+export function isAdminUser(user: { username?: string | null; displayName?: string | null } | null | undefined): boolean {
+  if (!user) return false;
+  const u = (user.username || '').toLowerCase();
+  const d = (user.displayName || '').toLowerCase();
+  return ADMIN_USERNAMES.includes(u) || ADMIN_USERNAMES.includes(d);
 }
 
 export async function requireAdmin(userId: string): Promise<void> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
-  if (!isAdminUsername(user?.username)) throw new Error('Admins only');
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { username: true, displayName: true } });
+  if (!isAdminUser(user)) throw new Error('Admins only');
 }
 
 async function openCycle() {

@@ -199,7 +199,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
     select: { lastWheelSpinAt: true },
   });
   const { nextWheelSpinAt, todaysJackpot } = await import('./charShop.js');
-  const { isAdminUsername } = await import('./ansem.js');
+  const { isAdminUser } = await import('./ansem.js');
 
   const currentRace = await prisma.race.findFirst({
     where: { status: { in: ['scheduled', 'running'] } },
@@ -224,7 +224,7 @@ export async function getMeResponse(userId: string): Promise<MeResponse | null> 
 
   return {
     ...profile,
-    isAdmin: isAdminUsername(profile.username),
+    isAdmin: isAdminUser({ username: profile.username, displayName: profile.displayName }),
     wheelAvailableAt: nextWheelSpinAt(rawProfile?.lastWheelSpinAt ?? null),
     wheelJackpot: todaysJackpot(),
     entered: myEntries,

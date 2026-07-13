@@ -17,7 +17,7 @@ Delete everything except these 4 variables:
 ```env
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 JWT_SECRET=any-long-random-string-here
-CORS_ORIGIN=https://bullrunclient-production.up.railway.app
+CORS_ORIGIN=https://bullrace-client.up.railway.app
 RACE_INTERVAL_SEC=360
 ```
 
@@ -31,7 +31,7 @@ That creates `DATABASE_URL=${{Postgres.DATABASE_URL}}` which Railway resolves to
 
 ### Test after deploy
 
-Open: `https://bullrunserver-production.up.railway.app/health`
+Open: `https://bullrace-server.up.railway.app/health`
 
 You should see:
 ```json
@@ -47,19 +47,19 @@ If you see `"db":false`, the database link is still wrong.
 Delete the `VITE_*` variables (optional but less confusing). Keep only:
 
 ```env
-API_URL=https://bullrunserver-production.up.railway.app
-WS_URL=https://bullrunserver-production.up.railway.app
+API_URL=https://bullrace-server.up.railway.app
+WS_URL=https://bullrace-server.up.railway.app
 ```
 
 No trailing slash. Must be your **server** URL, not the client URL.
 
 ### Test after deploy
 
-1. Open: `https://bullrunclient-production.up.railway.app/config.json`  
+1. Open: `https://bullrace-client.up.railway.app/config.json`  
    Should show JSON with your server URL (not HTML).
 
 2. View page source on the client URL — you should see:
-   `window.__BULLRUN_CONFIG__={"apiUrl":"https://bullrunserver-production.up.railway.app",...}`
+   `window.__BULLRACE_CONFIG__={"apiUrl":"https://bullrace-server.up.railway.app",...}`
 
 If register still calls `localhost:3001`, the client **start command** is wrong. In Railway client service → Settings → set **Start Command** to:
 

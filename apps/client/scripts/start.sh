@@ -25,5 +25,4 @@ fi
 echo "Bull Race client config: api=$API ws=$WS solana=$SOLANA"
 
 cd "$CLIENT_DIR"
-PORT="${PORT:-4173}"
-exec pnpm exec vite preview --host 0.0.0.0 --port "$PORT"
+exec node "$SCRIPT_DIR/serve.mjs" "$DIST"

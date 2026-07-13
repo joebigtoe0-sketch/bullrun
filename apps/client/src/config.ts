@@ -6,7 +6,7 @@ export interface RuntimeConfig {
 
 declare global {
   interface Window {
-    __BULLRUN_CONFIG__?: Partial<RuntimeConfig>;
+    __BULLRACE_CONFIG__?: Partial<RuntimeConfig>;
   }
 }
 
@@ -28,7 +28,7 @@ function fromPartial(data: Partial<RuntimeConfig> | undefined): RuntimeConfig | 
 export async function loadConfig(): Promise<RuntimeConfig> {
   if (config) return config;
 
-  const injected = fromPartial(window.__BULLRUN_CONFIG__);
+  const injected = fromPartial(window.__BULLRACE_CONFIG__);
   if (injected) {
     config = injected;
     return config;

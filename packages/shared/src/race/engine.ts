@@ -73,8 +73,8 @@ function lapScore(stats: ResolvedStats, lap: number, laps: number): number {
     score *= Math.max(0.82, fade);
   }
 
-  score += raceLuckRoll() * 2.2;
-  score += (Math.random() - 0.5) * stats.temper * 0.9;
+  // lap-to-lap drama scales with the score itself (stats are ~60–200)
+  score *= 1 + raceLuckRoll() * 0.1 + (Math.random() - 0.5) * 0.015 * stats.temper;
   return score;
 }
 
@@ -82,11 +82,22 @@ function overallPower(stats: ResolvedStats): number {
   return stats.speed * 0.38 + stats.stamina * 0.34 + stats.accel * 0.28;
 }
 
+/**
+ * How much of the field's typical (compressed) power race-day luck can swing.
+ * Stats live on a ~60–200 scale, so power is sqrt-compressed first: small stat
+ * leads give a small edge, and even a maxed legendary vs fresh bulls is only a
+ * ~70–75% favorite, never a lock.
+ */
+const RACE_LUCK_POWER_FRAC = 0.9;
+
 type RaceArc = 'steady' | 'earlyBurst' | 'midBurst' | 'lateSurge' | 'fader';
 
 function computeTargetFinishOrder(statsList: ResolvedStats[]): number[] {
-  return statsList
-    .map((st, i) => ({ i, p: overallPower(st) + raceLuckRoll() * 5 }))
+  const powers = statsList.map((st) => Math.sqrt(overallPower(st)));
+  const avg = powers.reduce((a, c) => a + c, 0) / (powers.length || 1);
+  const luck = Math.max(0.5, avg * RACE_LUCK_POWER_FRAC);
+  return powers
+    .map((p, i) => ({ i, p: p + raceLuckRoll() * luck }))
     .sort((a, b) => b.p - a.p)
     .map((x) => x.i);
 }
@@ -192,18 +203,18 @@ export function winProbabilities(
 export function oddsFromProbabilities(
   probs: number[],
   houseEdge = BET_HOUSE_EDGE,
-  minOdds = 1.2,
+  minOdds = 1.05,
   maxOdds = 12,
 ): number[] {
+  // Only a bull racing alone (a guaranteed win) pays below even money;
+  // in a real field even the heaviest favorite pays above 1x.
+  const solo = probs.length <= 1;
   return probs.map((p) => {
     if (p <= 0) return maxOdds;
     const fair = 1 / p;
     const withEdge = fair * houseEdge;
-    // A near-certain winner (e.g. the only entrant) pays below even money so you
-    // can't free-money a bet on a guaranteed result. The min floor only applies
-    // once fair odds clear break-even.
-    if (withEdge < 1) return Math.max(0.85, Math.round(withEdge * 100) / 100);
-    return Math.min(maxOdds, Math.max(minOdds, withEdge));
+    if (solo && withEdge < 1) return Math.max(0.85, Math.round(withEdge * 100) / 100);
+    return Math.min(maxOdds, Math.max(minOdds, Math.round(withEdge * 100) / 100));
   });
 }
 

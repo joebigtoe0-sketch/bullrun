@@ -12,7 +12,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 
 # Build shared package
-RUN pnpm --filter @bullrun/shared build
+RUN pnpm --filter @bullrace/shared build
 
 # Vite bakes API URLs in at build time — set these in Railway client service variables
 ARG VITE_API_URL=http://localhost:3001
@@ -21,7 +21,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 
 # Build client
-RUN pnpm --filter @bullrun/client build
+RUN pnpm --filter @bullrace/client build
 
 # Expose port
 EXPOSE 5173

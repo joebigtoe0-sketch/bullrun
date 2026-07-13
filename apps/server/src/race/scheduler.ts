@@ -354,9 +354,23 @@ async function schedulerTick() {
     if (!activeRaces.has(race.id)) {
       const endMs = race.endAt?.getTime() ?? 0;
       if (endMs > 0 && endMs < now) {
-        await salvageRunningRace(race.id);
+        try {
+          await salvageRunningRace(race.id);
+        } catch (err) {
+          console.error('[race] salvage failed for', race.id, '— abandoning it', err);
+          await prisma.race.update({ where: { id: race.id }, data: { status: 'finished', results: [] } }).catch(() => {});
+        }
       }
     }
+  }
+
+  // self-heal: if nothing is scheduled or running (e.g. recovery died on a past
+  // boot), schedule the next race instead of staying raceless forever
+  const live = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
+  if (!live) {
+    const race = await ensureScheduledRace();
+    console.warn('[race] no live race found — scheduled', race.id);
+    io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
   }
 
   const gridWindow = await prisma.race.findFirst({
@@ -412,9 +426,15 @@ async function schedulerTick() {
 }
 
 export function startRaceScheduler() {
-  void recoverRaceState().then((race) => {
-    io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
-  });
+  void recoverRaceState()
+    .then((race) => {
+      io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
+    })
+    .catch((err) => {
+      // never let a bad recovery leave the game raceless — the tick self-heals,
+      // but log loudly so the underlying cause is visible
+      console.error('[race] boot recovery failed (tick will self-heal):', err);
+    });
 
   schedulerTimer = setInterval(() => {
     void schedulerTick().catch((err) => console.error('[race] scheduler tick error', err));

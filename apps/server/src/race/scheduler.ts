@@ -139,16 +139,22 @@ export function joinRunningRaceToSocket(raceId: string, socket: { emit: (ev: str
 }
 
 export async function ensureScheduledRace() {
-  const running = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
-  if (running) return running;
+  // During a deploy two server instances run this concurrently against the
+  // same DB — the advisory lock serializes find-or-create so only one race
+  // can ever be scheduled.
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(911042)`;
+    const live = await tx.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
+    if (live) return live;
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
-  return prisma.race.create({
-    data: {
-      status: 'scheduled',
-      startAt: new Date(Date.now() + intervalSec * 1000),
-      field: [],
-    },
+    const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
+    return tx.race.create({
+      data: {
+        status: 'scheduled',
+        startAt: new Date(Date.now() + intervalSec * 1000),
+        field: [],
+      },
+    });
   });
 }
 
@@ -160,10 +166,13 @@ async function startRace(raceId: string) {
   const now = Date.now();
   const duration = Math.max(...bulls.map((b) => b.finishT), 9000);
 
-  await prisma.race.update({
-    where: { id: raceId },
+  // atomic claim — if a second scheduler instance raced us here, exactly one
+  // proceeds to run the race and pay it out
+  const claimed = await prisma.race.updateMany({
+    where: { id: raceId, status: 'scheduled' },
     data: { status: 'running', endAt: new Date(now + duration) },
   });
+  if (claimed.count === 0) return;
 
   activeRaces.set(raceId, { bulls, startT: now, endT: now + duration });
 
@@ -211,6 +220,14 @@ async function finishRace(raceId: string) {
   }
 
   activeRaces.delete(raceId);
+
+  // atomic claim — only one scheduler instance pays out prizes, XP and bets
+  const claimed = await prisma.race.updateMany({
+    where: { id: raceId, status: 'running' },
+    data: { status: 'finished' },
+  });
+  if (claimed.count === 0) return;
+
   const raceBulls = wireToRaceBulls(active.bulls);
 
   const entries = await prisma.raceEntry.findMany({ where: { raceId } });
@@ -276,20 +293,15 @@ async function finishRace(raceId: string) {
 
   await prisma.race.update({
     where: { id: raceId },
-    data: { status: 'finished', results: results as object },
+    data: { results: results as object },
   });
 
   io?.emit('race_finished', { id: raceId, results, betResults, bulls: active.bulls });
 
-  const intervalSec = Number(process.env.RACE_INTERVAL_SEC || DEFAULT_RACE_INTERVAL_SEC);
-  const next = await prisma.race.create({
-    data: {
-      status: 'scheduled',
-      startAt: new Date(Date.now() + intervalSec * 1000),
-      field: [],
-    },
-  });
-  io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field: [] });
+  const next = await ensureScheduledRace();
+  if (next.status === 'scheduled') {
+    io?.emit('race_scheduled', { id: next.id, startAt: next.startAt.getTime(), field: [] });
+  }
 }
 
 async function salvageRunningRace(raceId: string) {
@@ -364,13 +376,40 @@ async function schedulerTick() {
     }
   }
 
-  // self-heal: if nothing is scheduled or running (e.g. recovery died on a past
-  // boot), schedule the next race instead of staying raceless forever
-  const live = await prisma.race.findFirst({ where: { status: { in: ['scheduled', 'running'] } } });
-  if (!live) {
+  // self-heal: exactly one race may be live. None (recovery died on a past
+  // boot) → schedule one. Several (overlapping deploys ran two schedulers) →
+  // keep the running one or the earliest scheduled, refund + prune the rest.
+  const live = await prisma.race.findMany({
+    where: { status: { in: ['scheduled', 'running'] } },
+    orderBy: { startAt: 'asc' },
+  });
+  if (live.length === 0) {
     const race = await ensureScheduledRace();
     console.warn('[race] no live race found — scheduled', race.id);
     io?.emit('race_scheduled', { id: race.id, startAt: race.startAt.getTime(), field: race.field });
+  } else if (live.length > 1) {
+    const hasRunning = live.some((r) => r.status === 'running');
+    const keepId = hasRunning
+      ? live.find((r) => r.status === 'running')!.id
+      : live[0]!.id;
+    for (const extra of live) {
+      if (extra.id === keepId || extra.status !== 'scheduled') continue;
+      const pruned = await prisma.race.updateMany({
+        where: { id: extra.id, status: 'scheduled' },
+        data: { status: 'finished', results: [] },
+      });
+      if (pruned.count === 0) continue;
+      console.warn('[race] pruned duplicate scheduled race', extra.id);
+      const bets = await prisma.bet.findMany({ where: { raceId: extra.id } });
+      for (const bet of bets) {
+        await prisma.playerProfile.updateMany({
+          where: { userId: bet.userId },
+          data: { gold: { increment: bet.amount } },
+        });
+      }
+      await prisma.bet.deleteMany({ where: { raceId: extra.id } });
+      await prisma.raceEntry.deleteMany({ where: { raceId: extra.id } });
+    }
   }
 
   const gridWindow = await prisma.race.findFirst({

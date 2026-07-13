@@ -63,9 +63,9 @@ export const GUIDE_GROUPS: GuideGroup[] = [
               players in real time.
             </P>
             <P>
-              You spawn at the <Strong>central hub</Strong> inside the race track — race signup, the betting booth, and
-              the daily fortune wheel are all right there. The <Strong>walkover bridge</Strong> on the west side is the
-              only way in and out of the infield.
+              You spawn at the <Strong>central hub</Strong> inside the race track — race signup, the daily wheel,{' '}
+              <Strong>Ansem</Strong> (gold → $ANSEM), and the betting booth are all right there. The{' '}
+              <Strong>walkover bridge</Strong> on the west side is the only way in and out of the infield.
             </P>
           </>
         ),
@@ -86,6 +86,7 @@ export const GUIDE_GROUPS: GuideGroup[] = [
             <UL>
               <LI>Selling gold for SPL tokens (and buying token listings) on the market.</LI>
               <LI>Spinning the <Strong>daily wheel</Strong> (requires holding {WHEEL_MIN_TOKENS.toLocaleString()} tokens).</LI>
+              <LI>Depositing gold to <Strong>Ansem</Strong> during an open cycle (he airdrops $ANSEM when it closes).</LI>
             </UL>
             <UL>
               <LI>The game only asks for a free link signature and marketplace transactions you start — never your seed phrase.</LI>
@@ -285,6 +286,25 @@ export const GUIDE_GROUPS: GuideGroup[] = [
         ),
       },
       {
+        id: 'ansem',
+        title: 'Ansem — Gold → $ANSEM',
+        body: (
+          <>
+            <P>
+              <Strong>Ansem</Strong> stands in the hub next to spawn (sign: <Strong>GOLD → $ANSEM</Strong>). When a
+              cycle is open, deposit your gold — your share of the pool is your share of the $ANSEM airdrop when the
+              cycle closes.
+            </P>
+            <UL>
+              <LI>Connect your wallet in <Strong>Profile</Strong> first — Ansem needs an address to airdrop to.</LI>
+              <LI>Walk up and click Ansem to see the cycle progress bar, pool size, and your deposit.</LI>
+              <LI>Deposits stack if you chip in more than once during the same cycle.</LI>
+              <LI>When no cycle is running, he isn&apos;t trading — check back later.</LI>
+            </UL>
+          </>
+        ),
+      },
+      {
         id: 'wheel',
         title: 'Daily Fortune Wheel',
         body: (
@@ -308,7 +328,8 @@ export const GUIDE_GROUPS: GuideGroup[] = [
           <>
             <P>
               Gold comes from race prizes, selling on the market, betting wins, and the daily wheel. Spend it on
-              breeding, resting, dens, training, store clothing, and NPC shop bundles.
+              breeding, resting, dens, training, store clothing, NPC shop bundles, or deposit it to{' '}
+              <Strong>Ansem</Strong> during an open $ANSEM cycle.
             </P>
           </>
         ),
@@ -353,8 +374,11 @@ export const GUIDE_GROUPS: GuideGroup[] = [
           <>
             <H3>Why can&apos;t I enter a race?</H3>
             <P>Bull must follow you, have {BULL_MAX_ENERGY} energy, and you can only enter one bull per race before the lock.</P>
-            <H3>Why can&apos;t I spin the wheel or sell gold for tokens?</H3>
-            <P>Those need a Solana wallet — connect one from Profile. The wheel also requires holding {WHEEL_MIN_TOKENS.toLocaleString()} tokens.</P>
+            <H3>Why can&apos;t I spin the wheel, sell gold for tokens, or deposit to Ansem?</H3>
+            <P>
+              Those need a Solana wallet — connect one from Profile. The wheel also requires holding{' '}
+              {WHEEL_MIN_TOKENS.toLocaleString()} tokens. Ansem also needs an open cycle.
+            </P>
             <H3>How do I get into the middle of the track?</H3>
             <P>Use the walkover bridge on the west side — it&apos;s the only crossing.</P>
             <H3>Why did my bull teleport or results look wrong?</H3>

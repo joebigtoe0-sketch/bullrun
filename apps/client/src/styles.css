@@ -495,3 +495,12 @@ html, body, #root { margin: 0; padding: 0; height: 100%; overflow: hidden; font-
 .loading-run { display: flex; flex-direction: column; align-items: center; }
 .loading-run canvas { display: block; margin-bottom: -6px; }
 .loading-run .loading-bar-row { width: 520px; max-width: 88vw; }
+
+/* ---------- audio controls (Profile) ---------- */
+.audio-controls { margin-top: 6px; }
+.audio-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.audio-mute { background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 2px; }
+.audio-label { width: 72px; color: #c9b896; font-size: 13px; font-weight: 700; }
+.audio-slider { flex: 1; accent-color: #f2b23a; cursor: pointer; height: 4px; }
+.audio-slider:disabled { opacity: .4; cursor: default; }
+.audio-pct { width: 34px; text-align: right; color: #9a8b72; font-size: 12px; font-weight: 700; }

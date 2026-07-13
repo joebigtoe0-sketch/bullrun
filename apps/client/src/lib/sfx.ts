@@ -1,7 +1,32 @@
 /* Bull Race — tiny WebAudio SFX synth (TS port of the design spec's
    bullrun-sfx.js — keep in sync with the spec folder). No audio files. */
+import { loadAudioSettings } from './audioSettings';
 
 let C: AudioContext | null = null;
+
+let sfxVol = loadAudioSettings().sfxVol;
+let sfxMuted = loadAudioSettings().sfxMuted;
+let master: GainNode | null = null;
+
+/** Shared master gain — every sound routes through it for global volume/mute. */
+function masterGain(c: AudioContext): GainNode {
+  if (!master || master.context !== c) {
+    master = c.createGain();
+    master.gain.value = sfxMuted ? 0 : sfxVol;
+    master.connect(c.destination);
+  }
+  return master;
+}
+
+export function setSfxVolume(v: number): void {
+  sfxVol = Math.max(0, Math.min(1, v));
+  if (master) master.gain.value = sfxMuted ? 0 : sfxVol;
+}
+
+export function setSfxMuted(m: boolean): void {
+  sfxMuted = m;
+  if (master) master.gain.value = m ? 0 : sfxVol;
+}
 
 function ctx(): AudioContext | null {
   if (!C) {
@@ -34,7 +59,7 @@ function tone(freq: number, dur: number, type?: OscillatorType, vol?: number, sl
   g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
   o.connect(g);
-  g.connect(c.destination);
+  g.connect(masterGain(c));
   o.start(t0);
   o.stop(t0 + dur + 0.05);
 }
@@ -57,7 +82,7 @@ function noise(dur: number, vol?: number, when?: number, freq?: number) {
   g.gain.value = vol || 0.2;
   src.connect(f);
   f.connect(g);
-  g.connect(c.destination);
+  g.connect(masterGain(c));
   src.start(t0);
 }
 

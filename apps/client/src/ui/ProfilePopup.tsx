@@ -100,11 +100,56 @@ export function ProfilePopup() {
               </button>
             </>
           )}
+          <AudioControls />
+
           <button type="button" className="br-btn red profile-disconnect" onClick={handleLogout}>
             Log out
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AudioRow({ label, muted, vol, onMute, onVol }: {
+  label: string; muted: boolean; vol: number; onMute: () => void; onVol: (v: number) => void;
+}) {
+  return (
+    <div className="audio-row">
+      <button type="button" className="audio-mute" onClick={onMute} aria-label={`${muted ? 'Unmute' : 'Mute'} ${label}`}>
+        {muted ? '🔇' : '🔊'}
+      </button>
+      <span className="audio-label">{label}</span>
+      <input
+        className="audio-slider"
+        type="range"
+        min={0}
+        max={100}
+        value={Math.round(vol * 100)}
+        disabled={muted}
+        onChange={(e) => onVol(Number(e.target.value) / 100)}
+      />
+      <span className="audio-pct">{muted ? 'off' : `${Math.round(vol * 100)}%`}</span>
+    </div>
+  );
+}
+
+function AudioControls() {
+  const audio = useGameStore((s) => s.audio);
+  const setAudio = useGameStore((s) => s.setAudio);
+  return (
+    <div className="audio-controls">
+      <div className="profile-label" style={{ margin: '14px 0 6px' }}>Audio</div>
+      <AudioRow
+        label="Music" muted={audio.musicMuted} vol={audio.musicVol}
+        onMute={() => setAudio({ musicMuted: !audio.musicMuted })}
+        onVol={(v) => setAudio({ musicVol: v })}
+      />
+      <AudioRow
+        label="Sound FX" muted={audio.sfxMuted} vol={audio.sfxVol}
+        onMute={() => setAudio({ sfxMuted: !audio.sfxMuted })}
+        onVol={(v) => setAudio({ sfxVol: v })}
+      />
     </div>
   );
 }

@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { buildWorld, nodeId, RACE_RESULTS_DISPLAY_MS, CHAT_LOG_MAX, CHAT_SPEECH_MS, raceElapsedMs, raceMaxDurationMs } from '@bullrace/shared';
 import type { MeResponse, OtherPlayer, PanelType, PasturePlotState, RaceResult, BullTrait, MatType, ChatMessage } from '@bullrace/shared';
 import { api } from '../api/client';
-import { BRSfx } from '../lib/sfx';
+import { BRSfx, setSfxVolume, setSfxMuted } from '../lib/sfx';
+import { setMusicVolume, setMusicMuted } from '../lib/music';
+import { loadAudioSettings, saveAudioSettings, type AudioSettings } from '../lib/audioSettings';
 
 export interface SyncedWorldNode {
   id: string;
@@ -65,6 +67,8 @@ interface GameStore {
   setAuth: (token: string, user: { id: string; username: string; displayName: string; walletAddress?: string | null; hasDisplayName?: boolean }) => void;
   setWallet: (address: string | null) => void;
   refreshTokenBalance: () => Promise<void>;
+  audio: AudioSettings;
+  setAudio: (patch: Partial<AudioSettings>) => void;
   setProfileOpen: (open: boolean) => void;
   setMe: (me: MeResponse) => void;
   setPosition: (x: number, y: number) => void;
@@ -115,6 +119,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   walletAddress: null,
   hasDisplayName: false,
   tokenBalance: 0,
+  audio: loadAudioSettings(),
   profileOpen: false,
   me: null,
   panel: null,
@@ -160,6 +165,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
   setWallet: (walletAddress) => set({ walletAddress }),
+  setAudio: (patch) => {
+    const next = { ...get().audio, ...patch };
+    saveAudioSettings(next);
+    if (patch.sfxVol !== undefined) setSfxVolume(next.sfxVol);
+    if (patch.sfxMuted !== undefined) setSfxMuted(next.sfxMuted);
+    if (patch.musicVol !== undefined) setMusicVolume(next.musicVol);
+    if (patch.musicMuted !== undefined) setMusicMuted(next.musicMuted);
+    set({ audio: next });
+  },
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   refreshTokenBalance: async () => {
     if (!get().token) return;

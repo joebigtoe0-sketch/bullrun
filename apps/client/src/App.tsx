@@ -9,6 +9,7 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { LandingPage } from './ui/LandingPage';
 import { LoadingScreen } from './ui/LoadingScreen';
 import { SpectateMode } from './ui/SpectateMode';
+import { startMusicOnGesture } from './lib/music';
 
 type Stage = 'landing' | 'loading' | 'auth' | 'game';
 
@@ -22,6 +23,8 @@ export default function App() {
   const setWallet = useGameStore((s) => s.setWallet);
 
   const [stage, setStage] = useState<Stage>('landing');
+
+  useEffect(() => { startMusicOnGesture(); }, []);
 
   useEffect(() => {
     if (token && !me) {
